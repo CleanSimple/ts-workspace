@@ -1,0 +1,14 @@
+{
+    "[javascript]": {
+        "editor.defaultFormatter": "gplane.dprint2"
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "gplane.dprint2"
+    },
+    "[json]": {
+        "editor.defaultFormatter": "gplane.dprint2"
+    },
+    "eslint.probe": [
+        "typescript"
+    ],
+}

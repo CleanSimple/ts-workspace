@@ -1,0 +1,26 @@
+{
+    "name": "user-scripts",
+    "version": "0.1.0",
+    "description": "",
+    "repository": "github:Nourz1234/user-scripts",
+    "author": {
+        "name": "Nour Nasser",
+        "email": "nours02345@gmail.com",
+        "url": "https://github.com/Nourz1234"
+    },
+    "type": "module",
+    "scripts": {
+        "build": "npm run build --workspaces --if-present",
+        "lint": "npm run lint --workspaces --if-present",
+        "fmt": "npm run fmt --workspaces --if-present"
+    },
+    "workspaces": [
+        "projects/*",
+        "packages/*",
+        "project-templates/*",
+        "private-ts-projects/*"
+    ],
+    "devDependencies": {
+        "@lib/dprint-config": "^0.0.0"
+    }
+}

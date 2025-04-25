@@ -1,0 +1,7 @@
+{
+    "extends": "@lib/typescript-config/base.json",
+    "include": ["src"],
+    "compilerOptions": {
+        "outDir": "./dist/js",
+    }
+}

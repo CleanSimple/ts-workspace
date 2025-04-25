@@ -1,0 +1,119 @@
+
+.VE_Main {
+    all: revert;
+    direction: ltr;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition-duration: 0.2s;
+}
+
+.VE_Main * {
+    color: #C0C0C5;
+    font-size: 16px;
+}
+
+.VE_Background_Blur {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    width: 100%;
+    height: 100%;
+}
+
+.VE_SkipDlg {
+    box-shadow: 0px 0px 10px #1939F5;
+    background: #151515;
+    z-index: 100;
+}
+
+.VE_SkipDlg_Title {
+    text-align: center;
+    background: #1939F5;
+    padding: 5px;
+    font-weight: bold;
+}
+
+.VE_SkipDlg_Client {
+    padding: 5px;
+    border: 1px solid #1939F5;
+    box-shadow: inset 0px 0px 10px #1939F5;
+}
+
+.VE_NumUpDown {
+    display: flex;
+    flex-direction: row;
+    border: 1px solid #404040;
+}
+
+.VE_NumUpDown:hover {
+    border-color: #0a2ae8;
+}
+
+.VE_NumUpDown input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    background: transparent;
+    padding: 0px 3px;
+    border: none;
+    width: 20px;
+}
+
+.VE_NumUpDown .VE_NumUpDown_Up,
+.VE_NumUpDown .VE_NumUpDown_Down {
+    fill: #1939F5;
+    font-size: 10px;
+    padding: 3px;
+    background: transparent;
+    border: none;
+}
+
+.VE_NumUpDown .VE_NumUpDown_Up:active svg,
+.VE_NumUpDown .VE_NumUpDown_Down:active svg {
+    transform: scale(0.7);
+}
+
+.VE_Button {
+    padding: 8px;
+    background: #1939F5;
+    border: none;
+}
+
+.VE_Button:hover {
+    background: #0a2ae8;
+}
+
+.VE_Button:active {
+    background: #0721b5;
+}
+
+.VE_Select select {
+    border: 1px solid #404040;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    height: 100%;
+    padding: 0px 20px 0px 0px;
+    background: #151515;
+    background-image:
+        linear-gradient(45deg, transparent 50%, #1939F5 50%),
+        linear-gradient(135deg, #1939F5 50%, transparent 50%),
+        linear-gradient(to right, #404040, #404040);
+    background-position:
+        calc(100% - 10px) 50%,
+        calc(100% - 5px) 50%,
+        calc(100% - 20px) 0px;
+    background-size:
+        5px 5px,
+        5px 5px,
+        1px 100%;
+    background-repeat: no-repeat;
+}
+
+.VE_Select select:hover {
+    border-color: #0a2ae8;
+}

@@ -1,0 +1,24 @@
+{
+    "name": "@lib/utils",
+    "version": "0.0.0",
+    "type": "module",
+    "exports": {
+        "import": {
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/bundle/index.esm.js"
+        }
+    },
+    "scripts": {
+        "jsdocify": "ts-to-jsdoc --project tsconfig.jsdocify.json",
+        "build": "rollup -c",
+        "dev": "rollup -c -w",
+        "lint": "eslint ./src",
+        "fmt": "dprint fmt ./src/*"
+    },
+    "devDependencies": {
+        "@lib/eslint-config": "^0.0.0",
+        "@lib/rollup-config": "^0.0.0",
+        "@lib/typescript-config": "^0.0.0",
+        "ts-to-jsdoc": "^2.4.0"
+    }
+}

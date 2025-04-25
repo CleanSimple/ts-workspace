@@ -1,0 +1,60 @@
+# Create user script project:
+
+- Init project:
+```sh
+npm init -y
+```
+
+- Install configs
+```sh
+npm install @lib/rollup-config @lib/typescript-config @lib/eslint-config  -D
+```
+
+- Install Tampermonky types
+```
+npm install @types/tampermonkey -D
+```
+
+- Install utils package (Optional):
+```
+npm install @lib/util
+```
+
+- Create `tsconfig.json`
+```json
+{
+    "extends": "@lib/typescript-config/browser.json",
+    "include": ["src"],
+}
+```
+
+- Create `rollup.config.js`
+```js
+import baseConfig from '@lib/rollup-config/user-script';
+import { defineConfig } from 'rollup';
+
+export default defineConfig({
+    ...baseConfig,
+    input: 'src/main.ts',
+    output: [
+        {
+            name: 'Lib', // Module name in code
+            format: 'iife',
+            file: './dist/index.js',
+        },
+    ],
+});
+```
+
+- Create `eslint.config.js`
+```js
+import config from '@lib/eslint-config/config';
+
+export default config;
+```
+
+# Notes
+
+dprint Note:
+
+- dprint config is a special case. We can only use a json file and there is no way of importing from a package. So we use a global config in the root, and if customization is needed, then a config should be created per project.

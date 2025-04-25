@@ -1,0 +1,20 @@
+{
+    "name": "universal-media-shortcuts",
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "rollup -c",
+        "dev": "rollup -c -w",
+        "lint": "eslint ./src",
+        "fmt": "dprint fmt ./src/*"
+    },
+    "dependencies": {
+        "@lib/utils": "^0.0.0"
+    },
+    "devDependencies": {
+        "@lib/eslint-config": "^0.0.0",
+        "@lib/rollup-config": "^0.0.0",
+        "@lib/typescript-config": "^0.0.0",
+        "@types/tampermonkey": "^5.0.4"
+    }
+}

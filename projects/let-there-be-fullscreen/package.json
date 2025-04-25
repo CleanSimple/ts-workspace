@@ -1,0 +1,17 @@
+{
+    "name": "let-there-be-full-screen",
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "build": "rollup -c",
+        "dev": "rollup -c -w",
+        "lint": "eslint ./src",
+        "fmt": "dprint fmt ./src/*"
+    },
+    "devDependencies": {
+        "@lib/eslint-config": "^0.0.0",
+        "@lib/rollup-config": "^0.0.0",
+        "@lib/typescript-config": "^0.0.0",
+        "@types/tampermonkey": "^5.0.4"
+    }
+}
