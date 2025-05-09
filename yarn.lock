@@ -265,7 +265,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@lib/utils@workspace:packages/utils":
+"@lib/utils@workspace:^, @lib/utils@workspace:packages/utils":
   version: 0.0.0-use.local
   resolution: "@lib/utils@workspace:packages/utils"
   dependencies:
@@ -612,6 +612,13 @@ __metadata:
   version: 7.7.0
   resolution: "@types/semver@npm:7.7.0"
   checksum: 10c0/6b5f65f647474338abbd6ee91a6bbab434662ddb8fe39464edcbcfc96484d388baad9eb506dff217b6fc1727a88894930eb1f308617161ac0f376fe06be4e1ee
+  languageName: node
+  linkType: hard
+
+"@types/tampermonkey@npm:^5.0.4":
+  version: 5.0.4
+  resolution: "@types/tampermonkey@npm:5.0.4"
+  checksum: 10c0/c6d85ea66229fe20fd652b48997db48f1a5d3328ca14d44c89a1b70d4edf659e71b2fd33182753b02084524fed6b6652305f34773013db3f38cd53abbb28f1b9
   languageName: node
   linkType: hard
 
@@ -2662,6 +2669,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"sample-project@workspace:project-templates/userscript":
+  version: 0.0.0-use.local
+  resolution: "sample-project@workspace:project-templates/userscript"
+  dependencies:
+    "@lib/dprint-config": "workspace:^"
+    "@lib/eslint-config": "workspace:^"
+    "@lib/rollup-config": "workspace:^"
+    "@lib/typescript-config": "workspace:^"
+    "@lib/utils": "workspace:^"
+    "@types/tampermonkey": "npm:^5.0.4"
+  languageName: unknown
+  linkType: soft
+
 "semver@npm:^6.0.0":
   version: 6.3.1
   resolution: "semver@npm:6.3.1"
@@ -2920,11 +2940,6 @@ __metadata:
     "@lib/dprint-config": "workspace:^"
     eslint: "npm:^9.25.1"
     typescript: "npm:^5.8.3"
-  dependenciesMeta:
-    ts-morph@23.0.0:
-      unplugged: true
-    ts-to-jsdoc@2.4.0:
-      unplugged: true
   languageName: unknown
   linkType: soft
 

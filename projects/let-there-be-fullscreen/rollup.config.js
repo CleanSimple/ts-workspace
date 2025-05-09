@@ -1,4 +1,4 @@
-import baseConfig from '@lib/rollup-config/user-script';
+import baseConfig from '@lib/rollup-config/userscript';
 import { defineConfig } from 'rollup';
 
 export default defineConfig({

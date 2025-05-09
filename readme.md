@@ -47,7 +47,7 @@ npm install @lib/util
 
 - Create `rollup.config.js`
 ```js
-import baseConfig from '@lib/rollup-config/user-script';
+import baseConfig from '@lib/rollup-config/userscript';
 import { defineConfig } from 'rollup';
 
 export default defineConfig({
@@ -69,9 +69,3 @@ import config from '@lib/eslint-config/config';
 
 export default config;
 ```
-
-# Notes
-
-dprint Note:
-
-- dprint config is a special case. We can only use a json file and there is no way of importing from a package. So we use a global config in the root, and if customization is needed, then a config should be created per project.

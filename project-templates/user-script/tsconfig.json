@@ -1,4 +1,0 @@
-{
-    "extends": "@lib/typescript-config/browser.js",
-    "include": ["src"]
-}

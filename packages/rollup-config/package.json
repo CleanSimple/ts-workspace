@@ -8,7 +8,7 @@
             "types": "./imports.d.ts"
         },
         "./lib": "./lib.js",
-        "./user-script": "./user-script.js"
+        "./userscript": "./userscript.js"
     },
     "scripts": {
         "rollup:build": "cd $INIT_CWD && rollup -c",

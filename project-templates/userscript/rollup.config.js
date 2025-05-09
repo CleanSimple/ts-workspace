@@ -1,7 +1,6 @@
-import baseConfig from '@lib/rollup-config/user-script';
-import { defineConfig } from 'rollup';
+import baseConfig from '@lib/rollup-config/userscript';
 
-export default defineConfig({
+export default {
     ...baseConfig,
     input: 'src/main.ts',
     output: [
@@ -11,4 +10,4 @@ export default defineConfig({
             file: `./dist/index.js`,
         },
     ],
-});
+};

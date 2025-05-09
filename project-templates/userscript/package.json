@@ -1,0 +1,21 @@
+{
+    "name": "sample-project",
+    "packageManager": "yarn@4.6.0",
+    "type": "module",
+    "scripts": {
+        "build": "yarn rollup:build",
+        "dev": "yarn rollup:watch",
+        "lint": "yarn eslint:lint ./src",
+        "fmt": "yarn dprint:fmt ./src/*"
+    },
+    "dependencies": {
+        "@lib/utils": "workspace:^"
+    },
+    "devDependencies": {
+        "@lib/dprint-config": "workspace:^",
+        "@lib/eslint-config": "workspace:^",
+        "@lib/rollup-config": "workspace:^",
+        "@lib/typescript-config": "workspace:^",
+        "@types/tampermonkey": "^5.0.4"
+    }
+}
