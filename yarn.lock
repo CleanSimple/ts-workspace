@@ -1978,6 +1978,18 @@ __metadata:
   languageName: node
   linkType: hard
 
+"let-there-be-full-screen@workspace:projects/let-there-be-fullscreen":
+  version: 0.0.0-use.local
+  resolution: "let-there-be-full-screen@workspace:projects/let-there-be-fullscreen"
+  dependencies:
+    "@lib/dprint-config": "workspace:^"
+    "@lib/eslint-config": "workspace:^"
+    "@lib/rollup-config": "workspace:^"
+    "@lib/typescript-config": "workspace:^"
+    "@types/tampermonkey": "npm:^5.0.4"
+  languageName: unknown
+  linkType: soft
+
 "levn@npm:^0.4.1":
   version: 0.4.1
   resolution: "levn@npm:0.4.1"

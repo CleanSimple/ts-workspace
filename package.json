@@ -8,7 +8,8 @@
     },
     "workspaces": [
         "packages/*",
-        "project-templates/*"
+        "project-templates/*",
+        "projects/let-there-be-fullscreen"
     ],
     "devDependencies": {
         "@lib/dprint-config": "workspace:^",

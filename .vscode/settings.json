@@ -18,6 +18,8 @@
         "**/.pnp.*": true
     },
     "cSpell.words": [
+        "dprint",
+        "fullscreen",
         "userscript"
     ]
 }
