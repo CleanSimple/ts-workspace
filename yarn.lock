@@ -3158,3 +3158,15 @@ __metadata:
   checksum: 10c0/dceb44c28578b31641e13695d200d34ec4ab3966a5729814d5445b194933c096b7ced71494ce53a0e8820685d1d010df8b2422e5bf2cdea7e469d97ffbea306f
   languageName: node
   linkType: hard
+
+"youtube-save-time@workspace:projects/youtube-save-time":
+  version: 0.0.0-use.local
+  resolution: "youtube-save-time@workspace:projects/youtube-save-time"
+  dependencies:
+    "@lib/dprint-config": "workspace:^"
+    "@lib/eslint-config": "workspace:^"
+    "@lib/rollup-config": "workspace:^"
+    "@lib/typescript-config": "workspace:^"
+    "@types/tampermonkey": "npm:^5.0.4"
+  languageName: unknown
+  linkType: soft

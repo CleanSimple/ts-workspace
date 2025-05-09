@@ -9,8 +9,7 @@
     "workspaces": [
         "packages/*",
         "project-templates/*",
-        "projects/let-there-be-fullscreen",
-        "projects/universal-media-shortcuts"
+        "projects/*"
     ],
     "devDependencies": {
         "@lib/dprint-config": "workspace:^",
