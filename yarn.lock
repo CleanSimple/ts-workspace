@@ -3051,6 +3051,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"universal-media-shortcuts@workspace:projects/universal-media-shortcuts":
+  version: 0.0.0-use.local
+  resolution: "universal-media-shortcuts@workspace:projects/universal-media-shortcuts"
+  dependencies:
+    "@lib/dprint-config": "workspace:^"
+    "@lib/eslint-config": "workspace:^"
+    "@lib/rollup-config": "workspace:^"
+    "@lib/typescript-config": "workspace:^"
+    "@lib/utils": "workspace:^"
+    "@types/tampermonkey": "npm:^5.0.4"
+  languageName: unknown
+  linkType: soft
+
 "universalify@npm:^2.0.0":
   version: 2.0.1
   resolution: "universalify@npm:2.0.1"

@@ -2,6 +2,6 @@
     "extends": "@lib/typescript-config/browser.js",
     "include": ["src"],
     "compilerOptions": {
-        "rootDir": "./src",
+        "rootDir": "src",
     }
 }

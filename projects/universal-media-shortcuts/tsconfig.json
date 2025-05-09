@@ -1,4 +1,7 @@
 {
     "extends": "@lib/typescript-config/browser.json",
     "include": ["src"],
+    "compilerOptions": {
+        "rootDir": "src",
+    }
 }
