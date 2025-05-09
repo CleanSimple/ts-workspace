@@ -1,3 +1,20 @@
+# Setup workspace
+
+- Install packages
+```sh
+yarn install
+```
+
+- Generate dprint.json configs from dprint.config.js for all packages (Should also run each time you edit a dprint.config.js):
+```sh
+yarn run init-dprint-config
+```
+
+- Install dprint globally for editor integration
+```powershell
+iwr https://dprint.dev/install.ps1 -useb | iex
+```
+
 # Create user script project:
 
 - Init project:
@@ -7,7 +24,7 @@ npm init -y
 
 - Install configs
 ```sh
-npm install @lib/rollup-config @lib/typescript-config @lib/eslint-config  -D
+npm install @lib/rollup-config @lib/typescript-config @lib/eslint-config @lib/dprint-config -D
 ```
 
 - Install Tampermonky types

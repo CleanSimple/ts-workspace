@@ -1,4 +1,4 @@
-{
+export default {
     "indentWidth": 4,
     "lineWidth": 100,
     "newLineKind": "lf",
@@ -24,4 +24,4 @@
         "https://plugins.dprint.dev/g-plane/markup_fmt-v0.19.1.wasm",
         "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.5.0.wasm"
     ]
-}
+};

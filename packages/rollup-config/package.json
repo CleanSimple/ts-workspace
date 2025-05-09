@@ -1,8 +1,8 @@
 {
     "name": "@lib/rollup-config",
-    "version": "0.0.0",
-    "type": "module",
+    "packageManager": "yarn@4.6.0",
     "private": true,
+    "type": "module",
     "exports": {
         ".": {
             "types": "./imports.d.ts"
@@ -10,11 +10,16 @@
         "./lib": "./lib.js",
         "./user-script": "./user-script.js"
     },
+    "scripts": {
+        "rollup:build": "cd $INIT_CWD && rollup -c",
+        "rollup:watch": "cd $INIT_CWD && rollup -c -w"
+    },
     "devDependencies": {
         "@rollup/plugin-node-resolve": "^16.0.1",
-        "rollup": "^4.20.0",
+        "rollup": "4.20.0",
         "rollup-plugin-header": "^1.0.0",
         "rollup-plugin-string-import": "^1.2.5",
-        "rollup-plugin-typescript2": "^0.36.0"
+        "rollup-plugin-typescript2": "^0.36.0",
+        "typescript": "^5.8.3"
     }
 }

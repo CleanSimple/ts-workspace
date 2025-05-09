@@ -1,10 +1,13 @@
 {
     "name": "@lib/eslint-config",
-    "version": "0.0.0",
-    "type": "module",
+    "packageManager": "yarn@4.6.0",
     "private": true,
+    "type": "module",
     "exports": {
         "./config": "./config.js"
+    },
+    "scripts": {
+        "eslint:lint": "cd $INIT_CWD && eslint"
     },
     "devDependencies": {
         "@eslint/js": "^9.25.1",

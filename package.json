@@ -1,26 +1,21 @@
 {
-    "name": "user-scripts",
-    "version": "0.1.0",
-    "description": "",
-    "repository": "github:Nourz1234/user-scripts",
-    "author": {
-        "name": "Nour Nasser",
-        "email": "nours02345@gmail.com",
-        "url": "https://github.com/Nourz1234"
-    },
+    "name": "ts-workspace",
+    "packageManager": "yarn@4.6.0",
+    "private": true,
     "type": "module",
     "scripts": {
-        "build": "npm run build --workspaces --if-present",
-        "lint": "npm run lint --workspaces --if-present",
-        "fmt": "npm run fmt --workspaces --if-present"
+        "init-dprint-config": "yarn workspaces foreach -A run dprint:init-config"
     },
     "workspaces": [
-        "projects/*",
-        "packages/*",
-        "project-templates/*",
-        "private-ts-projects/*"
+        "packages/*"
     ],
     "devDependencies": {
-        "@lib/dprint-config": "^0.0.0"
+        "@lib/dprint-config": "workspace:^",
+        "eslint": "^9.25.1",
+        "typescript": "^5.8.3"
+    },
+    "resolutions": {
+        "eslint": "9.25.1",
+        "typescript": "5.8.3"
     }
 }

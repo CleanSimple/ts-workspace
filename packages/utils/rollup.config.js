@@ -1,7 +1,6 @@
-import { defineConfig } from 'rollup';
 import baseConfig from '@lib/rollup-config/lib';
 
-export default defineConfig({
+export default {
     ...baseConfig,
     input: 'src/index.ts',
     output: [
@@ -15,4 +14,4 @@ export default defineConfig({
             file: './dist/bundle/index.iife.js',
         },
     ],
-});
+};
