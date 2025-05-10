@@ -8,6 +8,9 @@
         "lint": "yarn eslint:lint ./src",
         "fmt": "yarn dprint:fmt ./src/*"
     },
+    "dependencies": {
+        "@lib/utils": "workspace:^"
+    },
     "devDependencies": {
         "@lib/dprint-config": "workspace:^",
         "@lib/eslint-config": "workspace:^",

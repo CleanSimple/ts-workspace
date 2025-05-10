@@ -1,3 +1,5 @@
+import { debounce } from '@lib/utils';
+
 GM_addStyle(`
 .ltbf-btn {
   all: unset;
@@ -13,7 +15,7 @@ GM_addStyle(`
   z-index: 10000;
 }`);
 
-const observer = new MutationObserver(addButton);
+const observer = new MutationObserver(debounce(addButton, 1000));
 observer.observe(document.body, { childList: true, subtree: true });
 
 function createFullScreenButtonForIframe(iframe: HTMLIFrameElement) {
@@ -32,12 +34,11 @@ function makeFullscreen(iframe: HTMLIFrameElement) {
 
 function addButton() {
     Array.from(document.querySelectorAll('iframe'))
-        .filter(iframe => iframe.dataset['canFullscreen'] != 'true')
-        .filter(iframe => iframe.offsetParent != null)
-        .forEach(
-            (iframe) => {
-                iframe.insertAdjacentElement('afterend', createFullScreenButtonForIframe(iframe));
-                iframe.dataset['canFullscreen'] = 'true';
-            },
-        );
+        .filter(iframe => iframe.dataset['canFullscreen'] !== 'true')
+        .filter(iframe => iframe.offsetParent !== null)
+        .filter(iframe => iframe.ariaHidden !== 'true')
+        .forEach(iframe => {
+            iframe.insertAdjacentElement('afterend', createFullScreenButtonForIframe(iframe));
+            iframe.dataset['canFullscreen'] = 'true';
+        });
 }

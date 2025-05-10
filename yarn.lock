@@ -1986,6 +1986,7 @@ __metadata:
     "@lib/eslint-config": "workspace:^"
     "@lib/rollup-config": "workspace:^"
     "@lib/typescript-config": "workspace:^"
+    "@lib/utils": "workspace:^"
     "@types/tampermonkey": "npm:^5.0.4"
   languageName: unknown
   linkType: soft
