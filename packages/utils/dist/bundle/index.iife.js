@@ -321,6 +321,13 @@ var Utils = (function (exports) {
             input.click();
         });
     }
+    function debounce(func, timeout) {
+        let timeoutId = 0;
+        return () => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(func, timeout);
+        };
+    }
 
     function setInputValue(input, value) {
         const proto = Object.getPrototypeOf(input);
@@ -356,6 +363,7 @@ var Utils = (function (exports) {
     exports.dateToString = dateToString;
     exports.dateToTimeString = dateToTimeString;
     exports.dateToWeekDay = dateToWeekDay;
+    exports.debounce = debounce;
     exports.downloadFile = downloadFile;
     exports.dropDuplicates = dropDuplicates;
     exports.fail = fail;

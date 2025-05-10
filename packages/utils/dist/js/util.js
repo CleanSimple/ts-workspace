@@ -1,3 +1,4 @@
+/** @import { Action } from './types' */
 /**
  * @template {object} T
  * @param {T} obj
@@ -68,4 +69,16 @@ export async function fileSelect(accept = '', multiple = false) {
         window.addEventListener('focus', onFileSelect);
         input.click();
     });
+}
+/**
+ * @param {Action} func
+ * @param {number} timeout
+ * @returns {Action}
+ */
+export function debounce(func, timeout) {
+    let timeoutId = 0;
+    return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(func, timeout);
+    };
 }

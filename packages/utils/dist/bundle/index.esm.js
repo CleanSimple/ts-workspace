@@ -318,6 +318,13 @@ async function fileSelect(accept = '', multiple = false) {
         input.click();
     });
 }
+function debounce(func, timeout) {
+    let timeoutId = 0;
+    return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(func, timeout);
+    };
+}
 
 function setInputValue(input, value) {
     const proto = Object.getPrototypeOf(input);
@@ -330,4 +337,4 @@ const ReactAutomation = {
     setInputValue,
 };
 
-export { ReactAutomation, arrFirst, arrFirstOr, arrInsertAt, arrLast, arrLastOr, arrRemove, arrRemoveAt, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, downloadFile, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isTopFrame, mapData, poll, queryStringFromObject, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };
+export { ReactAutomation, arrFirst, arrFirstOr, arrInsertAt, arrLast, arrLastOr, arrRemove, arrRemoveAt, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, downloadFile, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isTopFrame, mapData, poll, queryStringFromObject, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };

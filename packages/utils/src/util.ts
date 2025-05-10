@@ -1,3 +1,5 @@
+import type { Action } from './types';
+
 export function hasKey<T extends object>(obj: T, key: PropertyKey): key is keyof T {
     return key in obj;
 }
@@ -46,4 +48,12 @@ export async function fileSelect(accept = '', multiple = false): Promise<FileLis
         window.addEventListener('focus', onFileSelect);
         input.click();
     });
+}
+
+export function debounce(func: Action, timeout: number): Action {
+    let timeoutId = 0;
+    return () => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(func, timeout);
+    };
 }
