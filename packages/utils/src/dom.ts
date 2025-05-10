@@ -15,7 +15,7 @@ export function isElementVisible(elem: HTMLElement): boolean {
         return false;
     }
 
-    // advanced logic to check if the element is within the documents scrollable area.
+    // advanced logic to check if the element is within the document's scrollable area.
     const docElem = document.documentElement;
     const scrollableWidth = Math.max(
         docElem.scrollWidth,
