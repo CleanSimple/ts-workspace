@@ -11,7 +11,23 @@ export function isTopFrame(win = window) {
  * @returns {boolean}
  */
 export function isElementVisible(elem) {
-    return elem.offsetParent !== null;
+    if (elem.offsetParent === null || elem.ariaHidden === 'true') {
+        return false;
+    }
+    const rect = elem.getBoundingClientRect();
+    if (rect.width === 0 || rect.height == 0) {
+        return false;
+    }
+    // advanced logic to check if the element is within the documents scrollable area.
+    const docElem = document.documentElement;
+    const scrollableWidth = Math.max(docElem.scrollWidth, document.body.scrollWidth);
+    const scrollableHeight = Math.max(docElem.scrollHeight, document.body.scrollHeight);
+    const left = rect.left + window.pageXOffset;
+    const top = rect.top + window.pageYOffset;
+    return !(left + rect.width < 0
+        || top + rect.height < 0
+        || left > scrollableWidth
+        || top > scrollableHeight);
 }
 /**
  * get the text content of an element excluding the text of the descendants
