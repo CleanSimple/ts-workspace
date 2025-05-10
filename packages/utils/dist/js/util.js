@@ -1,4 +1,3 @@
-/** @import { Action } from './types' */
 /**
  * @template {object} T
  * @param {T} obj
@@ -71,14 +70,15 @@ export async function fileSelect(accept = '', multiple = false) {
     });
 }
 /**
- * @param {Action} func
+ * @template {(...args: never[]) => void} T
+ * @param {T} func
  * @param {number} timeout
- * @returns {Action}
+ * @returns {T}
  */
 export function debounce(func, timeout) {
     let timeoutId = 0;
-    return () => {
+    return ((...args) => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(func, timeout);
-    };
+        timeoutId = setTimeout(func, timeout, ...args);
+    });
 }

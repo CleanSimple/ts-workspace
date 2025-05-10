@@ -1,5 +1,3 @@
-import type { Action } from './types';
-
 export function hasKey<T extends object>(obj: T, key: PropertyKey): key is keyof T {
     return key in obj;
 }
@@ -50,10 +48,10 @@ export async function fileSelect(accept = '', multiple = false): Promise<FileLis
     });
 }
 
-export function debounce(func: Action, timeout: number): Action {
+export function debounce<T extends (...args: never[]) => void>(func: T, timeout: number): T {
     let timeoutId = 0;
-    return () => {
+    return ((...args: Parameters<typeof func>) => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(func, timeout);
-    };
+        timeoutId = setTimeout(func, timeout, ...args);
+    }) as T;
 }

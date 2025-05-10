@@ -320,10 +320,10 @@ async function fileSelect(accept = '', multiple = false) {
 }
 function debounce(func, timeout) {
     let timeoutId = 0;
-    return () => {
+    return ((...args) => {
         clearTimeout(timeoutId);
-        timeoutId = setTimeout(func, timeout);
-    };
+        timeoutId = setTimeout(func, timeout, ...args);
+    });
 }
 
 function setInputValue(input, value) {
