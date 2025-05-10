@@ -10,6 +10,25 @@
 (function () {
     'use strict';
 
+    function isElementVisible(elem) {
+        if (elem.offsetParent === null || elem.ariaHidden === 'true') {
+            return false;
+        }
+        const rect = elem.getBoundingClientRect();
+        if (rect.width === 0 || rect.height == 0) {
+            return false;
+        }
+        // advanced logic to check if the element is within the documents scrollable area.
+        const docElem = document.documentElement;
+        const scrollableWidth = Math.max(docElem.scrollWidth, document.body.scrollWidth);
+        const scrollableHeight = Math.max(docElem.scrollHeight, document.body.scrollHeight);
+        const left = rect.left + window.pageXOffset;
+        const top = rect.top + window.pageYOffset;
+        return !(left + rect.width < 0
+            || top + rect.height < 0
+            || left > scrollableWidth
+            || top > scrollableHeight);
+    }
     function debounce(func, timeout) {
         let timeoutId = 0;
         return ((...args) => {
@@ -49,8 +68,7 @@
     function addButton() {
         Array.from(document.querySelectorAll('iframe'))
             .filter(iframe => iframe.dataset['canFullscreen'] !== 'true')
-            .filter(iframe => iframe.offsetParent !== null)
-            .filter(iframe => iframe.ariaHidden !== 'true')
+            .filter(iframe => isElementVisible(iframe))
             .forEach(iframe => {
             iframe.insertAdjacentElement('afterend', createFullScreenButtonForIframe(iframe));
             iframe.dataset['canFullscreen'] = 'true';

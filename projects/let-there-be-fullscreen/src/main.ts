@@ -1,4 +1,4 @@
-import { debounce } from '@lib/utils';
+import { debounce, isElementVisible } from '@lib/utils';
 
 GM_addStyle(`
 .ltbf-btn {
@@ -35,8 +35,7 @@ function makeFullscreen(iframe: HTMLIFrameElement) {
 function addButton() {
     Array.from(document.querySelectorAll('iframe'))
         .filter(iframe => iframe.dataset['canFullscreen'] !== 'true')
-        .filter(iframe => iframe.offsetParent !== null)
-        .filter(iframe => iframe.ariaHidden !== 'true')
+        .filter(iframe => isElementVisible(iframe))
         .forEach(iframe => {
             iframe.insertAdjacentElement('afterend', createFullScreenButtonForIframe(iframe));
             iframe.dataset['canFullscreen'] = 'true';
