@@ -19,22 +19,22 @@ iwr https://dprint.dev/install.ps1 -useb | iex
 
 - Init project:
 ```sh
-npm init -y
+yarn init
 ```
 
 - Install configs
 ```sh
-npm install @lib/rollup-config @lib/typescript-config @lib/eslint-config @lib/dprint-config -D
+yarn add @lib/rollup-config @lib/typescript-config @lib/eslint-config @lib/dprint-config -D
 ```
 
 - Install Tampermonky types
 ```
-npm install @types/tampermonkey -D
+yarn add @types/tampermonkey -D
 ```
 
 - Install utils package (Optional):
 ```
-npm install @lib/util
+yarn add @lib/util
 ```
 
 - Create `tsconfig.json`

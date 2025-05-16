@@ -1,6 +1,6 @@
 {
     "name": "youtube-save-time",
-    "version": "0.0.0",
+    "packageManager": "yarn@4.6.0",
     "type": "module",
     "scripts": {
         "build": "yarn rollup:build",

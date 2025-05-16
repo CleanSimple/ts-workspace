@@ -1,6 +1,6 @@
 {
     "name": "universal-media-shortcuts",
-    "version": "0.0.0",
+    "packageManager": "yarn@4.6.0",
     "type": "module",
     "scripts": {
         "build": "yarn rollup:build",
