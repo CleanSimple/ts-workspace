@@ -5,6 +5,7 @@ export * from './data';
 export * from './dom';
 export * from './image';
 export * from './time';
+export type * from './types';
 export * from './url';
 export * from './util';
 import { setInputValue } from './react.automation';
