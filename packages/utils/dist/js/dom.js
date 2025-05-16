@@ -18,7 +18,7 @@ export function isElementVisible(elem) {
     if (rect.width === 0 || rect.height == 0) {
         return false;
     }
-    // advanced logic to check if the element is within the documents scrollable area.
+    // advanced logic to check if the element is within the document's scrollable area.
     const docElem = document.documentElement;
     const scrollableWidth = Math.max(docElem.scrollWidth, document.body.scrollWidth);
     const scrollableHeight = Math.max(docElem.scrollHeight, document.body.scrollHeight);
@@ -68,20 +68,12 @@ export function createDocumentFromHTML(html) {
  */
 export function simulateMouseEvent(elem, event, { x, y } = {}) {
     const rect = elem.getBoundingClientRect();
-    let clientX;
-    let clientY;
-    if (typeof x === 'number') {
-        clientX = x < 0 ? rect.right + x : rect.left + x;
-    }
-    else {
-        clientX = rect.left + rect.width / 2;
-    }
-    if (typeof y === 'number') {
-        clientY = y < 0 ? rect.bottom + y : rect.top + y;
-    }
-    else {
-        clientY = rect.top + rect.height / 2;
-    }
+    const clientX = typeof x === 'number'
+        ? x < 0 ? rect.right + x : rect.left + x
+        : rect.left + rect.width / 2;
+    const clientY = typeof y === 'number'
+        ? y < 0 ? rect.bottom + y : rect.top + y
+        : rect.top + rect.height / 2;
     elem.dispatchEvent(new MouseEvent(event, { clientX, clientY }));
 }
 /**

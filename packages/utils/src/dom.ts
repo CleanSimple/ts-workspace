@@ -73,19 +73,11 @@ export function simulateMouseEvent(
     { x, y }: SimulateMouseEventOptions = {},
 ): void {
     const rect = elem.getBoundingClientRect();
-    let clientX;
-    let clientY;
-    if (typeof x === 'number') {
-        clientX = x < 0 ? rect.right + x : rect.left + x;
-    }
-    else {
-        clientX = rect.left + rect.width / 2;
-    }
-    if (typeof y === 'number') {
-        clientY = y < 0 ? rect.bottom + y : rect.top + y;
-    }
-    else {
-        clientY = rect.top + rect.height / 2;
-    }
+    const clientX = typeof x === 'number'
+        ? x < 0 ? rect.right + x : rect.left + x
+        : rect.left + rect.width / 2;
+    const clientY = typeof y === 'number'
+        ? y < 0 ? rect.bottom + y : rect.top + y
+        : rect.top + rect.height / 2;
     elem.dispatchEvent(new MouseEvent(event, { clientX, clientY }));
 }

@@ -1,3 +1,4 @@
+/** @import { ReadonlyProps } from './types' */
 /**
  * @template {object} T
  * @param {T} obj
@@ -6,6 +7,23 @@
  */
 export function hasKey(obj, key) {
     return key in obj;
+}
+/**
+ * @template T
+ * @param {T} obj
+ * @param {keyof T} key
+ * @returns {key is keyof ReadonlyProps<T>}
+ */
+export function isKeyReadonly(obj, key) {
+    let currentObj = obj;
+    while (currentObj !== null) {
+        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+        if (desc) {
+            return desc.writable === false || desc.set === undefined;
+        }
+        currentObj = Object.getPrototypeOf(currentObj);
+    }
+    return true;
 }
 /**
  * @param {Error} error

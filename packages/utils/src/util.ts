@@ -1,5 +1,19 @@
+import type { ReadonlyProps } from './types';
+
 export function hasKey<T extends object>(obj: T, key: PropertyKey): key is keyof T {
     return key in obj;
+}
+
+export function isKeyReadonly<T>(obj: T, key: keyof T): key is keyof ReadonlyProps<T> {
+    let currentObj: unknown = obj;
+    while (currentObj !== null) {
+        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+        if (desc) {
+            return desc.writable === false || desc.set === undefined;
+        }
+        currentObj = Object.getPrototypeOf(currentObj);
+    }
+    return true;
 }
 
 export function fail(error: Error): never {

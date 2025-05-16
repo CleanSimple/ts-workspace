@@ -1,4 +1,6 @@
+import type { ReadonlyProps } from './types';
 export declare function hasKey<T extends object>(obj: T, key: PropertyKey): key is keyof T;
+export declare function isKeyReadonly<T>(obj: T, key: keyof T): key is keyof ReadonlyProps<T>;
 export declare function fail(error: Error): never;
 export declare function rndInt(min: number, max: number): number;
 export declare function base64Encode(string: string): string;
