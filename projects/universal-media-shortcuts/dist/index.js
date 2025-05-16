@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Universal Media Shortcuts
 // @description  Adds custom shortcuts to video players
-// @version      0.21.0
+// @version      0.22.0
 // @author       Nour Nasser
 // @namespace    https://github.com/Nourz1234
 // @match        *://*/*
@@ -205,7 +205,7 @@
     </div>
 </div>`;
 
-    var styles = `
+    var styles = `/* hiding controls */
 .ums-controls-hidden * {
     cursor: none !important;
 }
@@ -218,12 +218,21 @@
     display: none !important;
 }
 
+/* handle dark backdrop in DoodStream player */
+.ums-controls-hidden.video-js> .vjs-text-track-display {
+    background: none !important;
+}
+
+
+
+/* hiding subtitles */
 .ums-cc-hidden.jwplayer> .jw-wrapper> .jw-captions,
 .ums-cc-hidden.video-js> .vjs-text-track-display,
 /* .ums-cc-hidden.plyr> :not(.plyr__video-wrapper), */
 .ums-cc-hidden.ytd-player>.html5-video-player> .ytp-caption-window-container {
-    display: none;
-}`;
+    display: none !important;
+}
+`;
 
     const log = console.info.bind(null, '[Universal Media Shortcuts]');
     log('Starting...', window.location.href);
