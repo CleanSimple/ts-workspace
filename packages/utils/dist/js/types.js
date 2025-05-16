@@ -32,7 +32,7 @@ export {};
  */
 /**
  * @typedef {{
- *     [K in keyof T as T[K] extends (...args: unknown[]) => unknown ? K : never]: T[K];
+ *     [K in keyof T as T[K] extends (...args: never[]) => unknown ? K : never]: T[K];
  * }} MethodsOf
  * @template T
  */

@@ -9,7 +9,7 @@ export type IsReadonly<T, K extends keyof T> = IfEquals<{
     -readonly [P in K]: T[P];
 }, false, true>;
 export type MethodsOf<T> = {
-    [K in keyof T as T[K] extends (...args: unknown[]) => unknown ? K : never]: T[K];
+    [K in keyof T as T[K] extends (...args: never[]) => unknown ? K : never]: T[K];
 };
 export type ReadonlyProps<T> = {
     [K in keyof T as IsReadonly<T, K> extends true ? K : never]: T[K];
