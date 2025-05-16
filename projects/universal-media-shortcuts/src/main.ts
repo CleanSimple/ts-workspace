@@ -1,4 +1,4 @@
-import { arrRemove, createElementFromHTML, fail, isTopFrame } from '@lib/utils';
+import { arrRemove, createElementFromHTML, fail, isTopFrame, sleep } from '@lib/utils';
 import skipDlgStyles from './files/skip-dlg.css';
 import skipDlgHtml from './files/skip-dlg.html';
 import styles from './files/styles.css';
@@ -273,9 +273,7 @@ function globalKeyHandler(e: KeyboardEvent) {
     }
 
     for (const rule of rules.filter(x => isSameKey(e, x))) {
-        if (rule.handler !== null) {
-            rule.handler();
-        }
+        rule.handler?.();
         if (rule.noDefault) {
             // no default
             e.preventDefault();
@@ -292,17 +290,21 @@ function globalKeyBlockHandler(e: KeyboardEvent) {
     if (isTopFrame() && !document.fullscreenElement) {
         return;
     }
+    if (!ensureCurrentPlayer()) {
+        return;
+    }
 
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
 }
 
-function onFullscreenChange() {
+async function onFullscreenChange() {
     if (!ensureCurrentPlayer()) {
         return;
     }
 
     if (document.fullscreenElement) {
+        await sleep(100);
         currentVideo.focus();
     }
 }
@@ -310,4 +312,4 @@ function onFullscreenChange() {
 document.addEventListener('keydown', globalKeyHandler, { capture: true });
 document.addEventListener('keyup', globalKeyBlockHandler, { capture: true });
 document.addEventListener('keypress', globalKeyBlockHandler, { capture: true });
-document.addEventListener('fullscreenchange', onFullscreenChange, { capture: true });
+document.addEventListener('fullscreenchange', () => void onFullscreenChange(), { capture: true });

@@ -22,6 +22,10 @@
         }
     }
 
+    async function sleep(milliseconds) {
+        return new Promise(resolve => setTimeout(resolve, milliseconds));
+    }
+
     /**
      * checks if a window is the top window (not an iframe)
      */
@@ -439,9 +443,7 @@
             return;
         }
         for (const rule of rules.filter(x => isSameKey(e, x))) {
-            if (rule.handler !== null) {
-                rule.handler();
-            }
+            rule.handler?.();
             if (rule.noDefault) {
                 // no default
                 e.preventDefault();
@@ -457,20 +459,24 @@
         if (isTopFrame() && !document.fullscreenElement) {
             return;
         }
+        if (!ensureCurrentPlayer()) {
+            return;
+        }
         e.preventDefault();
-        e.stopPropagation();
+        e.stopImmediatePropagation();
     }
-    function onFullscreenChange() {
+    async function onFullscreenChange() {
         if (!ensureCurrentPlayer()) {
             return;
         }
         if (document.fullscreenElement) {
+            await sleep(100);
             currentVideo.focus();
         }
     }
     document.addEventListener('keydown', globalKeyHandler, { capture: true });
     document.addEventListener('keyup', globalKeyBlockHandler, { capture: true });
     document.addEventListener('keypress', globalKeyBlockHandler, { capture: true });
-    document.addEventListener('fullscreenchange', onFullscreenChange, { capture: true });
+    document.addEventListener('fullscreenchange', () => void onFullscreenChange(), { capture: true });
 
 })();

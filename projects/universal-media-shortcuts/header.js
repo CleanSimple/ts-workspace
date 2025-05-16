@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Universal Media Shortcuts
 // @description  Adds custom shortcuts to video players
-// @version      0.20.0
+// @version      0.21.0
 // @author       Nour Nasser
 // @namespace    https://github.com/Nourz1234
 // @match        *://*/*
