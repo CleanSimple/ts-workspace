@@ -1,22 +1,26 @@
 {
-    "name": "sample-project",
+    "name": "@lib/plain-jsx",
     "packageManager": "yarn@4.6.0",
     "type": "module",
+    "exports": {
+        "./jsx-runtime": {
+            "import": "./dist/index.esm.js",
+            "types": "./dist/types/jsx-runtime.d.ts"
+        }
+    },
     "scripts": {
         "build": "yarn rollup:build",
         "dev": "yarn rollup:watch",
         "lint": "yarn eslint:lint ./src",
         "fmt": "yarn dprint:fmt ./src/*"
     },
-    "dependencies": {
-        "@lib/plain-jsx": "workspace:^",
-        "@lib/utils": "workspace:^"
-    },
     "devDependencies": {
         "@lib/dprint-config": "workspace:^",
         "@lib/eslint-config": "workspace:^",
         "@lib/rollup-config": "workspace:^",
-        "@lib/typescript-config": "workspace:^",
-        "@types/tampermonkey": "^5.0.4"
+        "@lib/typescript-config": "workspace:^"
+    },
+    "dependencies": {
+        "@lib/utils": "workspace:^"
     }
 }

@@ -1,12 +1,4 @@
-// ==UserScript==
-// @name         Sample Project
-// @description  Sample Project
-// @version      1.0.0
-// @match        https://www.google.com.eg/
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=google.com.eg
-// @grant        none
-// ==/UserScript==
-(function () {
+var PlainJSX = (function (exports) {
     'use strict';
 
     function hasKey(obj, key) {
@@ -38,6 +30,15 @@
         children = Array.isArray(children) ? children : [children];
         delete props.children;
         return _createElement(type, props, children, false);
+    }
+    function jsxDEV(type, props) {
+        let children = props.children ?? [];
+        children = Array.isArray(children) ? children : [children];
+        delete props.children;
+        return _createElement(type, props, children, true);
+    }
+    function createElement(tag, props, ...children) {
+        return _createElement(tag, props, children);
     }
     function renderElement(element, isSvgContext = false) {
         const { tag, props, children } = element;
@@ -84,35 +85,13 @@
         });
     }
 
-    async function sleep(milliseconds) {
-        return new Promise(resolve => setTimeout(resolve, milliseconds));
-    }
+    exports.Fragment = Fragment;
+    exports.createElement = createElement;
+    exports.jsx = jsx;
+    exports.jsxDEV = jsxDEV;
+    exports.jsxs = jsx;
+    exports.renderElement = renderElement;
 
-    function TestUI() {
-        async function handleClick() {
-            const self = this;
-            const text = self.textContent;
-            self.textContent = 'Pressed!';
-            await sleep(1000);
-            self.textContent = text;
-        }
-        return (jsx("div", { style: {
-                position: 'fixed',
-                left: '0px',
-                top: '0px',
-                zIndex: '10000',
-                width: '100px',
-                height: '300px',
-            }, children: jsx(Fragment, { children: [jsx("button", { onclick: handleClick, children: "Button 1" }), jsx("button", { onclick: handleClick, children: "Button 2" })] }) }));
-    }
+    return exports;
 
-    async function main() {
-        // comment
-        console.info('Hi!');
-        await sleep(1000);
-        console.info('Bye!');
-        document.body.appendChild(renderElement(jsx(TestUI, {})));
-    }
-    void main();
-
-})();
+})({});

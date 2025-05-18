@@ -246,6 +246,18 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@lib/plain-jsx@workspace:^, @lib/plain-jsx@workspace:packages/plain-jsx":
+  version: 0.0.0-use.local
+  resolution: "@lib/plain-jsx@workspace:packages/plain-jsx"
+  dependencies:
+    "@lib/dprint-config": "workspace:^"
+    "@lib/eslint-config": "workspace:^"
+    "@lib/rollup-config": "workspace:^"
+    "@lib/typescript-config": "workspace:^"
+    "@lib/utils": "workspace:^"
+  languageName: unknown
+  linkType: soft
+
 "@lib/rollup-config@workspace:^, @lib/rollup-config@workspace:packages/rollup-config":
   version: 0.0.0-use.local
   resolution: "@lib/rollup-config@workspace:packages/rollup-config"
@@ -2688,6 +2700,7 @@ __metadata:
   dependencies:
     "@lib/dprint-config": "workspace:^"
     "@lib/eslint-config": "workspace:^"
+    "@lib/plain-jsx": "workspace:^"
     "@lib/rollup-config": "workspace:^"
     "@lib/typescript-config": "workspace:^"
     "@lib/utils": "workspace:^"

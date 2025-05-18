@@ -1,3 +1,3 @@
-import baseConfig from "@lib/dprint-config"
+import baseConfig from '@lib/dprint-config';
 
-export default baseConfig
+export default baseConfig;
