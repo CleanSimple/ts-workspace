@@ -17,46 +17,44 @@ var PlainJSX = (function (exports) {
     }
 
     const Fragment = 'Fragment';
-    function _createElement(tag, props = {}, children = [], isDev = false) {
-        const safeChildren = children.flat()
-            .filter(child => child !== undefined && child !== null && child !== false);
-        if (typeof tag === 'function') {
-            return tag({ ...props, children: safeChildren, isDev });
+    function createVNode(type, props = {}, children = [], isDev = false) {
+        if (typeof type === 'function') {
+            return type({ ...props, children });
         }
-        return { tag, props, children: safeChildren, isDev };
-    }
-    function jsx(type, props) {
-        let children = props.children ?? [];
-        children = Array.isArray(children) ? children : [children];
-        delete props.children;
-        return _createElement(type, props, children, false);
-    }
-    function jsxDEV(type, props) {
-        let children = props.children ?? [];
-        children = Array.isArray(children) ? children : [children];
-        delete props.children;
-        return _createElement(type, props, children, true);
+        return { type, props, children, isDev };
     }
     function createElement(tag, props, ...children) {
-        return _createElement(tag, props, children);
+        return createVNode(tag, props, children);
     }
-    function renderElement(element, isSvgContext = false) {
-        const { tag, props, children } = element;
-        // console.info(tag, props, children);
-        if (tag === Fragment) {
-            const fragment = document.createDocumentFragment();
-            appendChildren(fragment, children, isSvgContext);
-            return fragment;
+    function render(root, element) {
+        return _render(root, element);
+    }
+    function _render(root, element, isSvgContext = false) {
+        if (element === undefined || element === null || typeof element === 'boolean') {
+            return;
         }
-        const isSvg = isSvgContext || tag === 'svg';
+        else if (typeof element === 'string' || typeof element === 'number') {
+            root.appendChild(document.createTextNode(String(element)));
+            return;
+        }
+        const renderChildren = (node, children) => children.flat().forEach(child => _render(node, child, isSvgContext));
+        const { type, props, children } = element;
+        if (type === Fragment) {
+            // renderChildren(root, children);
+            const fragment = document.createDocumentFragment();
+            renderChildren(fragment, children);
+            root.appendChild(fragment);
+            return;
+        }
+        const isSvg = isSvgContext || type === 'svg';
         const elem = isSvg
-            ? document.createElementNS('http://www.w3.org/2000/svg', tag)
-            : document.createElement(tag);
+            ? document.createElementNS('http://www.w3.org/2000/svg', type)
+            : document.createElement(type);
         if (props) {
             setProps(elem, props);
         }
-        appendChildren(elem, children, isSvg);
-        return elem;
+        renderChildren(elem, children);
+        root.appendChild(elem);
     }
     function setProps(elem, props) {
         Object.entries(props).forEach(([key, value]) => {
@@ -74,23 +72,11 @@ var PlainJSX = (function (exports) {
             }
         });
     }
-    function appendChildren(elem, children, isSvgContext) {
-        children.forEach(child => {
-            if (typeof child == 'object') {
-                elem.appendChild(renderElement(child, isSvgContext));
-            }
-            else {
-                elem.appendChild(document.createTextNode(String(child)));
-            }
-        });
-    }
 
     exports.Fragment = Fragment;
     exports.createElement = createElement;
-    exports.jsx = jsx;
-    exports.jsxDEV = jsxDEV;
-    exports.jsxs = jsx;
-    exports.renderElement = renderElement;
+    exports.h = createElement;
+    exports.render = render;
 
     return exports;
 

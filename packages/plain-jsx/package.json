@@ -3,8 +3,12 @@
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "exports": {
-        "./jsx-runtime": {
+        ".": {
             "import": "./dist/index.esm.js",
+            "types": "./dist/types/index.d.ts"
+        },
+        "./jsx-runtime": {
+            "import": "./dist/jsx-runtime.esm.js",
             "types": "./dist/types/jsx-runtime.d.ts"
         }
     },

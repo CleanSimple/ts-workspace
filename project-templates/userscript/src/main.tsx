@@ -1,4 +1,4 @@
-import { renderElement } from '@lib/plain-jsx/jsx-runtime';
+import { render } from '@lib/plain-jsx';
 import { sleep } from '@lib/utils';
 import { TestUI } from './UI';
 
@@ -8,7 +8,7 @@ async function main() {
     await sleep(1000);
     console.info('Bye!');
 
-    document.body.appendChild(renderElement(<TestUI />));
+    render(document.body, <TestUI />);
 }
 
 void main();
