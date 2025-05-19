@@ -1,37 +1,31 @@
 import type { MethodsOf, ReadonlyProps } from '@lib/utils';
+import type { Properties as CSS } from 'csstype';
 
-export type SupportedElements = HTMLElementTagNameMap & SVGElementTagNameMap;
+/* props */
+type CommonProps<T> =
+    & (T extends ElementCSSInlineStyle ? { style?: CSS } : object)
+    & (T extends HTMLOrSVGElement ? { dataset?: DOMStringMap } : object)
+    & {
+        children?: unknown;
+    };
 
-interface SpecialProps {
-    style?: Partial<CSSStyleDeclaration>;
-    dataset?: DOMStringMap;
-}
-
-interface Children {
-    children?: unknown;
-}
-
+/* utilities */
 type SettableProps<T> = Omit<
     T,
-    keyof (ReadonlyProps<T> & MethodsOf<T> & SpecialProps)
+    keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T>)
 >;
 
 export type DOMProps<T extends Element> =
     & Partial<SettableProps<T>>
-    & SpecialProps
-    & Children;
+    & CommonProps<T>;
 
 // no validation for svg props for now.
 export type SVGProps<T extends SVGElement> =
     & Partial<SettableProps<T>>
-    & SpecialProps
+    & CommonProps<T>
     & Record<string, string>;
 
-export type PropsOf<T extends Element> = T extends SVGElement ? SVGProps<T>
-    : T extends Element ? DOMProps<T>
-    : never;
-
-// vnode
+/* vnode */
 export interface VNodeElement {
     type: string;
     props: object | undefined;

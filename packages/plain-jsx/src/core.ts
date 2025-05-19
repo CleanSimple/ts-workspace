@@ -1,11 +1,5 @@
 import { hasKey, isKeyReadonly } from '@lib/utils';
-import type {
-    FunctionalComponent,
-    PropsOf,
-    SupportedElements,
-    VNode,
-    VNodeChildren,
-} from './types';
+import type { DOMProps, FunctionalComponent, SVGProps, VNode, VNodeChildren } from './types';
 
 export const Fragment = 'Fragment';
 
@@ -106,21 +100,33 @@ function setProps<T extends HTMLElement | SVGElement>(elem: T, props: object) {
     });
 }
 
+type DOMElement = Element;
+type DOMElementTagsMap = HTMLElementTagNameMap & SVGElementTagNameMap;
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export declare namespace JSX {
-    export interface ElementAttributesProperty {
+    /* utility */
+    type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
+
+    /* jsx defs */
+    interface ElementAttributesProperty {
         props: unknown;
     }
 
-    export interface ElementChildrenAttribute {
+    interface ElementChildrenAttribute {
         children?: unknown;
     }
 
-    export type Fragment = typeof Fragment;
+    type Fragment = typeof Fragment;
 
-    export type Element = VNode;
+    type Element = VNode;
 
-    export type IntrinsicElements = {
-        [K in keyof SupportedElements]: PropsOf<SupportedElements[K]>;
+    type BaseIntrinsicElements = {
+        [K in keyof DOMElementTagsMap]: PropsOf<DOMElementTagsMap[K]>;
     };
+
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+    interface IntrinsicElements extends BaseIntrinsicElements {
+        // allow extending
+    }
 }
