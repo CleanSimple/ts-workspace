@@ -1,4 +1,4 @@
 {
-    "extends": "@lib/typescript-config/browser.js",
+    "extends": "@lib/typescript-config/browser.json",
     "include": ["src"]
 }
