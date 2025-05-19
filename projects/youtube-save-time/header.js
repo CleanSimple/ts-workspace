@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         YouTube Save Time
-// @version      2.10.0
+// @version      2.11.0
 // @description  Save the current time to the url so it's safe to navigate to other pages and return to where you left off!
 // @author       Nour Nasser
 // @namespace    https://github.com/Nourz1234

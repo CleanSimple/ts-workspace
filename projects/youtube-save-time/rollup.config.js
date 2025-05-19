@@ -2,7 +2,7 @@ import baseConfig from '@lib/rollup-config/userscript';
 
 export default {
     ...baseConfig,
-    input: 'src/main.ts',
+    input: 'src/main.tsx',
     output: [
         {
             name: 'YouTubeSaveTime',
