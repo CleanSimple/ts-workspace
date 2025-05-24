@@ -18,7 +18,6 @@ export function UpDown({ value = 1, onValueChanged, ...props }: UpDownProps) {
     function decrement() {
         if (!input.current) throw new Error();
         value = Math.max(0, value - 1);
-        console.info(input);
         input.current.value = value.toString();
         onValueChanged?.(value);
     }
