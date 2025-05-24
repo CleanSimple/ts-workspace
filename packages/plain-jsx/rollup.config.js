@@ -4,25 +4,28 @@ export default [
     {
         ...baseConfig,
         input: {
-            'core': 'src/core.ts',
             'index': 'src/index.ts',
             'jsx-runtime': 'src/jsx-runtime.ts',
         },
+        external: ['@lib/utils'],
         output: [
             {
                 dir: 'dist',
                 format: 'esm',
                 entryFileNames: '[name].esm.js',
+                preserveModules: true,
             },
         ],
     },
     {
         ...baseConfig,
         input: 'src/index.ts',
+        external: ['@lib/utils'],
         output: [
             {
                 name: 'PlainJSX',
                 format: 'iife',
+                globals: { '@lib/utils': 'Utils' },
                 file: './dist/index.iife.js',
             },
         ],

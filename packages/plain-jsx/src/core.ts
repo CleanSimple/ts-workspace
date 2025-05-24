@@ -1,4 +1,5 @@
 import { hasKey, isKeyReadonly } from '@lib/utils';
+import { Ref } from './ref';
 import type { DOMProps, FunctionalComponent, SVGProps, VNode, VNodeChildren } from './types';
 
 export const Fragment = 'Fragment';
@@ -85,11 +86,17 @@ function _render(root: Element | DocumentFragment, element: VNode, isSvgContext 
 
 function setProps<T extends HTMLElement | SVGElement>(elem: T, props: object) {
     Object.entries(props).forEach(([key, value]) => {
-        if (key === 'style' && value instanceof Object) {
+        if (key === 'ref' && value instanceof Ref) {
+            value.setCurrent('ass');
+        }
+        else if (key === 'style' && value instanceof Object) {
             Object.assign(elem.style, value);
         }
         else if (key === 'dataset' && value instanceof Object) {
             Object.assign(elem.dataset, value);
+        }
+        else if (/^on[A-Z]/.exec(key)) {
+            elem.addEventListener(key.slice(2).toLowerCase(), value as EventListener);
         }
         else if (hasKey(elem, key) && !isKeyReadonly(elem, key)) {
             Object.assign(elem, { [key]: value as unknown });

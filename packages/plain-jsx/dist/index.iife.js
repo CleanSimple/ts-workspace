@@ -1,19 +1,17 @@
-var PlainJSX = (function (exports) {
+var PlainJSX = (function (exports, utils) {
     'use strict';
 
-    function hasKey(obj, key) {
-        return key in obj;
-    }
-    function isKeyReadonly(obj, key) {
-        let currentObj = obj;
-        while (currentObj !== null) {
-            const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-            if (desc) {
-                return desc.writable === false || desc.set === undefined;
-            }
-            currentObj = Object.getPrototypeOf(currentObj);
+    class Ref {
+        _current = null;
+        get current() {
+            return this._current;
         }
-        return true;
+        setCurrent(value) {
+            this._current = value;
+        }
+    }
+    function ref() {
+        return new Ref();
     }
 
     const Fragment = 'Fragment';
@@ -58,13 +56,19 @@ var PlainJSX = (function (exports) {
     }
     function setProps(elem, props) {
         Object.entries(props).forEach(([key, value]) => {
-            if (key === 'style' && value instanceof Object) {
+            if (key === 'ref' && value instanceof Ref) {
+                value.setCurrent('ass');
+            }
+            else if (key === 'style' && value instanceof Object) {
                 Object.assign(elem.style, value);
             }
             else if (key === 'dataset' && value instanceof Object) {
                 Object.assign(elem.dataset, value);
             }
-            else if (hasKey(elem, key) && !isKeyReadonly(elem, key)) {
+            else if (/^on[A-Z]/.exec(key)) {
+                elem.addEventListener(key.slice(2).toLowerCase(), value);
+            }
+            else if (utils.hasKey(elem, key) && !utils.isKeyReadonly(elem, key)) {
                 Object.assign(elem, { [key]: value });
             }
             else {
@@ -76,8 +80,9 @@ var PlainJSX = (function (exports) {
     exports.Fragment = Fragment;
     exports.createElement = createElement;
     exports.h = createElement;
+    exports.ref = ref;
     exports.render = render;
 
     return exports;
 
-})({});
+})({}, Utils);

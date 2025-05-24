@@ -1,28 +1,45 @@
 import type { MethodsOf, ReadonlyProps } from '@lib/utils';
 import type { Properties as CSS } from 'csstype';
+import type { Ref } from './ref';
 
-/* props */
-type CommonProps<T> =
+/* common custom props */
+type CommonProps<T extends Element> =
     & (T extends ElementCSSInlineStyle ? { style?: CSS } : object)
     & (T extends HTMLOrSVGElement ? { dataset?: DOMStringMap } : object)
     & {
+        ref?: Ref;
         children?: unknown;
     };
 
 /* utilities */
-type SettableProps<T> = Omit<
+type SettableProps<T extends Element> = Omit<
     T,
-    keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T>)
+    keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers)
 >;
 
+/* event types */
+type TypedEvent<TElement extends Element, TEvent extends Event = Event> =
+    & Omit<TEvent, 'currentTarget'>
+    & {
+        currentTarget: TElement;
+    };
+
+type DOMEvents<T extends Element> = {
+    [K in keyof GlobalEventHandlersEventMap as `on${Capitalize<K>}`]?: (
+        this: T,
+        ev: TypedEvent<T, GlobalEventHandlersEventMap[K]>,
+    ) => unknown;
+};
+
+/* all props */
 export type DOMProps<T extends Element> =
     & Partial<SettableProps<T>>
-    & CommonProps<T>;
+    & CommonProps<T>
+    & DOMEvents<T>;
 
 // no validation for svg props for now.
 export type SVGProps<T extends SVGElement> =
-    & Partial<SettableProps<T>>
-    & CommonProps<T>
+    & DOMProps<T>
     & Record<string, string>;
 
 /* vnode */

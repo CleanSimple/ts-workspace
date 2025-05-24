@@ -1,17 +1,5 @@
-function hasKey(obj, key) {
-    return key in obj;
-}
-function isKeyReadonly(obj, key) {
-    let currentObj = obj;
-    while (currentObj !== null) {
-        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-        if (desc) {
-            return desc.writable === false || desc.set === undefined;
-        }
-        currentObj = Object.getPrototypeOf(currentObj);
-    }
-    return true;
-}
+import { hasKey, isKeyReadonly } from '@lib/utils';
+import { Ref } from './ref.esm.js';
 
 const Fragment = 'Fragment';
 function createVNode(type, props = {}, children = [], isDev = false) {
@@ -67,11 +55,17 @@ function _render(root, element, isSvgContext = false) {
 }
 function setProps(elem, props) {
     Object.entries(props).forEach(([key, value]) => {
-        if (key === 'style' && value instanceof Object) {
+        if (key === 'ref' && value instanceof Ref) {
+            value.setCurrent('ass');
+        }
+        else if (key === 'style' && value instanceof Object) {
             Object.assign(elem.style, value);
         }
         else if (key === 'dataset' && value instanceof Object) {
             Object.assign(elem.dataset, value);
+        }
+        else if (/^on[A-Z]/.exec(key)) {
+            elem.addEventListener(key.slice(2).toLowerCase(), value);
         }
         else if (hasKey(elem, key) && !isKeyReadonly(elem, key)) {
             Object.assign(elem, { [key]: value });

@@ -1,15 +1,23 @@
 import type { MethodsOf, ReadonlyProps } from '@lib/utils';
 import type { Properties as CSS } from 'csstype';
-type CommonProps<T> = (T extends ElementCSSInlineStyle ? {
+import type { Ref } from './ref';
+type CommonProps<T extends Element> = (T extends ElementCSSInlineStyle ? {
     style?: CSS;
 } : object) & (T extends HTMLOrSVGElement ? {
     dataset?: DOMStringMap;
 } : object) & {
+    ref?: Ref;
     children?: unknown;
 };
-type SettableProps<T> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T>)>;
-export type DOMProps<T extends Element> = Partial<SettableProps<T>> & CommonProps<T>;
-export type SVGProps<T extends SVGElement> = Partial<SettableProps<T>> & CommonProps<T> & Record<string, string>;
+type SettableProps<T extends Element> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers)>;
+type TypedEvent<TElement extends Element, TEvent extends Event = Event> = Omit<TEvent, 'currentTarget'> & {
+    currentTarget: TElement;
+};
+type DOMEvents<T extends Element> = {
+    [K in keyof GlobalEventHandlersEventMap as `on${Capitalize<K>}`]?: (this: T, ev: TypedEvent<T, GlobalEventHandlersEventMap[K]>) => unknown;
+};
+export type DOMProps<T extends Element> = Partial<SettableProps<T>> & CommonProps<T> & DOMEvents<T>;
+export type SVGProps<T extends SVGElement> = DOMProps<T> & Record<string, string>;
 export interface VNodeElement {
     type: string;
     props: object | undefined;
