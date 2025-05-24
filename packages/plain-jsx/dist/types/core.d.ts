@@ -14,12 +14,6 @@ type DOMElement = Element;
 type DOMElementTagsMap = HTMLElementTagNameMap & SVGElementTagNameMap;
 export declare namespace JSX {
     type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
-    interface ElementAttributesProperty {
-        props: unknown;
-    }
-    interface ElementChildrenAttribute {
-        children?: unknown;
-    }
     type Fragment = typeof Fragment;
     type Element = VNode;
     type BaseIntrinsicElements = {

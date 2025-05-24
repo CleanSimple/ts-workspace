@@ -1,6 +1,19 @@
-import type { MethodsOf, ReadonlyProps } from '@lib/utils';
+import type { Action, MethodsOf, ReadonlyProps } from '@lib/utils';
 import type { Properties as CSS } from 'csstype';
 import type { Ref } from './ref';
+
+/* vnode */
+export interface VNodeElement {
+    type: string | FunctionalComponent;
+    props: object | undefined;
+    children: VNode[];
+    mountedHooks: Action[];
+    isDev: boolean;
+}
+
+export type VNode = VNodeElement | string | number | boolean | null | undefined;
+export type VNodeChildren = VNode | VNode[];
+export type FunctionalComponent = (props: object) => VNode;
 
 /* common custom props */
 type CommonProps<T extends Element> =
@@ -8,7 +21,7 @@ type CommonProps<T extends Element> =
     & (T extends HTMLOrSVGElement ? { dataset?: DOMStringMap } : object)
     & {
         ref?: Ref;
-        children?: unknown;
+        children?: VNodeChildren;
     };
 
 /* utilities */
@@ -37,19 +50,6 @@ export type DOMProps<T extends Element> =
     & CommonProps<T>
     & DOMEvents<T>;
 
-// no validation for svg props for now.
 export type SVGProps<T extends SVGElement> =
     & DOMProps<T>
-    & Record<string, string>;
-
-/* vnode */
-export interface VNodeElement {
-    type: string;
-    props: object | undefined;
-    children: VNode[];
-    isDev: boolean;
-}
-
-export type VNode = VNodeElement | string | number | boolean | null | undefined;
-export type VNodeChildren = VNode | VNode[];
-export type FunctionalComponent = (props: object) => VNode;
+    & Record<string, unknown>; // no validation for svg props for now.

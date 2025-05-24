@@ -1,6 +1,21 @@
 var PlainJSX = (function (exports, utils) {
     'use strict';
 
+    let currentInstance;
+    function setCurrentInstance(instance) {
+        const prev = currentInstance;
+        currentInstance = instance;
+        return () => {
+            currentInstance = prev;
+        };
+    }
+    function onMounted(callback) {
+        if (currentInstance === null) {
+            throw new Error();
+        }
+        currentInstance.mountedHooks.push(callback);
+    }
+
     class Ref {
         _current = null;
         get current() {
@@ -10,16 +25,13 @@ var PlainJSX = (function (exports, utils) {
             this._current = value;
         }
     }
-    function ref() {
+    function createRef() {
         return new Ref();
     }
 
     const Fragment = 'Fragment';
     function createVNode(type, props = {}, children = [], isDev = false) {
-        if (typeof type === 'function') {
-            return type({ ...props, children });
-        }
-        return { type, props, children, isDev };
+        return { type, props, children, mountedHooks: [], isDev };
     }
     function createElement(tag, props, ...children) {
         return createVNode(tag, props, children);
@@ -35,29 +47,41 @@ var PlainJSX = (function (exports, utils) {
             root.appendChild(document.createTextNode(String(element)));
             return;
         }
-        const renderChildren = (node, children) => children.flat().forEach(child => _render(node, child, isSvgContext));
+        const renderChildren = (node, children, isSvg) => children.flat().forEach(child => _render(node, child, isSvg));
         const { type, props, children } = element;
-        if (type === Fragment) {
+        if (typeof type === 'function') {
+            const rest = setCurrentInstance(element);
+            try {
+                const vNode = type({ ...props, children });
+                _render(root, vNode, isSvgContext);
+                element.mountedHooks.forEach(mountedHook => mountedHook());
+            }
+            finally {
+                rest();
+            }
+        }
+        else if (type === Fragment) {
             // renderChildren(root, children);
             const fragment = document.createDocumentFragment();
-            renderChildren(fragment, children);
+            renderChildren(fragment, children, isSvgContext);
             root.appendChild(fragment);
-            return;
         }
-        const isSvg = isSvgContext || type === 'svg';
-        const elem = isSvg
-            ? document.createElementNS('http://www.w3.org/2000/svg', type)
-            : document.createElement(type);
-        if (props) {
-            setProps(elem, props);
+        else {
+            const isSvg = isSvgContext || type === 'svg';
+            const elem = isSvg
+                ? document.createElementNS('http://www.w3.org/2000/svg', type)
+                : document.createElement(type);
+            if (props) {
+                setProps(elem, props, isSvg);
+            }
+            renderChildren(elem, children, isSvg);
+            root.appendChild(elem);
         }
-        renderChildren(elem, children);
-        root.appendChild(elem);
     }
-    function setProps(elem, props) {
+    function setProps(elem, props, isSvg) {
         Object.entries(props).forEach(([key, value]) => {
             if (key === 'ref' && value instanceof Ref) {
-                value.setCurrent('ass');
+                value.setCurrent(elem);
             }
             else if (key === 'style' && value instanceof Object) {
                 Object.assign(elem.style, value);
@@ -72,15 +96,21 @@ var PlainJSX = (function (exports, utils) {
                 Object.assign(elem, { [key]: value });
             }
             else {
-                elem.setAttribute(key, String(value));
+                if (isSvg) {
+                    elem.setAttributeNS(null, key, String(value));
+                }
+                else {
+                    elem.setAttribute(key, String(value));
+                }
             }
         });
     }
 
     exports.Fragment = Fragment;
     exports.createElement = createElement;
+    exports.createRef = createRef;
     exports.h = createElement;
-    exports.ref = ref;
+    exports.onMounted = onMounted;
     exports.render = render;
 
     return exports;

@@ -1,4 +1,5 @@
 import { hasKey, isKeyReadonly } from '@lib/utils';
+import { setCurrentInstance } from './hooks';
 import { Ref } from './ref';
 import type { DOMProps, FunctionalComponent, SVGProps, VNode, VNodeChildren } from './types';
 
@@ -10,10 +11,7 @@ export function createVNode(
     children: VNode[] = [],
     isDev = false,
 ): VNode {
-    if (typeof type === 'function') {
-        return type({ ...props, children });
-    }
-    return { type, props, children, isDev };
+    return { type, props, children, mountedHooks: [], isDev };
 }
 
 export function jsx(
@@ -59,35 +57,49 @@ function _render(root: Element | DocumentFragment, element: VNode, isSvgContext 
         return;
     }
 
-    const renderChildren = (node: Element | DocumentFragment, children: VNode[]) =>
-        children.flat().forEach(child => _render(node, child, isSvgContext));
+    const renderChildren = (node: Element | DocumentFragment, children: VNode[], isSvg: boolean) =>
+        children.flat().forEach(child => _render(node, child, isSvg));
 
     const { type, props, children } = element;
-    if (type === Fragment) {
+    if (typeof type === 'function') {
+        const rest = setCurrentInstance(element);
+        try {
+            const vNode = type({ ...props, children });
+            _render(root, vNode, isSvgContext);
+            element.mountedHooks.forEach(mountedHook => mountedHook());
+        }
+        finally {
+            rest();
+        }
+    }
+    else if (type === Fragment) {
         // renderChildren(root, children);
         const fragment = document.createDocumentFragment();
-        renderChildren(fragment, children);
+        renderChildren(fragment, children, isSvgContext);
         root.appendChild(fragment);
-        return;
     }
+    else {
+        const isSvg = isSvgContext || type === 'svg';
 
-    const isSvg = isSvgContext || type === 'svg';
-
-    const elem = isSvg
-        ? document.createElementNS('http://www.w3.org/2000/svg', type)
-        : document.createElement(type);
-    if (props) {
-        setProps(elem, props);
+        const elem = isSvg
+            ? document.createElementNS('http://www.w3.org/2000/svg', type)
+            : document.createElement(type);
+        if (props) {
+            setProps(elem, props, isSvg);
+        }
+        renderChildren(elem, children, isSvg);
+        root.appendChild(elem);
     }
-    renderChildren(elem, children);
-
-    root.appendChild(elem);
 }
 
-function setProps<T extends HTMLElement | SVGElement>(elem: T, props: object) {
+function setProps<T extends HTMLElement | SVGElement>(
+    elem: T,
+    props: object,
+    isSvg: boolean,
+) {
     Object.entries(props).forEach(([key, value]) => {
         if (key === 'ref' && value instanceof Ref) {
-            value.setCurrent('ass');
+            value.setCurrent(elem);
         }
         else if (key === 'style' && value instanceof Object) {
             Object.assign(elem.style, value);
@@ -102,7 +114,12 @@ function setProps<T extends HTMLElement | SVGElement>(elem: T, props: object) {
             Object.assign(elem, { [key]: value as unknown });
         }
         else {
-            elem.setAttribute(key, String(value));
+            if (isSvg) {
+                elem.setAttributeNS(null, key, String(value));
+            }
+            else {
+                elem.setAttribute(key, String(value));
+            }
         }
     });
 }
@@ -116,14 +133,6 @@ export declare namespace JSX {
     type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
 
     /* jsx defs */
-    interface ElementAttributesProperty {
-        props: unknown;
-    }
-
-    interface ElementChildrenAttribute {
-        children?: unknown;
-    }
-
     type Fragment = typeof Fragment;
 
     type Element = VNode;

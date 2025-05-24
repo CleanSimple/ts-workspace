@@ -7,8 +7,8 @@ class Ref {
         this._current = value;
     }
 }
-function ref() {
+function createRef() {
     return new Ref();
 }
 
-export { Ref, ref };
+export { Ref, createRef };

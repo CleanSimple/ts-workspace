@@ -9,6 +9,6 @@ export class Ref<T extends Element = Element> {
     }
 }
 
-export function ref<T extends Element = Element>(): Ref<T> {
+export function createRef<T extends Element = Element>(): Ref<T> {
     return new Ref<T>();
 }

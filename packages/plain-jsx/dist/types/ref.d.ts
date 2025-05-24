@@ -3,4 +3,4 @@ export declare class Ref<T extends Element = Element> {
     get current(): T | null;
     setCurrent(value: T): void;
 }
-export declare function ref<T extends Element = Element>(): Ref<T>;
+export declare function createRef<T extends Element = Element>(): Ref<T>;
