@@ -21,10 +21,10 @@ export function TestUI() {
             }}
         >
             <>
-                <button onclick={handleClick}>
+                <button onClick={handleClick}>
                     Button 1
                 </button>
-                <button onclick={handleClick}>Button 2</button>
+                <button onClick={handleClick}>Button 2</button>
             </>
         </div>
     );

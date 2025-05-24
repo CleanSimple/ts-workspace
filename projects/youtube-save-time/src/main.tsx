@@ -42,7 +42,7 @@ function addButton() {
                 zIndex: '100000',
             }}
         >
-            <SaveTimeButton onclick={saveTime} />
+            <SaveTimeButton onClick={saveTime} />
         </div>,
     );
 }

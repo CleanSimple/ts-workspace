@@ -1,13 +1,13 @@
 interface SaveTimeButtonProps {
-    onclick: () => void;
+    onClick: () => void;
 }
 
-export function SaveTimeButton(props: SaveTimeButtonProps) {
+export function SaveTimeButton({ onClick }: SaveTimeButtonProps) {
     return (
         <yt-icon-button
             id='guide-button'
             className='style-scope ytd-masthead'
-            onclick={props.onclick}
+            onClick={onClick}
         >
             <yt-icon id='guide-icon' className='style-scope ytd-masthead' icon='yt-icons:clock' />
             <tp-yt-paper-tooltip position='right' offset={0} style={{ width: 'max-content' }}>
