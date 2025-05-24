@@ -1,0 +1,32 @@
+.up-down-control {
+    display: flex;
+    flex-direction: row;
+    border: 1px solid var(--border-color);
+}
+
+.up-down-control:hover {
+    border-color: var(--border-active-color);
+}
+
+.up-down-control input[type=number] {
+    appearance: textfield;
+    background: transparent;
+    padding: 0px 3px;
+    border: none;
+    width: 20px;
+}
+
+.up-down-control .btn-increment,
+.up-down-control .btn-decrement {
+    fill: var(--main-color);
+    font-size: 10px;
+    padding: 3px;
+    line-height: 7px;
+    background: transparent;
+    border: none;
+}
+
+.up-down-control .btn-increment:active svg,
+.up-down-control .btn-decrement:active svg {
+    transform: scale(0.7);
+}

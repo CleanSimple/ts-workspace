@@ -9,6 +9,7 @@
         "fmt": "yarn dprint:fmt ./src/*"
     },
     "dependencies": {
+        "@lib/plain-jsx": "workspace:^",
         "@lib/utils": "workspace:^"
     },
     "devDependencies": {

@@ -1,7 +1,10 @@
-import { arrRemove, createElementFromHTML, fail, isTopFrame, sleep } from '@lib/utils';
-import skipDlgStyles from './files/skip-dlg.css';
-import skipDlgHtml from './files/skip-dlg.html';
-import styles from './files/styles.css';
+import { render } from '@lib/plain-jsx';
+import { arrRemove, isTopFrame, sleep } from '@lib/utils';
+import skipDlgStyles from './styles/skip-dlg.css';
+import styles from './styles/styles.css';
+import upDownControlStyles from './styles/up-down-control.css';
+import type { HotkeyRule } from './types';
+import { SkipDlg } from './UI/SkipDlg';
 
 type LogType = typeof console.info;
 const log: LogType = console.info.bind(null, '[Universal Media Shortcuts]');
@@ -9,6 +12,7 @@ const log: LogType = console.info.bind(null, '[Universal Media Shortcuts]');
 log('Starting...', window.location.href);
 
 GM_addStyle(styles);
+GM_addStyle(upDownControlStyles);
 GM_addStyle(skipDlgStyles);
 
 const playersSelector = [
@@ -43,87 +47,28 @@ function toggleCaptionsVisibility() {
 }
 
 function skip() {
-    if (document.querySelector('.VE_SkipDlg') != null) {
+    if (document.querySelector('.skip-dlg-container') != null) {
         return;
     }
 
-    const skipDlg = createElementFromHTML(skipDlgHtml)
-        ?? fail(new Error('Failed to create skip dialog.'));
-
-    const udUp = skipDlg.querySelector<HTMLButtonElement>('.VE_NumUpDown_Up')
-        ?? fail(new Error("Couldn't find skip dialog part"));
-    const udDn = skipDlg.querySelector<HTMLButtonElement>('.VE_NumUpDown_Down')
-        ?? fail(new Error("Couldn't find skip dialog part"));
-    const inputMins = skipDlg.querySelector<HTMLInputElement>('.VE_Skip_Mins')
-        ?? fail(new Error("Couldn't find skip dialog part"));
-    const inputSecs = skipDlg.querySelector<HTMLSelectElement>('.VE_Skip_Secs')
-        ?? fail(new Error("Couldn't find skip dialog part"));
-    const btnCancel = skipDlg.querySelector<HTMLButtonElement>('.VE_Skip_Cancel')
-        ?? fail(new Error("Couldn't find skip dialog part"));
-    const btnOk = skipDlg.querySelector<HTMLButtonElement>('.VE_Skip_Ok')
-        ?? fail(new Error("Couldn't find skip dialog part"));
-
-    udUp.addEventListener('click', function() {
-        let value = parseInt(inputMins.value);
-        value += 1;
-        inputMins.value = Math.min(99, value).toString();
-    });
-    udDn.addEventListener('click', function() {
-        let value = parseInt(inputMins.value);
-        value -= 1;
-        inputMins.value = Math.max(0, value).toString();
-    });
-
-    let wasPlaying = false;
-
-    function loadPreferences() {
-        const minsValue = GM_getValue('MinsValue', 1) as number;
-        const secsIndex = GM_getValue('SecsIndex', 2) as number;
-        inputMins.value = minsValue.toString();
-        inputSecs.selectedIndex = secsIndex;
-    }
-    function savePreferences() {
-        const minsValue = parseInt(inputMins.value);
-        const secsIndex = inputSecs.selectedIndex;
-        GM_setValue('MinsValue', minsValue);
-        GM_setValue('SecsIndex', secsIndex);
-    }
-    function close() {
-        currentPlayer.removeChild(skipDlg);
-        if (wasPlaying) {
-            void currentVideo.play();
-        }
-
-        arrRemove(rules, cancelRule);
-        arrRemove(rules, okRule);
-    }
-    function show() {
-        loadPreferences();
-        currentPlayer.appendChild(skipDlg);
-        setTimeout(() => {
-            skipDlg.style.opacity = '1';
-        }, 0);
-
-        wasPlaying = !currentVideo.paused;
-        currentVideo.pause();
-
-        rules.unshift(cancelRule, okRule);
-    }
-    function doSkip() {
-        savePreferences();
-        const mins = parseInt(inputMins.value);
-        const secs = parseInt(inputSecs.value);
-        currentVideo.currentTime += (mins * 60) + secs;
-        close();
+    function onClosed() {
+        arrRemove(rules, escRule);
+        arrRemove(rules, enterRule);
     }
 
-    btnCancel.addEventListener('click', close);
-    btnOk.addEventListener('click', doSkip);
+    const escRule = { key: 'Escape', handler: null, noDefault: true, noOtherHandlers: true };
+    const enterRule = { key: 'Enter', handler: null, noDefault: true, noOtherHandlers: true };
+    rules.unshift(escRule, enterRule);
 
-    const cancelRule = { key: 'Escape', handler: close, noDefault: true, noOtherHandlers: true };
-    const okRule = { key: 'Enter', handler: doSkip, noDefault: true, noOtherHandlers: true };
-
-    show();
+    render(
+        currentPlayer,
+        <SkipDlg
+            targetVideo={currentVideo}
+            enterRule={enterRule}
+            escRule={escRule}
+            onClosed={onClosed}
+        />,
+    );
 }
 
 function skipForward() {
@@ -163,20 +108,8 @@ function speedReset() {
     currentVideo.playbackRate = 1;
 }
 
-type Handler = () => void;
-interface Rule {
-    key?: string;
-    code?: string;
-    shiftKey?: boolean;
-    ctrlKey?: boolean;
-    altKey?: boolean;
-    handler: Handler | null;
-    noDefault: boolean;
-    noOtherHandlers: boolean;
-}
-
 // rules
-const rules: Rule[] = [
+const rules: HotkeyRule[] = [
     // ]
     {
         code: 'BracketRight',
@@ -229,7 +162,7 @@ const rules: Rule[] = [
     { code: 'NumpadEnter', handler: null, noDefault: true, noOtherHandlers: true },
 ];
 
-function isSameKey(evt: KeyboardEvent, rule: Rule) {
+function isSameKey(evt: KeyboardEvent, rule: HotkeyRule) {
     const { key, code, ctrlKey = false, altKey = false, shiftKey = false } = rule;
 
     const modifiersMatch = ctrlKey === evt.ctrlKey && altKey === evt.altKey

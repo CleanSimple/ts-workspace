@@ -3079,6 +3079,7 @@ __metadata:
   dependencies:
     "@lib/dprint-config": "workspace:^"
     "@lib/eslint-config": "workspace:^"
+    "@lib/plain-jsx": "workspace:^"
     "@lib/rollup-config": "workspace:^"
     "@lib/typescript-config": "workspace:^"
     "@lib/utils": "workspace:^"
