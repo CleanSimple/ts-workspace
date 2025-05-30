@@ -28,19 +28,75 @@
         return true;
     }
 
-    class Ref {
-        _current = null;
-        get current() {
-            return this._current;
+    class LifecycleEvents {
+        mountedHandlers = [[]];
+        readyHandlers = [[]];
+        renderedHandlers = [[]];
+        isListening = false;
+        level = 0;
+        listen(node) {
+            if (this.isListening) {
+                throw new Error('Invalid operation. Can only listen once.');
+            }
+            this.isListening = true;
+            const observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    for (const addedNode of mutation.addedNodes) {
+                        if (addedNode === node || addedNode.contains(node)) {
+                            this.isListening = false;
+                            observer.disconnect();
+                            void this.mounted();
+                            return;
+                        }
+                    }
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
         }
-        setCurrent(value) {
-            this._current = value;
+        async mounted() {
+            for (const handlers of this.mountedHandlers.reverse()) {
+                await Promise.all(handlers.map((handler) => handler()));
+            }
+            setTimeout(async () => {
+                for (const handlers of this.readyHandlers.reverse()) {
+                    await Promise.all(handlers.map((handler) => handler()));
+                }
+            }, 0);
+            requestAnimationFrame(() => {
+                // can potentially handle onRender (before render) here!
+                void Promise.resolve().then(async () => {
+                    for (const handlers of this.renderedHandlers.reverse()) {
+                        await Promise.all(handlers.map((handler) => handler()));
+                    }
+                });
+            });
+        }
+        pushLevel() {
+            this.level += 1;
+            this.mountedHandlers[this.level] = this.mountedHandlers?.[this.level] ?? [];
+            this.readyHandlers[this.level] = this.readyHandlers?.[this.level] ?? [];
+            this.renderedHandlers[this.level] = this.renderedHandlers?.[this.level] ?? [];
+        }
+        popLevel() {
+            this.level -= 1;
+        }
+        onMounted(handler) {
+            this.mountedHandlers[this.level].push(handler);
+        }
+        onReady(handler) {
+            this.readyHandlers[this.level].push(handler);
+        }
+        onRendered(handler) {
+            this.renderedHandlers[this.level].push(handler);
         }
     }
 
+    const XMLNamespaces = {
+        'svg': 'http://www.w3.org/2000/svg',
+    };
     const Fragment = 'Fragment';
     function createVNode(type, props = {}, children = [], isDev = false) {
-        return { type, props, children, mountedHooks: [], isDev };
+        return { type, props, children, isDev };
     }
     function jsx(type, props) {
         let children = props.children ?? [];
@@ -48,52 +104,104 @@
         delete props.children;
         return createVNode(type, props, children, false);
     }
-    function render(root, element) {
-        return _render(root, element);
-    }
-    function _render(root, element, isSvgContext = false) {
-        if (element === undefined || element === null || typeof element === 'boolean') {
+    async function render(root, element, handlers) {
+        const events = new LifecycleEvents();
+        const refs = {};
+        if (element && typeof element === 'object') {
+            element.props['ref'] = 'default';
+            events.onMounted(() => handlers.onMounted(refs.default));
+        }
+        const node = await renderVNode(root, element, events, refs);
+        if (node === null) {
             return;
+        }
+        events.listen(node);
+        root.appendChild(node);
+    }
+    async function renderVNode(root, element, events, refs) {
+        if (element === undefined || element === null || typeof element === 'boolean') {
+            return null;
         }
         else if (typeof element === 'string' || typeof element === 'number') {
-            root.appendChild(document.createTextNode(String(element)));
-            return;
+            return document.createTextNode(String(element));
         }
-        const renderChildren = (node, children, isSvg) => children.flat().forEach(child => _render(node, child, isSvg));
+        const renderChildren = async (node, children) => {
+            const childNodes = await Promise.all(children.flat().map(async (child) => renderVNode(node, child, events, refs)));
+            node.append(...childNodes.filter(node => node !== null));
+        };
         const { type, props, children } = element;
         if (typeof type === 'function') {
-            try {
-                const vNode = type({ ...props, children });
-                _render(root, vNode, isSvgContext);
-                element.mountedHooks.forEach(mountedHook => mountedHook());
-            }
-            finally {
-            }
+            return await renderFunctionalComponent(root, type, props, children, events, refs);
         }
         else if (type === Fragment) {
-            // renderChildren(root, children);
             const fragment = document.createDocumentFragment();
-            renderChildren(fragment, children, isSvgContext);
-            root.appendChild(fragment);
+            await renderChildren(fragment, children);
+            return fragment;
         }
         else {
-            const isSvg = isSvgContext || type === 'svg';
-            const elem = isSvg
-                ? document.createElementNS('http://www.w3.org/2000/svg', type)
+            const hasNS = type.includes(':');
+            const domElement = hasNS
+                ? document.createElementNS(...splitNamespace(type))
                 : document.createElement(type);
-            if (props) {
-                setProps(elem, props, isSvg);
+            // handle ref prop
+            if ('ref' in props && typeof props['ref'] === 'string') {
+                if (refs) {
+                    refs[props['ref']] = domElement;
+                }
+                delete props['ref'];
             }
-            renderChildren(elem, children, isSvg);
-            root.appendChild(elem);
+            setProps(domElement, props);
+            await renderChildren(domElement, children);
+            return domElement;
         }
     }
-    function setProps(elem, props, isSvg) {
-        Object.entries(props).forEach(([key, value]) => {
-            if (key === 'ref' && value instanceof Ref) {
-                value.setCurrent(elem);
+    async function renderFunctionalComponent(root, type, props, children, events, refs) {
+        const componentRefs = {};
+        const utils = {
+            getRef: (key) => {
+                if (key in componentRefs === false) {
+                    throw new Error(`Invalid ref key: ${key}`);
+                }
+                return componentRefs[key];
+            },
+            defineRef: (ref) => {
+                if ('ref' in props && typeof props['ref'] === 'string') {
+                    if (refs) {
+                        refs[props['ref']] = ref;
+                    }
+                }
+            },
+        };
+        const setupHandlers = [];
+        const errorCapturedHandlers = [];
+        const componentEvents = {
+            onSetup: (handler) => setupHandlers.push(handler),
+            onMounted: (handler) => events.onMounted(() => handler(utils)),
+            onReady: (handler) => events.onReady(handler),
+            onRendered: (handler) => events.onRendered(handler),
+            onErrorCaptured: (handler) => errorCapturedHandlers.push(handler),
+        };
+        let node = null;
+        events.pushLevel();
+        try {
+            const vNode = type({ ...props, children }, componentEvents);
+            await Promise.all(setupHandlers.map((setupHandler) => setupHandler()));
+            node = await renderVNode(root, vNode, events, componentRefs);
+        }
+        catch (error) {
+            const handled = errorCapturedHandlers.some(errorCapturedHandler => errorCapturedHandler(error) === false);
+            if (!handled) {
+                throw error;
             }
-            else if (key === 'style' && value instanceof Object) {
+        }
+        finally {
+            events.popLevel();
+        }
+        return node;
+    }
+    function setProps(elem, props) {
+        Object.entries(props).forEach(([key, value]) => {
+            if (key === 'style' && value instanceof Object) {
                 Object.assign(elem.style, value);
             }
             else if (key === 'dataset' && value instanceof Object) {
@@ -106,8 +214,8 @@
                 Object.assign(elem, { [key]: value });
             }
             else {
-                if (isSvg) {
-                    elem.setAttributeNS(null, key, String(value));
+                if (key.includes(':')) {
+                    elem.setAttributeNS(splitNamespace(key)[0], key, String(value));
                 }
                 else {
                     elem.setAttribute(key, String(value));
@@ -115,31 +223,78 @@
             }
         });
     }
-
-    function TestUI() {
-        async function handleClick() {
-            const self = this;
-            const text = self.textContent;
-            self.textContent = 'Pressed!';
-            await sleep(1000);
-            self.textContent = text;
+    function splitNamespace(tagNS) {
+        const [ns, tag] = tagNS.split(':', 1);
+        if (!hasKey(XMLNamespaces, ns)) {
+            throw new Error('Invalid namespace');
         }
+        return [XMLNamespaces[ns], tag];
+    }
+
+    const TestCounter = ({ initialValue: initialCount = 1 }, { onMounted }) => {
+        let count = initialCount;
+        let countElem;
+        const setCount = (newCount) => {
+            count = newCount;
+            countElem.textContent = count.toString();
+        };
+        const increment = () => setCount(count + 1);
+        const decrement = () => setCount(count - 1);
+        onMounted(({ getRef, defineRef }) => {
+            countElem = getRef('count');
+            defineRef({
+                increment,
+                decrement,
+                get count() {
+                    return count;
+                },
+            });
+        });
+        return jsx("span", { ref: 'count', children: count });
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const TestSpan = (props, { onMounted }) => {
+        // onMounted(({ defineRef }) => {
+        //     defineRef({}); // should be invalid
+        // });
+        return jsx("span", { children: "Test span" });
+    };
+
+    const TestUI = ({ uId = '1-1' }, { onMounted }) => {
+        let counter;
+        onMounted(({ getRef, defineRef }) => {
+            counter = getRef('counter');
+            // should throw since TestSpan does not define a ref type
+            // const span = getRef<typeof TestSpan>('span');
+            defineRef({
+                get count() {
+                    return counter.count;
+                },
+            });
+        });
         return (jsx("div", { style: {
                 position: 'fixed',
+                display: 'flex',
+                flexDirection: 'column',
                 left: '0px',
                 top: '0px',
                 zIndex: '10000',
                 width: '100px',
                 height: '300px',
-            }, children: jsx(Fragment, { children: [jsx("button", { onClick: handleClick, children: "Button 1" }), jsx("button", { onClick: handleClick, children: "Button 2" })] }) }));
-    }
+            }, children: jsx(Fragment, { children: [uId, jsx(TestCounter, { ref: 'counter' }), jsx("button", { onClick: () => counter.increment(), children: "Increment" }), jsx("button", { onClick: () => counter.decrement(), children: "Decrement" }), jsx("button", { onClick: () => alert(counter.count), children: "Show count" }), jsx(TestSpan, { ref: 'span' })] }) }));
+    };
 
     async function main() {
         // comment
         console.info('Hi!');
         await sleep(1000);
         console.info('Bye!');
-        render(document.body, jsx(TestUI, {}));
+        async function onMounted(ref) {
+            await sleep(1000);
+            console.info('count', ref?.count);
+        }
+        void render(document.body, jsx(TestUI, {}), { onMounted });
     }
     void main();
 

@@ -1,17 +1,34 @@
+import type { MaybePromise } from '@lib/utils';
 import { hasKey, isKeyReadonly } from '@lib/utils';
-import { setCurrentInstance } from './hooks';
-import { Ref } from './ref';
-import type { DOMProps, FunctionalComponent, SVGProps, VNode, VNodeChildren } from './types';
+import { LifecycleEvents } from './events';
+import type {
+    ComponentEvents,
+    DOMProps,
+    ErrorCapturedHandler,
+    EventHandler,
+    FunctionalComponent,
+    MountedHandler,
+    MountedHandlerUtils,
+    PropsType,
+    SetupHandler,
+    SVGProps,
+    VNode,
+    VNodeChildren,
+} from './types';
+
+const XMLNamespaces = {
+    'svg': 'http://www.w3.org/2000/svg' as const,
+};
 
 export const Fragment = 'Fragment';
 
 export function createVNode(
     type: string | FunctionalComponent,
-    props: object = {},
+    props: PropsType = {},
     children: VNode[] = [],
     isDev = false,
 ): VNode {
-    return { type, props, children, mountedHooks: [], isDev };
+    return { type, props, children, isDev };
 }
 
 export function jsx(
@@ -38,70 +55,143 @@ export function jsxDEV(
 
 export function createElement(
     tag: string | FunctionalComponent,
-    props?: object,
+    props?: PropsType,
     ...children: VNode[]
 ): VNode {
     return createVNode(tag, props, children);
 }
 
-export function render(root: Element | DocumentFragment, element: VNode) {
-    return _render(root, element);
+export async function render<TRef = unknown>(
+    root: Element | DocumentFragment,
+    element: VNode,
+    handlers: { onMounted: (ref?: TRef) => MaybePromise<void> },
+) {
+    const events = new LifecycleEvents();
+    const refs: { default?: TRef } = {};
+    if (element && typeof element === 'object') {
+        element.props['ref'] = 'default';
+        events.onMounted((): MaybePromise<void> => handlers.onMounted(refs.default));
+    }
+
+    const node = await renderVNode(root, element, events, refs);
+    if (node === null) {
+        return;
+    }
+
+    events.listen(node);
+    root.appendChild(node);
 }
 
-function _render(root: Element | DocumentFragment, element: VNode, isSvgContext = false) {
+async function renderVNode(
+    root: Element | DocumentFragment,
+    element: VNode,
+    events: LifecycleEvents,
+    refs?: Record<string, unknown>,
+): Promise<Node | null> {
     if (element === undefined || element === null || typeof element === 'boolean') {
-        return;
+        return null;
     }
     else if (typeof element === 'string' || typeof element === 'number') {
-        root.appendChild(document.createTextNode(String(element)));
-        return;
+        return document.createTextNode(String(element));
     }
 
-    const renderChildren = (node: Element | DocumentFragment, children: VNode[], isSvg: boolean) =>
-        children.flat().forEach(child => _render(node, child, isSvg));
+    const renderChildren = async (node: Element | DocumentFragment, children: VNode[]) => {
+        const childNodes = await Promise.all(
+            children.flat().map(async child => renderVNode(node, child, events, refs)),
+        );
+        node.append(...childNodes.filter(node => node !== null));
+    };
 
     const { type, props, children } = element;
     if (typeof type === 'function') {
-        const rest = setCurrentInstance(element);
-        try {
-            const vNode = type({ ...props, children });
-            _render(root, vNode, isSvgContext);
-            element.mountedHooks.forEach(mountedHook => mountedHook());
-        }
-        finally {
-            rest();
-        }
+        return await renderFunctionalComponent(root, type, props, children, events, refs);
     }
     else if (type === Fragment) {
-        // renderChildren(root, children);
         const fragment = document.createDocumentFragment();
-        renderChildren(fragment, children, isSvgContext);
-        root.appendChild(fragment);
+        await renderChildren(fragment, children);
+        return fragment;
     }
     else {
-        const isSvg = isSvgContext || type === 'svg';
+        const hasNS = type.includes(':');
 
-        const elem = isSvg
-            ? document.createElementNS('http://www.w3.org/2000/svg', type)
+        const domElement = hasNS
+            ? document.createElementNS(...splitNamespace(type))
             : document.createElement(type);
-        if (props) {
-            setProps(elem, props, isSvg);
+
+        // handle ref prop
+        if ('ref' in props && typeof props['ref'] === 'string') {
+            if (refs) {
+                refs[props['ref']] = domElement;
+            }
+            delete props['ref'];
         }
-        renderChildren(elem, children, isSvg);
-        root.appendChild(elem);
+
+        setProps(domElement, props);
+        await renderChildren(domElement, children);
+        return domElement;
     }
 }
 
-function setProps<T extends HTMLElement | SVGElement>(
-    elem: T,
-    props: object,
-    isSvg: boolean,
-) {
-    Object.entries(props).forEach(([key, value]) => {
-        if (key === 'ref' && value instanceof Ref) {
-            value.setCurrent(elem);
+async function renderFunctionalComponent(
+    root: Element | DocumentFragment,
+    type: FunctionalComponent,
+    props: PropsType,
+    children: VNode[],
+    events: LifecycleEvents,
+    refs?: Record<string, unknown>,
+): Promise<Node | null> {
+    const componentRefs: Record<string, unknown> = {};
+    const utils: MountedHandlerUtils<unknown> = {
+        getRef: (key: string) => {
+            if (key in componentRefs === false) {
+                throw new Error(`Invalid ref key: ${key}`);
+            }
+            return componentRefs[key];
+        },
+        defineRef: (ref: unknown) => {
+            if ('ref' in props && typeof props['ref'] === 'string') {
+                if (refs) {
+                    refs[props['ref']] = ref;
+                }
+            }
+        },
+    };
+
+    const setupHandlers: SetupHandler[] = [];
+    const errorCapturedHandlers: ErrorCapturedHandler[] = [];
+    const componentEvents: ComponentEvents<unknown> = {
+        onSetup: (handler: SetupHandler) => setupHandlers.push(handler),
+        onMounted: (handler: MountedHandler<unknown>) =>
+            events.onMounted((): MaybePromise<void> => handler(utils)),
+        onReady: (handler: EventHandler) => events.onReady(handler),
+        onRendered: (handler: EventHandler) => events.onRendered(handler),
+        onErrorCaptured: (handler: ErrorCapturedHandler) => errorCapturedHandlers.push(handler),
+    };
+
+    let node: Node | null = null;
+    events.pushLevel();
+    try {
+        const vNode = type({ ...props, children }, componentEvents);
+        await Promise.all(setupHandlers.map((setupHandler): MaybePromise<void> => setupHandler()));
+        node = await renderVNode(root, vNode, events, componentRefs);
+    }
+    catch (error) {
+        const handled = errorCapturedHandlers.some(errorCapturedHandler =>
+            errorCapturedHandler(error) === false
+        );
+        if (!handled) {
+            throw error;
         }
-        else if (key === 'style' && value instanceof Object) {
+    }
+    finally {
+        events.popLevel();
+    }
+    return node;
+}
+
+function setProps<T extends HTMLElement | SVGElement>(elem: T, props: object) {
+    Object.entries(props).forEach(([key, value]) => {
+        if (key === 'style' && value instanceof Object) {
             Object.assign(elem.style, value);
         }
         else if (key === 'dataset' && value instanceof Object) {
@@ -114,8 +204,8 @@ function setProps<T extends HTMLElement | SVGElement>(
             Object.assign(elem, { [key]: value as unknown });
         }
         else {
-            if (isSvg) {
-                elem.setAttributeNS(null, key, String(value));
+            if (key.includes(':')) {
+                elem.setAttributeNS(splitNamespace(key)[0], key, String(value));
             }
             else {
                 elem.setAttribute(key, String(value));
@@ -124,8 +214,15 @@ function setProps<T extends HTMLElement | SVGElement>(
     });
 }
 
+function splitNamespace(tagNS: string) {
+    const [ns, tag] = tagNS.split(':', 1);
+    if (!hasKey(XMLNamespaces, ns)) {
+        throw new Error('Invalid namespace');
+    }
+    return [XMLNamespaces[ns], tag] as const;
+}
+
 type DOMElement = Element;
-type DOMElementTagsMap = HTMLElementTagNameMap & SVGElementTagNameMap;
 
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export declare namespace JSX {
@@ -137,9 +234,13 @@ export declare namespace JSX {
 
     type Element = VNode;
 
-    type BaseIntrinsicElements = {
-        [K in keyof DOMElementTagsMap]: PropsOf<DOMElementTagsMap[K]>;
-    };
+    type BaseIntrinsicElements =
+        & {
+            [K in keyof HTMLElementTagNameMap]: PropsOf<HTMLElementTagNameMap[K]>;
+        }
+        & {
+            [K in keyof SVGElementTagNameMap as `svg:${K}`]: PropsOf<SVGElementTagNameMap[K]>;
+        };
 
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface IntrinsicElements extends BaseIntrinsicElements {
