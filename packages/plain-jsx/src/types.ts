@@ -81,4 +81,4 @@ export type DOMProps<T extends Element> =
 
 export type SVGProps<T extends SVGElement> =
     & DOMProps<T>
-    & AcceptsObservable<Record<string, unknown>>; // no validation for svg props for now.
+    & Record<string, unknown>; // no validation for svg props for now.

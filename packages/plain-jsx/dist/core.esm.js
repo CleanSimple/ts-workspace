@@ -15,14 +15,6 @@ function jsx(type, props) {
     props.children = undefined;
     return renderVNode(type, props, children);
 }
-// needs testing!
-// export function createElement(
-//     tag: string | FunctionalComponent,
-//     props?: PropsType,
-//     ...children: VNode[]
-// ): RNode {
-//     return renderVNode(tag, props ?? {}, children);
-// }
 // export let initialRenderDone = false;
 function render(root, vNode) {
     root.append(...renderChildren(vNode));

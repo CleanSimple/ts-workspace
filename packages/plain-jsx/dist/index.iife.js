@@ -234,14 +234,6 @@ var PlainJSX = (function (exports) {
     }
 
     const Fragment = 'Fragment';
-    // needs testing!
-    // export function createElement(
-    //     tag: string | FunctionalComponent,
-    //     props?: PropsType,
-    //     ...children: VNode[]
-    // ): RNode {
-    //     return renderVNode(tag, props ?? {}, children);
-    // }
     // export let initialRenderDone = false;
     function render(root, vNode) {
         root.append(...renderChildren(vNode));

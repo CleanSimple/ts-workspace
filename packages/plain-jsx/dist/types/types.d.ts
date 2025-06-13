@@ -38,5 +38,5 @@ type AsAcceptsObservable<T> = {
     [K in keyof T]: T[K] | AcceptsObservable<T[K]>;
 };
 export type DOMProps<T extends Element> = Partial<AsAcceptsObservable<SettableProps<T>>> & CommonProps<T> & DOMEvents<T>;
-export type SVGProps<T extends SVGElement> = DOMProps<T> & AcceptsObservable<Record<string, unknown>>;
+export type SVGProps<T extends SVGElement> = DOMProps<T> & Record<string, unknown>;
 export {};
