@@ -1,18 +1,12 @@
-import type { MaybePromise } from '@lib/utils';
-import type { DOMProps, FunctionalComponent, PropsType, SVGProps, VNode, VNodeChildren } from './types';
+import type { ShowProps } from './reactive';
+import { Show } from './reactive';
+import type { DOMProps, FunctionalComponent, RNode, SVGProps, VNode, VNodeChildren } from './types';
 export declare const Fragment = "Fragment";
-export declare function createVNode(type: string | FunctionalComponent, props?: PropsType, children?: VNode[], isDev?: boolean): VNode;
 export declare function jsx(type: string | FunctionalComponent, props: {
     children?: VNodeChildren;
-}): VNode;
-export { jsx as jsxs };
-export declare function jsxDEV(type: string | FunctionalComponent, props: {
-    children?: VNodeChildren;
-}): VNode;
-export declare function createElement(tag: string | FunctionalComponent, props?: PropsType, ...children: VNode[]): VNode;
-export declare function render<TRef = unknown>(root: Element | DocumentFragment, element: VNode, handlers: {
-    onMounted: (ref?: TRef) => MaybePromise<void>;
-}): Promise<void>;
+}): RNode;
+export { jsx as jsxDEV, jsx as jsxs };
+export declare function render(root: Element | DocumentFragment, vNode: VNode): void;
 type DOMElement = Element;
 export declare namespace JSX {
     type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
@@ -24,5 +18,6 @@ export declare namespace JSX {
         [K in keyof SVGElementTagNameMap as `svg:${K}`]: PropsOf<SVGElementTagNameMap[K]>;
     };
     interface IntrinsicElements extends BaseIntrinsicElements {
+        [Show]: ShowProps;
     }
 }

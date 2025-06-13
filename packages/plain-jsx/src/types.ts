@@ -1,115 +1,54 @@
-import type { MaybePromise, MethodsOf, ReadonlyProps, Setter } from '@lib/utils';
+import type { MethodsOf, ReadonlyProps } from '@lib/utils';
 import type { Properties as CSS } from 'csstype';
+import type { Observable } from './observable';
 
 export type PropsType = Record<string, unknown>;
 
-/* vnode */
-export interface VNodeElement {
-    type: string | FunctionalComponent;
-    props: PropsType;
-    children: VNode[];
-    isDev: boolean;
-}
-
-export type VNode = VNodeElement | string | number | boolean | null | undefined;
+/* VNode */
+export type DOMNode =
+    | Observable<VNode>
+    | ChildNode
+    | string
+    | number
+    | boolean
+    | null
+    | undefined;
+export type VNode = VNode[] | DOMNode;
 export type VNodeChildren = VNode | VNode[];
-export type FunctionalComponent<TProps = PropsType, TRef = never> = (
-    props: TProps & CustomProps,
-    events: ComponentEvents<TRef>,
-) => VNode;
+export type FunctionalComponent = (...args: unknown[]) => VNode;
 
-/* handlers */
-export type RefType<T extends FunctionalComponent<never, unknown>> = T extends
-    FunctionalComponent<never, infer TRef> ? TRef
-    : never;
+/** Represents a rendered VNode */
+export type RNode = ChildNode | ChildNode[] | null;
 
-interface GetRef {
-    (name: string): unknown;
-    <T extends Element>(name: string): T;
-    <T extends FunctionalComponent<never, unknown>>(name: string): RefType<T>;
+/* internal component type */
+export interface Component {
+    id: number;
+    ref?: unknown;
 }
 
-export interface MountedHandlerUtils<TRef> {
-    getRef: GetRef;
-    defineRef: Setter<TRef>;
-}
-
-export type SetupHandler = () => Promise<void>;
-export type EventHandler = () => MaybePromise<void>;
-export type MountedHandler<TRef> = (utils: MountedHandlerUtils<TRef>) => MaybePromise<void>;
-export type ErrorCapturedHandler = (error: unknown) => boolean | void;
-
-export interface ComponentEvents<TRef> {
-    /**
-     * Registers an async handler that runs immediately after the functional component returns.
-     * Useful for running asynchronous setup code within the component body (before mounting).
-     *
-     * Note: Rendering is deferred until all setup handlers have completed.
-     * If you want to show placeholder content during data fetching, use `onMounted` instead.
-     *
-     * @example
-     * onSetup(async () => {
-     *   // Functional components can't be async, so use this for async setup.
-     *   const data = await fetchData();
-     * });
-     */
-    onSetup: (handler: SetupHandler) => void;
-    /**
-     * Registers a handler (can be async) that runs when the component is inserted into the active DOM.
-     * The handler receives an object with helpers to get child refs or define the component's ref interface.
-     *
-     * @example
-     * onMounted(({ getRef, defineRef }) => {
-     *   const elem = getRef('elem');
-     *
-     *   defineRef({
-     *     increment: () => { },
-     *     decrement: () => { },
-     *     getCount: () => { }
-     *   });
-     * });
-     */
-    onMounted: (handler: MountedHandler<TRef>) => void;
-    /**
-     * Registers a handler (can be async) that runs on the tick immediately after the `onMounted` event.
-     * Useful for actions that require the DOM to be fully updated, such as setting focus.
-     *
-     * @example
-     * let input;
-     * onMounted(({ getRef }) => {
-     *   input = getRef('input');
-     * });
-     * onReady(() => {
-     *   input.focus();
-     * });
-     */
-    onReady: (handler: EventHandler) => void;
-    /**
-     * Registers a handler that runs once, after the component's first render cycle following mount.
-     */
-    onRendered: (handler: EventHandler) => void;
-    /**
-     * Registers an error handler that captures errors occurring during the
-     * functional component’s body execution, JSX render phase, and setup phase (`onSetup` event).
-     */
-    onErrorCaptured: (handler: ErrorCapturedHandler) => void;
-}
-
-/* common and custom props */
-interface CustomProps {
-    ref?: string;
-    children?: VNodeChildren;
-}
+type ClassProp = `class:${string}`;
+type Classes = Record<ClassProp, boolean | Observable<boolean>>;
 
 type CommonProps<T extends Element> =
-    & (T extends ElementCSSInlineStyle ? { style?: CSS } : object)
+    & (T extends ElementCSSInlineStyle ? { style?: CSS | string } : object)
     & (T extends HTMLOrSVGElement ? { dataset?: DOMStringMap } : object)
-    & CustomProps;
+    & Classes
+    & {
+        ref?: Observable<T | null>;
+        children?: VNodeChildren;
+        class?: string;
+    };
 
 /* utilities */
 type SettableProps<T extends Element> = Omit<
     T,
-    keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers)
+    keyof (
+        & ReadonlyProps<T>
+        & MethodsOf<T>
+        & CommonProps<T>
+        & GlobalEventHandlers
+        & { className: never; classList: never }
+    )
 >;
 
 /* event types */
@@ -120,18 +59,26 @@ type TypedEvent<TElement extends Element, TEvent extends Event = Event> =
     };
 
 type DOMEvents<T extends Element> = {
-    [K in keyof GlobalEventHandlersEventMap as `on${Capitalize<K>}`]?: (
+    [K in keyof GlobalEventHandlersEventMap as `on:${K}`]?: (
         this: T,
         ev: TypedEvent<T, GlobalEventHandlersEventMap[K]>,
     ) => unknown;
 };
 
+type AcceptsObservable<T> =
+    | (T extends infer U ? Observable<U> : never)
+    | Observable<T>;
+
+type AsAcceptsObservable<T> = {
+    [K in keyof T]: T[K] | AcceptsObservable<T[K]>;
+};
+
 /* all props */
 export type DOMProps<T extends Element> =
-    & Partial<SettableProps<T>>
+    & Partial<AsAcceptsObservable<SettableProps<T>>>
     & CommonProps<T>
     & DOMEvents<T>;
 
 export type SVGProps<T extends SVGElement> =
     & DOMProps<T>
-    & Record<string, unknown>; // no validation for svg props for now.
+    & AcceptsObservable<Record<string, unknown>>; // no validation for svg props for now.

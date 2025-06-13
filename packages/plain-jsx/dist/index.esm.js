@@ -1,1 +1,4 @@
-export { Fragment, createElement, createElement as h, render } from './core.esm.js';
+export { Fragment, render } from './core.esm.js';
+export { computed, ref, val } from './observable.esm.js';
+export { For, Show, With } from './reactive.esm.js';
+export { nextTick } from './scheduling.esm.js';

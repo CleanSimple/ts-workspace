@@ -1,211 +1,298 @@
-var PlainJSX = (function (exports, utils) {
+var PlainJSX = (function (exports) {
     'use strict';
 
-    class LifecycleEvents {
-        mountedHandlers = [[]];
-        readyHandlers = [[]];
-        renderedHandlers = [[]];
-        isListening = false;
-        level = 0;
-        listen(node) {
-            if (this.isListening) {
-                throw new Error('Invalid operation. Can only listen once.');
-            }
-            this.isListening = true;
-            const observer = new MutationObserver((mutations) => {
-                for (const mutation of mutations) {
-                    for (const addedNode of mutation.addedNodes) {
-                        if (addedNode === node || addedNode.contains(node)) {
-                            this.isListening = false;
-                            observer.disconnect();
-                            void this.mounted();
-                            return;
-                        }
-                    }
-                }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
+    let callbacks = new Array();
+    let queued = false;
+    function runNextTickCallbacks() {
+        queued = false;
+        for (const callback of callbacks) {
+            callback();
         }
-        async mounted() {
-            for (const handlers of this.mountedHandlers.reverse()) {
-                await Promise.all(handlers.map((handler) => handler()));
-            }
-            setTimeout(async () => {
-                for (const handlers of this.readyHandlers.reverse()) {
-                    await Promise.all(handlers.map((handler) => handler()));
-                }
-            }, 0);
-            requestAnimationFrame(() => {
-                // can potentially handle onRender (before render) here!
-                void Promise.resolve().then(async () => {
-                    for (const handlers of this.renderedHandlers.reverse()) {
-                        await Promise.all(handlers.map((handler) => handler()));
-                    }
-                });
-            });
-        }
-        pushLevel() {
-            this.level += 1;
-            this.mountedHandlers[this.level] = this.mountedHandlers?.[this.level] ?? [];
-            this.readyHandlers[this.level] = this.readyHandlers?.[this.level] ?? [];
-            this.renderedHandlers[this.level] = this.renderedHandlers?.[this.level] ?? [];
-        }
-        popLevel() {
-            this.level -= 1;
-        }
-        onMounted(handler) {
-            this.mountedHandlers[this.level].push(handler);
-        }
-        onReady(handler) {
-            this.readyHandlers[this.level].push(handler);
-        }
-        onRendered(handler) {
-            this.renderedHandlers[this.level].push(handler);
-        }
+        callbacks = [];
     }
-
-    const XMLNamespaces = {
-        'svg': 'http://www.w3.org/2000/svg',
-    };
-    const Fragment = 'Fragment';
-    function createVNode(type, props = {}, children = [], isDev = false) {
-        return { type, props, children, isDev };
-    }
-    function createElement(tag, props, ...children) {
-        return createVNode(tag, props, children);
-    }
-    async function render(root, element, handlers) {
-        const events = new LifecycleEvents();
-        const refs = {};
-        if (element && typeof element === 'object') {
-            element.props['ref'] = 'default';
-            events.onMounted(() => handlers.onMounted(refs.default));
-        }
-        const node = await renderVNode(root, element, events, refs);
-        if (node === null) {
+    function nextTick(callback) {
+        callbacks.push(callback);
+        if (queued) {
             return;
         }
-        events.listen(node);
-        root.appendChild(node);
-    }
-    async function renderVNode(root, element, events, refs) {
-        if (element === undefined || element === null || typeof element === 'boolean') {
-            return null;
-        }
-        else if (typeof element === 'string' || typeof element === 'number') {
-            return document.createTextNode(String(element));
-        }
-        const renderChildren = async (node, children) => {
-            const childNodes = await Promise.all(children.flat().map(async (child) => renderVNode(node, child, events, refs)));
-            node.append(...childNodes.filter(node => node !== null));
-        };
-        const { type, props, children } = element;
-        if (typeof type === 'function') {
-            return await renderFunctionalComponent(root, type, props, children, events, refs);
-        }
-        else if (type === Fragment) {
-            const fragment = document.createDocumentFragment();
-            await renderChildren(fragment, children);
-            return fragment;
-        }
-        else {
-            const hasNS = type.includes(':');
-            const domElement = hasNS
-                ? document.createElementNS(...splitNamespace(type))
-                : document.createElement(type);
-            // handle ref prop
-            if ('ref' in props && typeof props['ref'] === 'string') {
-                if (refs) {
-                    refs[props['ref']] = domElement;
-                }
-                delete props['ref'];
-            }
-            setProps(domElement, props);
-            await renderChildren(domElement, children);
-            return domElement;
-        }
-    }
-    async function renderFunctionalComponent(root, type, props, children, events, refs) {
-        const componentRefs = {};
-        const utils = {
-            getRef: (key) => {
-                if (key in componentRefs === false) {
-                    throw new Error(`Invalid ref key: ${key}`);
-                }
-                return componentRefs[key];
-            },
-            defineRef: (ref) => {
-                if ('ref' in props && typeof props['ref'] === 'string') {
-                    if (refs) {
-                        refs[props['ref']] = ref;
-                    }
-                }
-            },
-        };
-        const setupHandlers = [];
-        const errorCapturedHandlers = [];
-        const componentEvents = {
-            onSetup: (handler) => setupHandlers.push(handler),
-            onMounted: (handler) => events.onMounted(() => handler(utils)),
-            onReady: (handler) => events.onReady(handler),
-            onRendered: (handler) => events.onRendered(handler),
-            onErrorCaptured: (handler) => errorCapturedHandlers.push(handler),
-        };
-        let node = null;
-        events.pushLevel();
-        try {
-            const vNode = type({ ...props, children }, componentEvents);
-            await Promise.all(setupHandlers.map((setupHandler) => setupHandler()));
-            node = await renderVNode(root, vNode, events, componentRefs);
-        }
-        catch (error) {
-            const handled = errorCapturedHandlers.some(errorCapturedHandler => errorCapturedHandler(error) === false);
-            if (!handled) {
-                throw error;
-            }
-        }
-        finally {
-            events.popLevel();
-        }
-        return node;
-    }
-    function setProps(elem, props) {
-        Object.entries(props).forEach(([key, value]) => {
-            if (key === 'style' && value instanceof Object) {
-                Object.assign(elem.style, value);
-            }
-            else if (key === 'dataset' && value instanceof Object) {
-                Object.assign(elem.dataset, value);
-            }
-            else if (/^on[A-Z]/.exec(key)) {
-                elem.addEventListener(key.slice(2).toLowerCase(), value);
-            }
-            else if (utils.hasKey(elem, key) && !utils.isKeyReadonly(elem, key)) {
-                Object.assign(elem, { [key]: value });
-            }
-            else {
-                if (key.includes(':')) {
-                    elem.setAttributeNS(splitNamespace(key)[0], key, String(value));
-                }
-                else {
-                    elem.setAttribute(key, String(value));
-                }
-            }
-        });
-    }
-    function splitNamespace(tagNS) {
-        const [ns, tag] = tagNS.split(':', 1);
-        if (!utils.hasKey(XMLNamespaces, ns)) {
-            throw new Error('Invalid namespace');
-        }
-        return [XMLNamespaces[ns], tag];
+        queued = true;
+        queueMicrotask(runNextTickCallbacks);
     }
 
+    class Observable {
+    }
+    /** internal use */
+    class ObservableImpl extends Observable {
+        observers = [];
+        immediateObservers = [];
+        hasDeferredNotifications = false;
+        notifyObserversCallback;
+        constructor() {
+            super();
+            this.notifyObserversCallback = this.notifyObservers.bind(this);
+        }
+        onUpdated() {
+            if (this.immediateObservers.length) {
+                const value = this.value;
+                for (const observer of this.immediateObservers) {
+                    observer(value);
+                }
+            }
+            if (this.observers.length) {
+                if (this.hasDeferredNotifications) {
+                    return;
+                }
+                this.hasDeferredNotifications = true;
+                nextTick(this.notifyObserversCallback);
+            }
+        }
+        notifyObservers() {
+            this.hasDeferredNotifications = false;
+            const value = this.value;
+            for (const observer of this.observers) {
+                observer(value);
+            }
+        }
+        subscribe(observer, immediate = true) {
+            const observers = immediate ? this.immediateObservers : this.observers;
+            if (!observers.includes(observer)) {
+                observers.push(observer);
+            }
+            return {
+                unsubscribe: this.unsubscribe.bind(this, observer, immediate),
+            };
+        }
+        unsubscribe(observer, immediate) {
+            const observers = immediate ? this.immediateObservers : this.observers;
+            const index = observers.indexOf(observer);
+            if (index > -1) {
+                observers.splice(index, 1);
+            }
+        }
+    }
+    /**
+     * Simple observable value implementation
+     */
+    class Val extends ObservableImpl {
+        _value;
+        constructor(initialValue) {
+            super();
+            this._value = initialValue;
+        }
+        get value() {
+            return this._value;
+        }
+        set value(newValue) {
+            if (this._value === newValue) {
+                return;
+            }
+            this._value = newValue;
+            this.onUpdated();
+        }
+        computed(compute) {
+            return new ComputedVal(compute, this);
+        }
+    }
+    /** internal use */
+    class ComputedVal extends Observable {
+        val;
+        compute;
+        _value;
+        constructor(compute, val) {
+            super();
+            this.compute = compute;
+            this.val = val;
+            this._value = compute(val.value);
+        }
+        get value() {
+            return this._value;
+        }
+        subscribe(observer, immediate) {
+            return this.val.subscribe((value) => {
+                this._value = this.compute(value);
+                observer(this._value);
+            }, immediate);
+        }
+    }
+    /** internal use */
+    class Computed extends ObservableImpl {
+        observables;
+        compute;
+        _value;
+        constructor(compute, observables) {
+            super();
+            this.compute = compute;
+            this.observables = observables;
+            this._value = null;
+            for (const observable of observables) {
+                observable.subscribe(() => {
+                    this._value = null;
+                    this.onUpdated();
+                }, true);
+            }
+        }
+        get value() {
+            this._value ??= this.compute(...this.observables.map(observable => observable.value));
+            return this._value;
+        }
+    }
+    function val(initialValue) {
+        return new Val(initialValue);
+    }
+    function computed(compute, ...observables) {
+        return new Computed(compute, observables);
+    }
+    function ref() {
+        return new Val(null);
+    }
+
+    class ReactiveNode {
+        placeholder = document.createComment('');
+        children = new Set([this.placeholder]);
+        update(rNode) {
+            if (rNode === null || (Array.isArray(rNode) && rNode.length === 0)) {
+                // optimized clear path
+                if (this.children.has(this.placeholder)) {
+                    // we are already cleared
+                    return;
+                }
+                const first = this.children.values().next().value;
+                const parent = first?.parentNode;
+                if (parent) {
+                    parent.insertBefore(this.placeholder, first);
+                    const fragment = document.createDocumentFragment();
+                    fragment.append(...this.children);
+                }
+                this.children = new Set([this.placeholder]);
+                return;
+            }
+            const newChildren = Array.isArray(rNode) ? rNode : [rNode];
+            const newChildrenSet = new Set(newChildren);
+            const first = this.children.values().next().value;
+            const parent = first?.parentNode;
+            if (parent) {
+                const childNodes = parent.childNodes;
+                const currentChildrenSet = this.children;
+                if (currentChildrenSet.size === childNodes.length
+                    && newChildrenSet.isDisjointFrom(currentChildrenSet)) {
+                    // optimized replace path
+                    parent.replaceChildren(...newChildren);
+                }
+                else {
+                    const fragment = document.createDocumentFragment(); // used in bulk updates
+                    const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
+                    const replacedSet = new Set();
+                    const start = Array.prototype.indexOf.call(childNodes, first);
+                    for (let i = 0; i < replaceCount; ++i) {
+                        const child = childNodes[start + i];
+                        if (!child) {
+                            parent.append(...newChildren.slice(i));
+                            break;
+                        }
+                        else if (!currentChildrenSet.has(child)) {
+                            fragment.append(...newChildren.slice(i));
+                            parent.insertBefore(fragment, child);
+                            break;
+                        }
+                        else if (child !== newChildren[i]) {
+                            if (!replacedSet.has(newChildren[i])) {
+                                parent.replaceChild(newChildren[i], child);
+                                replacedSet.add(child);
+                            }
+                            else {
+                                parent.insertBefore(newChildren[i], child);
+                            }
+                        }
+                    }
+                    if (currentChildrenSet.size > newChildren.length) {
+                        // appending the excess children to the fragment will move them from their current parent to the fragment effectively removing them.
+                        fragment.append(...currentChildrenSet.difference(newChildrenSet));
+                    }
+                    else if (currentChildrenSet.size < newChildren.length) {
+                        fragment.append(...newChildren.slice(replaceCount));
+                        parent.insertBefore(fragment, newChildren[replaceCount - 1].nextSibling);
+                    }
+                }
+            }
+            this.children = newChildrenSet;
+        }
+        getRoot() {
+            if (!this.children.size) {
+                throw new Error('?!?!?!?');
+            }
+            return [...this.children];
+        }
+    }
+    const Show = 'Show';
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function With(props) {
+        throw new Error('This component cannot be called directly — it must be used through the render function.');
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function For(props) {
+        throw new Error('This component cannot be called directly — it must be used through the render function.');
+    }
+
+    const Fragment = 'Fragment';
+    // needs testing!
+    // export function createElement(
+    //     tag: string | FunctionalComponent,
+    //     props?: PropsType,
+    //     ...children: VNode[]
+    // ): RNode {
+    //     return renderVNode(tag, props ?? {}, children);
+    // }
+    // export let initialRenderDone = false;
+    function render(root, vNode) {
+        root.append(...renderChildren(vNode));
+        // initialRenderDone = true;
+    }
+    function renderChildren(children) {
+        const normalizedChildren = Array.isArray(children)
+            ? children.flat(10)
+            : [children];
+        const childNodes = [];
+        for (const vNode of normalizedChildren) {
+            if (vNode == null || typeof vNode === 'boolean') {
+                continue;
+            }
+            else if (typeof vNode === 'string' || typeof vNode === 'number') {
+                childNodes.push(document.createTextNode(String(vNode)));
+            }
+            else if (vNode instanceof Observable) {
+                const reactiveNode = new ReactiveNode();
+                let children = renderChildren(vNode.value);
+                reactiveNode.update(children);
+                vNode.subscribe((value) => {
+                    if ((typeof value === 'string' || typeof value === 'number')
+                        && children instanceof Node && children.nodeType === Node.TEXT_NODE) {
+                        // optimized update path for text nodes
+                        children.textContent = value.toString();
+                    }
+                    else {
+                        children = renderChildren(value);
+                        reactiveNode.update(children);
+                    }
+                });
+                childNodes.push(...reactiveNode.getRoot());
+            }
+            else {
+                childNodes.push(vNode);
+            }
+        }
+        return childNodes;
+    }
+
+    exports.For = For;
     exports.Fragment = Fragment;
-    exports.createElement = createElement;
-    exports.h = createElement;
+    exports.Show = Show;
+    exports.With = With;
+    exports.computed = computed;
+    exports.nextTick = nextTick;
+    exports.ref = ref;
     exports.render = render;
+    exports.val = val;
 
     return exports;
 
-})({}, Utils);
+})({});
