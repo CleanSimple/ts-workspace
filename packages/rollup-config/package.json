@@ -10,6 +10,9 @@
         "./lib": "./lib.js",
         "./userscript": "./userscript.js"
     },
+    "bin": {
+        "clean": "./clean.js"
+    },
     "scripts": {
         "rollup:build": "cd $INIT_CWD && rollup -c",
         "rollup:watch": "cd $INIT_CWD && rollup -c -w"

@@ -7,6 +7,15 @@ export default tseslint.config(
     tseslint.configs.recommendedTypeChecked,
     tseslint.configs.stylisticTypeChecked,
     {
+        files: ['**/*.js'],
+        extends: [tseslint.configs.disableTypeChecked],
+    },
+    {
+        plugins: {
+            onlyWarn,
+        },
+    },
+    {
         languageOptions: {
             parserOptions: {
                 projectService: true,
@@ -17,22 +26,14 @@ export default tseslint.config(
         rules: {
             '@typescript-eslint/consistent-type-imports': 'warn',
             '@typescript-eslint/method-signature-style': 'warn',
-            '@typescript-eslint/promise-function-async': 'warn',
 
             '@typescript-eslint/explicit-member-accessibility': 'error',
             '@typescript-eslint/default-param-last': 'error',
             '@typescript-eslint/prefer-readonly': 'warn',
-            '@typescript-eslint/class-methods-use-this': 'warn',
-            '@typescript-eslint/switch-exhaustiveness-check': 'warn',
-        },
-    },
-    {
-        files: ['**/*.js'],
-        extends: [tseslint.configs.disableTypeChecked],
-    },
-    {
-        plugins: {
-            onlyWarn,
+            '@typescript-eslint/class-methods-use-this': ['warn', {
+                ignoreOverrideMethods: true,
+                ignoreClassesThatImplementAnInterface: 'public-fields',
+            }],
         },
     },
 );

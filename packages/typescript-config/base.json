@@ -9,6 +9,9 @@
         "removeComments": false,
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
+        "verbatimModuleSyntax": true,
+        "moduleDetection": "force",
+        "noEmit": true,
 
         "strict": true,
         "noImplicitAny": true,

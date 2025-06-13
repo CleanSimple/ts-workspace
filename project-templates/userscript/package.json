@@ -3,7 +3,7 @@
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "scripts": {
-        "build": "yarn rollup:build",
+        "build": "yarn clean ./dist && yarn rollup:build",
         "dev": "yarn rollup:watch",
         "lint": "yarn eslint:lint ./src",
         "fmt": "yarn dprint:fmt ./src/*"
