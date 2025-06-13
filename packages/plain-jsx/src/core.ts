@@ -135,6 +135,7 @@ function renderChildren(children: VNodeChildren): ChildNode[] {
 
 const handledEvents = new Set<string>();
 const InputTwoWayProps = ['value', 'valueAsNumber', 'valueAsDate', 'checked', 'files'];
+const SelectTwoWayProps = ['value', 'selectedIndex'];
 
 function setProps(elem: HTMLElement, props: PropsType) {
     const elemObj = elem as unknown as Record<string, unknown>;
@@ -207,7 +208,7 @@ function setProps(elem: HTMLElement, props: PropsType) {
                 document.addEventListener(event, globalEventHandler);
             }
         }
-        else if (hasKey(elem, key)) {
+        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
             if (value instanceof Observable) {
                 elemRef ??= new WeakRef(elemObj);
                 const unsubscribe = value.subscribe((value) => {
@@ -221,9 +222,11 @@ function setProps(elem: HTMLElement, props: PropsType) {
 
                 // two way updates for input element
                 if (
-                    elem instanceof HTMLInputElement
-                    && value instanceof Val
-                    && InputTwoWayProps.includes(key)
+                    value instanceof Val
+                    && (
+                        (elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
+                        || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))
+                    )
                 ) {
                     elem.addEventListener('change', (e: Event) => {
                         value.value = (e.target as HTMLInputElement)[key];
@@ -248,11 +251,23 @@ function setProps(elem: HTMLElement, props: PropsType) {
 }
 
 function splitNamespace(tagNS: string) {
-    const [ns, tag] = tagNS.split(':', 1);
+    const [ns, tag] = tagNS.split(':', 2);
     if (!hasKey(XMLNamespaces, ns)) {
         throw new Error('Invalid namespace');
     }
     return [XMLNamespaces[ns], tag] as const;
+}
+
+export function isReadonlyProp<T>(obj: T, key: keyof T): boolean {
+    let currentObj: unknown = obj;
+    while (currentObj !== null) {
+        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+        if (desc) {
+            return desc.writable === false || desc.set === undefined;
+        }
+        currentObj = Object.getPrototypeOf(currentObj);
+    }
+    return true;
 }
 
 function globalEventHandler(evt: Event) {

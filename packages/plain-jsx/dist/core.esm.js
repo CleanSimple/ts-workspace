@@ -93,6 +93,7 @@ function renderChildren(children) {
 }
 const handledEvents = new Set();
 const InputTwoWayProps = ['value', 'valueAsNumber', 'valueAsDate', 'checked', 'files'];
+const SelectTwoWayProps = ['value', 'selectedIndex'];
 function setProps(elem, props) {
     const elemObj = elem;
     let elemRef = null;
@@ -157,7 +158,7 @@ function setProps(elem, props) {
                 document.addEventListener(event, globalEventHandler);
             }
         }
-        else if (hasKey(elem, key)) {
+        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
             if (value instanceof Observable) {
                 elemRef ??= new WeakRef(elemObj);
                 const unsubscribe = value.subscribe((value) => {
@@ -169,9 +170,9 @@ function setProps(elem, props) {
                     elem[key] = value;
                 });
                 // two way updates for input element
-                if (elem instanceof HTMLInputElement
-                    && value instanceof Val
-                    && InputTwoWayProps.includes(key)) {
+                if (value instanceof Val
+                    && ((elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
+                        || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key)))) {
                     elem.addEventListener('change', (e) => {
                         value.value = e.target[key];
                     });
@@ -193,11 +194,22 @@ function setProps(elem, props) {
     }
 }
 function splitNamespace(tagNS) {
-    const [ns, tag] = tagNS.split(':', 1);
+    const [ns, tag] = tagNS.split(':', 2);
     if (!hasKey(XMLNamespaces, ns)) {
         throw new Error('Invalid namespace');
     }
     return [XMLNamespaces[ns], tag];
+}
+function isReadonlyProp(obj, key) {
+    let currentObj = obj;
+    while (currentObj !== null) {
+        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+        if (desc) {
+            return desc.writable === false || desc.set === undefined;
+        }
+        currentObj = Object.getPrototypeOf(currentObj);
+    }
+    return true;
 }
 function globalEventHandler(evt) {
     const key = `@@${evt.type}`;
@@ -211,4 +223,4 @@ function globalEventHandler(evt) {
     }
 }
 
-export { Fragment, jsx, jsx as jsxDEV, jsx as jsxs, render };
+export { Fragment, isReadonlyProp, jsx, jsx as jsxDEV, jsx as jsxs, render };

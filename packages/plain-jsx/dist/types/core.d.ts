@@ -7,6 +7,7 @@ export declare function jsx(type: string | FunctionalComponent, props: {
 }): RNode;
 export { jsx as jsxDEV, jsx as jsxs };
 export declare function render(root: Element | DocumentFragment, vNode: VNode): void;
+export declare function isReadonlyProp<T>(obj: T, key: keyof T): boolean;
 type DOMElement = Element;
 export declare namespace JSX {
     type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
