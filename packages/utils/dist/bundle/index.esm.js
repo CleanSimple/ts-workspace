@@ -288,17 +288,6 @@ function queryStringFromObject(obj) {
 function hasKey(obj, key) {
     return key in obj;
 }
-function isKeyReadonly(obj, key) {
-    let currentObj = obj;
-    while (currentObj !== null) {
-        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-        if (desc) {
-            return desc.writable === false || desc.set === undefined;
-        }
-        currentObj = Object.getPrototypeOf(currentObj);
-    }
-    return true;
-}
 function fail(error) {
     throw error;
 }
@@ -344,6 +333,15 @@ function debounce(func, timeout) {
         timeoutId = setTimeout(func, timeout, ...args);
     });
 }
+function isPrimitive(value) {
+    return (value === null
+        || (typeof value !== 'object' && typeof value !== 'function'));
+}
+function isObject(value) {
+    return typeof value === 'object'
+        && value !== null
+        && Object.getPrototypeOf(value) === Object.prototype;
+}
 
 function setInputValue(input, value) {
     const proto = Object.getPrototypeOf(input);
@@ -356,4 +354,4 @@ const ReactAutomation = {
     setInputValue,
 };
 
-export { ReactAutomation, arrFirst, arrFirstOr, arrInsertAt, arrLast, arrLastOr, arrRemove, arrRemoveAt, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, downloadFile, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isKeyReadonly, isTopFrame, mapData, poll, queryStringFromObject, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };
+export { ReactAutomation, arrFirst, arrFirstOr, arrInsertAt, arrLast, arrLastOr, arrRemove, arrRemoveAt, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, downloadFile, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };

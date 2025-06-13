@@ -291,17 +291,6 @@ var Utils = (function (exports) {
     function hasKey(obj, key) {
         return key in obj;
     }
-    function isKeyReadonly(obj, key) {
-        let currentObj = obj;
-        while (currentObj !== null) {
-            const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-            if (desc) {
-                return desc.writable === false || desc.set === undefined;
-            }
-            currentObj = Object.getPrototypeOf(currentObj);
-        }
-        return true;
-    }
     function fail(error) {
         throw error;
     }
@@ -346,6 +335,15 @@ var Utils = (function (exports) {
             clearTimeout(timeoutId);
             timeoutId = setTimeout(func, timeout, ...args);
         });
+    }
+    function isPrimitive(value) {
+        return (value === null
+            || (typeof value !== 'object' && typeof value !== 'function'));
+    }
+    function isObject(value) {
+        return typeof value === 'object'
+            && value !== null
+            && Object.getPrototypeOf(value) === Object.prototype;
     }
 
     function setInputValue(input, value) {
@@ -394,7 +392,8 @@ var Utils = (function (exports) {
     exports.getToday = getToday;
     exports.hasKey = hasKey;
     exports.isElementVisible = isElementVisible;
-    exports.isKeyReadonly = isKeyReadonly;
+    exports.isObject = isObject;
+    exports.isPrimitive = isPrimitive;
     exports.isTopFrame = isTopFrame;
     exports.mapData = mapData;
     exports.poll = poll;

@@ -1,4 +1,4 @@
-/** @import { ReadonlyProps } from './types' */
+/** @import { Primitive } from './types' */
 /**
  * @template {object} T
  * @param {T} obj
@@ -7,23 +7,6 @@
  */
 export function hasKey(obj, key) {
     return key in obj;
-}
-/**
- * @template T
- * @param {T} obj
- * @param {keyof T} key
- * @returns {key is keyof ReadonlyProps<T>}
- */
-export function isKeyReadonly(obj, key) {
-    let currentObj = obj;
-    while (currentObj !== null) {
-        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-        if (desc) {
-            return desc.writable === false || desc.set === undefined;
-        }
-        currentObj = Object.getPrototypeOf(currentObj);
-    }
-    return true;
 }
 /**
  * @param {Error} error
@@ -99,4 +82,21 @@ export function debounce(func, timeout) {
         clearTimeout(timeoutId);
         timeoutId = setTimeout(func, timeout, ...args);
     });
+}
+/**
+ * @param {unknown} value
+ * @returns {value is Primitive}
+ */
+export function isPrimitive(value) {
+    return (value === null
+        || (typeof value !== 'object' && typeof value !== 'function'));
+}
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, unknown>}
+ */
+export function isObject(value) {
+    return typeof value === 'object'
+        && value !== null
+        && Object.getPrototypeOf(value) === Object.prototype;
 }

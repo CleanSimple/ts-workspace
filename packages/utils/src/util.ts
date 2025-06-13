@@ -1,19 +1,7 @@
-import type { ReadonlyProps } from './types';
+import type { Primitive } from './types';
 
 export function hasKey<T extends object>(obj: T, key: PropertyKey): key is keyof T {
     return key in obj;
-}
-
-export function isKeyReadonly<T>(obj: T, key: keyof T): key is keyof ReadonlyProps<T> {
-    let currentObj: unknown = obj;
-    while (currentObj !== null) {
-        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-        if (desc) {
-            return desc.writable === false || desc.set === undefined;
-        }
-        currentObj = Object.getPrototypeOf(currentObj);
-    }
-    return true;
 }
 
 export function fail(error: Error): never {
@@ -68,4 +56,17 @@ export function debounce<T extends (...args: never[]) => void>(func: T, timeout:
         clearTimeout(timeoutId);
         timeoutId = setTimeout(func, timeout, ...args);
     }) as T;
+}
+
+export function isPrimitive(value: unknown): value is Primitive {
+    return (
+        value === null
+        || (typeof value !== 'object' && typeof value !== 'function')
+    );
+}
+
+export function isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object'
+        && value !== null
+        && Object.getPrototypeOf(value) === Object.prototype;
 }
