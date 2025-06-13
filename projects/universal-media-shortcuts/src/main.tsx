@@ -1,5 +1,5 @@
-import { render } from '@lib/plain-jsx';
-import { arrRemove, isTopFrame, sleep } from '@lib/utils';
+import { ref, render } from '@lib/plain-jsx';
+import { isTopFrame, sleep } from '@lib/utils';
 import skipDlgStyles from './styles/skip-dlg.css';
 import styles from './styles/styles.css';
 import upDownControlStyles from './styles/up-down-control.css';
@@ -46,14 +46,19 @@ function toggleCaptionsVisibility() {
     }
 }
 
+let currentSkipDlgRef: ReturnType<typeof ref<typeof SkipDlg>> | null = null;
 function skip() {
-    if (document.querySelector('.skip-dlg-container') != null) {
+    if (currentSkipDlgRef) {
+        currentSkipDlgRef.value?.close();
+        currentSkipDlgRef = null;
         return;
     }
+    currentSkipDlgRef = ref();
 
     function onClosed() {
-        arrRemove(rules, escRule);
-        arrRemove(rules, enterRule);
+        rules.remove(escRule);
+        rules.remove(enterRule);
+        currentSkipDlgRef = null;
     }
 
     const escRule = { key: 'Escape', handler: null, noDefault: true, noOtherHandlers: true };
@@ -63,6 +68,7 @@ function skip() {
     render(
         currentPlayer,
         <SkipDlg
+            ref={currentSkipDlgRef}
             targetVideo={currentVideo}
             enterRule={enterRule}
             escRule={escRule}
