@@ -1,30 +1,24 @@
 var Utils = (function (exports) {
     'use strict';
 
-    function arrFirst(arr) {
-        return arr[0];
-    }
-    function arrFirstOr(arr, defaultValue = null) {
-        return arr.length ? arr[0] : defaultValue;
-    }
-    function arrLast(arr) {
-        return arr[arr.length - 1];
-    }
-    function arrLastOr(arr, defaultValue = null) {
-        return arr.length ? arr[arr.length - 1] : defaultValue;
-    }
-    function arrRemoveAt(arr, index) {
-        return arr.splice(index, 1)[0];
-    }
-    function arrInsertAt(arr, index, ...items) {
-        arr.splice(index, 0, ...items);
-    }
-    function arrRemove(arr, item) {
-        const index = arr.indexOf(item);
+    Array.prototype.first = function () {
+        return this[0];
+    };
+    Array.prototype.last = function () {
+        return this[this.length - 1];
+    };
+    Array.prototype.insertAt = function (index, ...items) {
+        return this.splice(index, 0, ...items);
+    };
+    Array.prototype.removeAt = function (index) {
+        return this.splice(index, 1)[0];
+    };
+    Array.prototype.remove = function (item) {
+        const index = this.indexOf(item);
         if (index !== -1) {
-            arr.splice(index, 1);
+            this.splice(index, 1);
         }
-    }
+    };
 
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -358,13 +352,6 @@ var Utils = (function (exports) {
     };
 
     exports.ReactAutomation = ReactAutomation;
-    exports.arrFirst = arrFirst;
-    exports.arrFirstOr = arrFirstOr;
-    exports.arrInsertAt = arrInsertAt;
-    exports.arrLast = arrLast;
-    exports.arrLastOr = arrLastOr;
-    exports.arrRemove = arrRemove;
-    exports.arrRemoveAt = arrRemoveAt;
     exports.base64Encode = base64Encode;
     exports.convertImageToJpg = convertImageToJpg;
     exports.createDocumentFromHTML = createDocumentFromHTML;

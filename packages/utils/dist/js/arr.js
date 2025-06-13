@@ -1,65 +1,30 @@
-/**
- * @template T
- * @param {T[]} arr
- * @returns {T}
- */
-export function arrFirst(arr) {
-    return arr[0];
-}
-/**
- * @template T
- * @param {T[]} arr
- * @param {T | null} [defaultValue=null]
- * @returns {T | null}
- */
-export function arrFirstOr(arr, defaultValue = null) {
-    return arr.length ? arr[0] : defaultValue;
-}
-/**
- * @template T
- * @param {T[]} arr
- * @returns {T}
- */
-export function arrLast(arr) {
-    return arr[arr.length - 1];
-}
-/**
- * @template T
- * @param {T[]} arr
- * @param {T | null} [defaultValue=null]
- * @returns {T | null}
- */
-export function arrLastOr(arr, defaultValue = null) {
-    return arr.length ? arr[arr.length - 1] : defaultValue;
-}
-/**
- * @template T
- * @param {T[]} arr
- * @param {number} index
- * @returns {T}
- */
-export function arrRemoveAt(arr, index) {
-    return arr.splice(index, 1)[0];
-}
-/**
- * @template T
- * @param {T[]} arr
- * @param {number} index
- * @param {...T} [items]
- * @returns {void}
- */
-export function arrInsertAt(arr, index, ...items) {
-    arr.splice(index, 0, ...items);
-}
-/**
- * @template T
- * @param {T[]} arr
- * @param {T} item
- * @returns {void}
- */
-export function arrRemove(arr, item) {
-    const index = arr.indexOf(item);
+"use strict";
+Array.prototype.first = function () {
+    return this[0];
+};
+Array.prototype.last = function () {
+    return this[this.length - 1];
+};
+Array.prototype.insertAt = function (index, ...items) {
+    return this.splice(index, 0, ...items);
+};
+Array.prototype.removeAt = function (index) {
+    return this.splice(index, 1)[0];
+};
+Array.prototype.remove = function (item) {
+    const index = this.indexOf(item);
     if (index !== -1) {
-        arr.splice(index, 1);
+        this.splice(index, 1);
     }
-}
+};
+/**
+ * @namespace global
+ */
+/**
+ * @typedef {Object} global.Array
+ * @property {() => T | undefined} first
+ * @property {() => T | undefined} last
+ * @property {(index: number, ...items: T[]) => void} insertAt
+ * @property {(index: number) => T | undefined} removeAt
+ * @property {(item: T) => void} remove
+ */
