@@ -2,8 +2,7 @@ import { hasKey, isObject } from '@lib/utils';
 import { XMLNamespaces } from './namespaces';
 import { Observable, Val } from './observable';
 import type { CustomRenderFn, ShowProps } from './reactive';
-import { For, renderFor, renderShow, renderWith, Show, With } from './reactive';
-import { ReactiveNode } from './reactive';
+import { For, ReactiveNode, renderFor, renderShow, renderWith, Show, With } from './reactive';
 import type {
     DOMNode,
     DOMProps,

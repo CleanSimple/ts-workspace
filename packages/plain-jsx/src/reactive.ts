@@ -10,8 +10,7 @@ export class ReactiveNode {
         if (rNode === null || (Array.isArray(rNode) && rNode.length === 0)) {
             // optimized clear path
             if (this.children.has(this.placeholder)) {
-                // we are already cleared
-                return;
+                return; // we are already cleared
             }
 
             const first = this.children.values().next().value;
@@ -31,11 +30,11 @@ export class ReactiveNode {
         const first = this.children.values().next().value;
         const parent = first?.parentNode;
         if (parent) {
-            const childNodes = parent.childNodes;
+            const domChildren = parent.childNodes;
             const currentChildrenSet = this.children;
 
             if (
-                currentChildrenSet.size === childNodes.length
+                currentChildrenSet.size === domChildren.length
                 && newChildrenSet.isDisjointFrom(currentChildrenSet)
             ) {
                 // optimized replace path
@@ -44,11 +43,12 @@ export class ReactiveNode {
             else {
                 const fragment = document.createDocumentFragment(); // used in bulk updates
                 const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
-                const replacedSet = new Set();
+                const replacedSet = new Set<ChildNode>();
 
-                const start = Array.prototype.indexOf.call(childNodes, first);
+                const start = Array.prototype.indexOf.call(domChildren, first);
                 for (let i = 0; i < replaceCount; ++i) {
-                    const child = childNodes[start + i];
+                    const child = domChildren[start + i];
+                    const newChild = newChildren[i];
                     if (!child) {
                         parent.append(...newChildren.slice(i));
                         break;
@@ -58,22 +58,20 @@ export class ReactiveNode {
                         parent.insertBefore(fragment, child);
                         break;
                     }
-                    else if (child !== newChildren[i]) {
-                        if (!replacedSet.has(newChildren[i])) {
-                            parent.replaceChild(newChildren[i], child);
+                    else if (child !== newChild) {
+                        if (!replacedSet.has(newChild)) {
+                            parent.replaceChild(newChild, child);
                             replacedSet.add(child);
                         }
                         else {
-                            parent.insertBefore(newChildren[i], child);
+                            parent.insertBefore(newChild, child);
                         }
                     }
                 }
 
                 if (currentChildrenSet.size > newChildren.length) {
                     // appending the excess children to the fragment will move them from their current parent to the fragment effectively removing them.
-                    fragment.append(
-                        ...currentChildrenSet.difference(newChildrenSet),
-                    );
+                    fragment.append(...currentChildrenSet.difference(newChildrenSet));
                 }
                 else if (currentChildrenSet.size < newChildren.length) {
                     fragment.append(...newChildren.slice(replaceCount));
@@ -86,9 +84,7 @@ export class ReactiveNode {
     }
 
     public getRoot(): ChildNode[] {
-        if (!this.children.size) {
-            throw new Error('?!?!?!?');
-        }
+        if (!this.children.size) throw new Error('?!?!?!?');
         return [...this.children];
     }
 }

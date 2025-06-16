@@ -171,9 +171,9 @@ var PlainJSX = (function (exports) {
             const first = this.children.values().next().value;
             const parent = first?.parentNode;
             if (parent) {
-                const childNodes = parent.childNodes;
+                const domChildren = parent.childNodes;
                 const currentChildrenSet = this.children;
-                if (currentChildrenSet.size === childNodes.length
+                if (currentChildrenSet.size === domChildren.length
                     && newChildrenSet.isDisjointFrom(currentChildrenSet)) {
                     // optimized replace path
                     parent.replaceChildren(...newChildren);
@@ -182,9 +182,10 @@ var PlainJSX = (function (exports) {
                     const fragment = document.createDocumentFragment(); // used in bulk updates
                     const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
                     const replacedSet = new Set();
-                    const start = Array.prototype.indexOf.call(childNodes, first);
+                    const start = Array.prototype.indexOf.call(domChildren, first);
                     for (let i = 0; i < replaceCount; ++i) {
-                        const child = childNodes[start + i];
+                        const child = domChildren[start + i];
+                        const newChild = newChildren[i];
                         if (!child) {
                             parent.append(...newChildren.slice(i));
                             break;
@@ -194,13 +195,13 @@ var PlainJSX = (function (exports) {
                             parent.insertBefore(fragment, child);
                             break;
                         }
-                        else if (child !== newChildren[i]) {
-                            if (!replacedSet.has(newChildren[i])) {
-                                parent.replaceChild(newChildren[i], child);
+                        else if (child !== newChild) {
+                            if (!replacedSet.has(newChild)) {
+                                parent.replaceChild(newChild, child);
                                 replacedSet.add(child);
                             }
                             else {
-                                parent.insertBefore(newChildren[i], child);
+                                parent.insertBefore(newChild, child);
                             }
                         }
                     }
@@ -217,9 +218,8 @@ var PlainJSX = (function (exports) {
             this.children = newChildrenSet;
         }
         getRoot() {
-            if (!this.children.size) {
+            if (!this.children.size)
                 throw new Error('?!?!?!?');
-            }
             return [...this.children];
         }
     }
