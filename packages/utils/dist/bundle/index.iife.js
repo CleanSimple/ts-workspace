@@ -298,14 +298,36 @@ var Utils = (function (exports) {
             .join('');
         return window.btoa(binaryString);
     }
-    function downloadFile(filename, textContent, mimeType) {
+    function downloadText(filename, content, mimeType) {
         const elem = document.createElement('a');
-        elem.href = `data:${mimeType};base64,` + base64Encode(textContent);
+        elem.href = `data:${mimeType};base64,` + base64Encode(content);
         elem.download = filename;
         elem.style.display = 'none';
         document.body.appendChild(elem);
         elem.click();
         document.body.removeChild(elem);
+    }
+    function downloadBlob(filename, content, mimeType) {
+        const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+        const elem = document.createElement('a');
+        elem.href = url;
+        elem.download = filename;
+        elem.style.display = 'none';
+        document.body.appendChild(elem);
+        elem.click();
+        document.body.removeChild(elem);
+        URL.revokeObjectURL(url);
+    }
+    function downloadArrayBuffer(filename, content, mimeType) {
+        const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+        const elem = document.createElement('a');
+        elem.href = url;
+        elem.download = filename;
+        elem.style.display = 'none';
+        document.body.appendChild(elem);
+        elem.click();
+        document.body.removeChild(elem);
+        URL.revokeObjectURL(url);
     }
     async function fileSelect(accept = '', multiple = false) {
         return new Promise((resolve) => {
@@ -368,7 +390,9 @@ var Utils = (function (exports) {
     exports.dateToTimeString = dateToTimeString;
     exports.dateToWeekDay = dateToWeekDay;
     exports.debounce = debounce;
-    exports.downloadFile = downloadFile;
+    exports.downloadArrayBuffer = downloadArrayBuffer;
+    exports.downloadBlob = downloadBlob;
+    exports.downloadText = downloadText;
     exports.dropDuplicates = dropDuplicates;
     exports.fail = fail;
     exports.fileSelect = fileSelect;

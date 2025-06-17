@@ -295,14 +295,36 @@ function base64Encode(string) {
         .join('');
     return window.btoa(binaryString);
 }
-function downloadFile(filename, textContent, mimeType) {
+function downloadText(filename, content, mimeType) {
     const elem = document.createElement('a');
-    elem.href = `data:${mimeType};base64,` + base64Encode(textContent);
+    elem.href = `data:${mimeType};base64,` + base64Encode(content);
     elem.download = filename;
     elem.style.display = 'none';
     document.body.appendChild(elem);
     elem.click();
     document.body.removeChild(elem);
+}
+function downloadBlob(filename, content, mimeType) {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const elem = document.createElement('a');
+    elem.href = url;
+    elem.download = filename;
+    elem.style.display = 'none';
+    document.body.appendChild(elem);
+    elem.click();
+    document.body.removeChild(elem);
+    URL.revokeObjectURL(url);
+}
+function downloadArrayBuffer(filename, content, mimeType) {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const elem = document.createElement('a');
+    elem.href = url;
+    elem.download = filename;
+    elem.style.display = 'none';
+    document.body.appendChild(elem);
+    elem.click();
+    document.body.removeChild(elem);
+    URL.revokeObjectURL(url);
 }
 async function fileSelect(accept = '', multiple = false) {
     return new Promise((resolve) => {
@@ -348,4 +370,4 @@ const ReactAutomation = {
     setInputValue,
 };
 
-export { ReactAutomation, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, downloadFile, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };
+export { ReactAutomation, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, downloadArrayBuffer, downloadBlob, downloadText, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };

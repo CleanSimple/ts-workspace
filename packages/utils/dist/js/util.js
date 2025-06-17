@@ -36,18 +36,52 @@ export function base64Encode(string) {
 }
 /**
  * @param {string} filename
- * @param {string} textContent
+ * @param {string} content
  * @param {string} mimeType
  * @returns {void}
  */
-export function downloadFile(filename, textContent, mimeType) {
+export function downloadText(filename, content, mimeType) {
     const elem = document.createElement('a');
-    elem.href = `data:${mimeType};base64,` + base64Encode(textContent);
+    elem.href = `data:${mimeType};base64,` + base64Encode(content);
     elem.download = filename;
     elem.style.display = 'none';
     document.body.appendChild(elem);
     elem.click();
     document.body.removeChild(elem);
+}
+/**
+ * @param {string} filename
+ * @param {Blob} content
+ * @param {string} mimeType
+ * @returns {void}
+ */
+export function downloadBlob(filename, content, mimeType) {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const elem = document.createElement('a');
+    elem.href = url;
+    elem.download = filename;
+    elem.style.display = 'none';
+    document.body.appendChild(elem);
+    elem.click();
+    document.body.removeChild(elem);
+    URL.revokeObjectURL(url);
+}
+/**
+ * @param {string} filename
+ * @param {ArrayBuffer} content
+ * @param {string} mimeType
+ * @returns {void}
+ */
+export function downloadArrayBuffer(filename, content, mimeType) {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const elem = document.createElement('a');
+    elem.href = url;
+    elem.download = filename;
+    elem.style.display = 'none';
+    document.body.appendChild(elem);
+    elem.click();
+    document.body.removeChild(elem);
+    URL.revokeObjectURL(url);
 }
 /**
  * @param {string} [accept='']

@@ -20,15 +20,46 @@ export function base64Encode(string: string): string {
     return window.btoa(binaryString);
 }
 
-export function downloadFile(filename: string, textContent: string, mimeType: string): void {
+export function downloadText(filename: string, content: string, mimeType: string): void {
     const elem = document.createElement('a');
-    elem.href = `data:${mimeType};base64,` + base64Encode(textContent);
+
+    elem.href = `data:${mimeType};base64,` + base64Encode(content);
     elem.download = filename;
     elem.style.display = 'none';
 
     document.body.appendChild(elem);
     elem.click();
     document.body.removeChild(elem);
+}
+
+export function downloadBlob(filename: string, content: Blob, mimeType: string) {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const elem = document.createElement('a');
+
+    elem.href = url;
+    elem.download = filename;
+    elem.style.display = 'none';
+
+    document.body.appendChild(elem);
+    elem.click();
+    document.body.removeChild(elem);
+
+    URL.revokeObjectURL(url);
+}
+
+export function downloadArrayBuffer(filename: string, content: ArrayBuffer, mimeType: string) {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const elem = document.createElement('a');
+
+    elem.href = url;
+    elem.download = filename;
+    elem.style.display = 'none';
+
+    document.body.appendChild(elem);
+    elem.click();
+    document.body.removeChild(elem);
+
+    URL.revokeObjectURL(url);
 }
 
 export async function fileSelect(accept = '', multiple = false): Promise<FileList | null> {

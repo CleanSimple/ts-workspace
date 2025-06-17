@@ -3,7 +3,9 @@ export declare function hasKey<T extends object>(obj: T, key: PropertyKey): key 
 export declare function fail(error: Error): never;
 export declare function rndInt(min: number, max: number): number;
 export declare function base64Encode(string: string): string;
-export declare function downloadFile(filename: string, textContent: string, mimeType: string): void;
+export declare function downloadText(filename: string, content: string, mimeType: string): void;
+export declare function downloadBlob(filename: string, content: Blob, mimeType: string): void;
+export declare function downloadArrayBuffer(filename: string, content: ArrayBuffer, mimeType: string): void;
 export declare function fileSelect(accept?: string, multiple?: boolean): Promise<FileList | null>;
 export declare function debounce<T extends (...args: never[]) => void>(func: T, timeout: number): T;
 export declare function isPrimitive(value: unknown): value is Primitive;
