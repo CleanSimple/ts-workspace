@@ -34,6 +34,8 @@ export default tseslint.config(
                 ignoreOverrideMethods: true,
                 ignoreClassesThatImplementAnInterface: 'public-fields',
             }],
+            '@typescript-eslint/no-inferrable-types': 'off',
+            '@typescript-eslint/prefer-regexp-exec': 'off',
         },
     },
 );
