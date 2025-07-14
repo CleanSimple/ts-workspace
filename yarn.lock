@@ -2664,12 +2664,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"linkedin-resume-downloader@workspace:private-ts-projects/linkedin-resume-downloader":
+"linkedin-resume-downloader@workspace:private-ts-projects/linkedin-automation":
   version: 0.0.0-use.local
-  resolution: "linkedin-resume-downloader@workspace:private-ts-projects/linkedin-resume-downloader"
+  resolution: "linkedin-resume-downloader@workspace:private-ts-projects/linkedin-automation"
   dependencies:
     "@lib/dprint-config": "workspace:^"
     "@lib/eslint-config": "workspace:^"
+    "@lib/plain-jsx": "workspace:^"
     "@lib/rollup-config": "workspace:^"
     "@lib/typescript-config": "workspace:^"
     "@lib/utils": "workspace:^"

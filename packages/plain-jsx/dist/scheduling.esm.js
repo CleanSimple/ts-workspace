@@ -3,7 +3,7 @@ let queued = false;
 function runNextTickCallbacks() {
     queued = false;
     for (const callback of callbacks) {
-        callback();
+        void callback();
     }
     callbacks = [];
 }

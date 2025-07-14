@@ -6,7 +6,7 @@ var PlainJSX = (function (exports) {
     function runNextTickCallbacks() {
         queued = false;
         for (const callback of callbacks) {
-            callback();
+            void callback();
         }
         callbacks = [];
     }
@@ -153,8 +153,7 @@ var PlainJSX = (function (exports) {
             if (rNode === null || (Array.isArray(rNode) && rNode.length === 0)) {
                 // optimized clear path
                 if (this.children.has(this.placeholder)) {
-                    // we are already cleared
-                    return;
+                    return; // we are already cleared
                 }
                 const first = this.children.values().next().value;
                 const parent = first?.parentNode;

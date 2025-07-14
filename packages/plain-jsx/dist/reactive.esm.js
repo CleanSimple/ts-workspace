@@ -8,8 +8,7 @@ class ReactiveNode {
         if (rNode === null || (Array.isArray(rNode) && rNode.length === 0)) {
             // optimized clear path
             if (this.children.has(this.placeholder)) {
-                // we are already cleared
-                return;
+                return; // we are already cleared
             }
             const first = this.children.values().next().value;
             const parent = first?.parentNode;

@@ -1,12 +1,13 @@
-import type { Action } from '@lib/utils';
+import type { MaybePromise } from '@lib/utils';
 
+type Action = () => MaybePromise<void>;
 let callbacks = new Array<Action>();
 let queued = false;
 
 function runNextTickCallbacks() {
     queued = false;
     for (const callback of callbacks) {
-        callback();
+        void callback();
     }
     callbacks = [];
 }
