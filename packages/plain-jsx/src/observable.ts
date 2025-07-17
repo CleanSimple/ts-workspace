@@ -12,6 +12,10 @@ export abstract class Observable<T> {
     public abstract get value(): T;
 
     public abstract subscribe(observer: Observer<T>, immediate?: boolean): Subscription;
+
+    public computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed> {
+        return new ComputedSingle(compute, this);
+    }
 }
 
 /** internal use */
@@ -92,23 +96,19 @@ export class Val<T> extends ObservableImpl<T> {
         this._value = newValue;
         this.onUpdated();
     }
-
-    public computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed> {
-        return new ComputedVal(compute, this);
-    }
 }
 
 /** internal use */
-class ComputedVal<TVal, TComputed> extends Observable<TComputed> {
-    private readonly val: Val<TVal>;
+class ComputedSingle<TVal, TComputed> extends Observable<TComputed> {
+    private readonly observable: Observable<TVal>;
     private readonly compute: (value: TVal) => TComputed;
     private _value: TComputed;
 
-    public constructor(compute: (value: TVal) => TComputed, val: Val<TVal>) {
+    public constructor(compute: (value: TVal) => TComputed, observable: Observable<TVal>) {
         super();
         this.compute = compute;
-        this.val = val;
-        this._value = compute(val.value);
+        this.observable = observable;
+        this._value = compute(observable.value);
     }
 
     public override get value(): TComputed {
@@ -116,7 +116,7 @@ class ComputedVal<TVal, TComputed> extends Observable<TComputed> {
     }
 
     public override subscribe(observer: Observer<TComputed>, immediate?: boolean): Subscription {
-        return this.val.subscribe((value) => {
+        return this.observable.subscribe((value) => {
             this._value = this.compute(value);
             observer(this._value);
         }, immediate);

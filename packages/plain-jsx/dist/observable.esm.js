@@ -1,6 +1,9 @@
 import { nextTick } from './scheduling.esm.js';
 
 class Observable {
+    computed(compute) {
+        return new ComputedSingle(compute, this);
+    }
 }
 /** internal use */
 class ObservableImpl extends Observable {
@@ -70,26 +73,23 @@ class Val extends ObservableImpl {
         this._value = newValue;
         this.onUpdated();
     }
-    computed(compute) {
-        return new ComputedVal(compute, this);
-    }
 }
 /** internal use */
-class ComputedVal extends Observable {
-    val;
+class ComputedSingle extends Observable {
+    observable;
     compute;
     _value;
-    constructor(compute, val) {
+    constructor(compute, observable) {
         super();
         this.compute = compute;
-        this.val = val;
-        this._value = compute(val.value);
+        this.observable = observable;
+        this._value = compute(observable.value);
     }
     get value() {
         return this._value;
     }
     subscribe(observer, immediate) {
-        return this.val.subscribe((value) => {
+        return this.observable.subscribe((value) => {
             this._value = this.compute(value);
             observer(this._value);
         }, immediate);

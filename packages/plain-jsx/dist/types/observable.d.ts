@@ -7,6 +7,7 @@ export type Observer<T> = (value: T) => void;
 export declare abstract class Observable<T> {
     abstract get value(): T;
     abstract subscribe(observer: Observer<T>, immediate?: boolean): Subscription;
+    computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed>;
 }
 /** internal use */
 declare abstract class ObservableImpl<T> extends Observable<T> {
@@ -28,7 +29,6 @@ export declare class Val<T> extends ObservableImpl<T> {
     constructor(initialValue: T);
     get value(): T;
     set value(newValue: T);
-    computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed>;
 }
 type ObservableParameters<T extends AnyFunc, P = Parameters<T>> = {
     [K in keyof P]: Observable<P[K]>;

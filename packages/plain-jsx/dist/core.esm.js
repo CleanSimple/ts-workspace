@@ -170,12 +170,19 @@ function setProps(elem, props) {
                     elem[key] = value;
                 });
                 // two way updates for input element
-                if (value instanceof Val
-                    && ((elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
-                        || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key)))) {
-                    elem.addEventListener('change', (e) => {
-                        value.value = e.target[key];
-                    });
+                if ((elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
+                    || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))) {
+                    if (value instanceof Val) {
+                        elem.addEventListener('change', (e) => {
+                            value.value = e.target[key];
+                        });
+                    }
+                    else {
+                        elem.addEventListener('change', (e) => {
+                            e.preventDefault();
+                            e.target[key] = value.value;
+                        });
+                    }
                 }
                 elemObj[key] = value.value;
             }

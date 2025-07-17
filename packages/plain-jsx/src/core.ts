@@ -221,15 +221,20 @@ function setProps(elem: HTMLElement, props: PropsType) {
 
                 // two way updates for input element
                 if (
-                    value instanceof Val
-                    && (
-                        (elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
-                        || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))
-                    )
+                    (elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
+                    || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))
                 ) {
-                    elem.addEventListener('change', (e: Event) => {
-                        value.value = (e.target as HTMLInputElement)[key];
-                    });
+                    if (value instanceof Val) {
+                        elem.addEventListener('change', (e: Event) => {
+                            value.value = (e.target as HTMLInputElement)[key];
+                        });
+                    }
+                    else {
+                        elem.addEventListener('change', (e: Event) => {
+                            e.preventDefault();
+                            (e.target as unknown as Record<string, unknown>)[key] = value.value;
+                        });
+                    }
                 }
 
                 elemObj[key] = value.value;
