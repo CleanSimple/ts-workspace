@@ -1,6 +1,7 @@
-import type { Action, AnyFunc } from '@lib/utils';
+import type { Action } from '@lib/utils';
 import type { FunctionalComponent } from '.';
 import { nextTick } from './scheduling';
+import { _Sentinel, Sentinel } from './sentinel';
 
 export interface Subscription {
     unsubscribe: Action;
@@ -123,32 +124,39 @@ class ComputedSingle<TVal, TComputed> extends Observable<TComputed> {
     }
 }
 
-type ObservableParameters<T extends AnyFunc, P = Parameters<T>> = {
-    [K in keyof P]: Observable<P[K]>;
+type ObservablesOf<T extends readonly unknown[]> = {
+    [K in keyof T]: Observable<T[K]>;
 };
 
 /** internal use */
-class Computed<R, T extends (...args: unknown[]) => R> extends ObservableImpl<R> {
-    public readonly observables: ObservableParameters<T>;
-    public readonly compute: T;
-    private _value: R | null;
+class Computed<T extends readonly unknown[], R> extends ObservableImpl<R> {
+    public readonly observables: ObservablesOf<T>;
+    public readonly compute: (...values: T) => R;
+    private _value: R | Sentinel;
 
-    public constructor(compute: T, observables: ObservableParameters<T>) {
+    public constructor(
+        observables: ObservablesOf<T>,
+        compute: (...values: T) => R,
+    ) {
         super();
         this.compute = compute;
         this.observables = observables;
-        this._value = null;
+        this._value = _Sentinel;
 
         for (const observable of observables) {
             observable.subscribe(() => {
-                this._value = null;
+                this._value = _Sentinel;
                 this.onUpdated();
             }, true);
         }
     }
 
     public override get value(): R {
-        this._value ??= this.compute(...this.observables.map(observable => observable.value));
+        if (this._value instanceof Sentinel) {
+            this._value = this.compute(
+                ...this.observables.map(observable => observable.value) as unknown as T,
+            );
+        }
         return this._value;
     }
 }
@@ -157,11 +165,11 @@ export function val<T>(initialValue: T) {
     return new Val<T>(initialValue);
 }
 
-export function computed<T extends AnyFunc>(
-    compute: T,
-    ...observables: ObservableParameters<T>
-): Observable<ReturnType<T>> {
-    return new Computed(compute, observables);
+export function computed<T extends readonly unknown[], R>(
+    observables: ObservablesOf<T>,
+    compute: (...values: T) => R,
+): Observable<R> {
+    return new Computed(observables, compute);
 }
 
 export function ref<

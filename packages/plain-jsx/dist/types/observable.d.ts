@@ -1,4 +1,4 @@
-import type { Action, AnyFunc } from '@lib/utils';
+import type { Action } from '@lib/utils';
 import type { FunctionalComponent } from '.';
 export interface Subscription {
     unsubscribe: Action;
@@ -30,10 +30,10 @@ export declare class Val<T> extends ObservableImpl<T> {
     get value(): T;
     set value(newValue: T);
 }
-type ObservableParameters<T extends AnyFunc, P = Parameters<T>> = {
-    [K in keyof P]: Observable<P[K]>;
+type ObservablesOf<T extends readonly unknown[]> = {
+    [K in keyof T]: Observable<T[K]>;
 };
 export declare function val<T>(initialValue: T): Val<T>;
-export declare function computed<T extends AnyFunc>(compute: T, ...observables: ObservableParameters<T>): Observable<ReturnType<T>>;
+export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
 export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Observable<U | null>;
 export {};

@@ -1,4 +1,5 @@
 import { nextTick } from './scheduling.esm.js';
+import { _Sentinel, Sentinel } from './sentinel.esm.js';
 
 class Observable {
     computed(compute) {
@@ -100,28 +101,30 @@ class Computed extends ObservableImpl {
     observables;
     compute;
     _value;
-    constructor(compute, observables) {
+    constructor(observables, compute) {
         super();
         this.compute = compute;
         this.observables = observables;
-        this._value = null;
+        this._value = _Sentinel;
         for (const observable of observables) {
             observable.subscribe(() => {
-                this._value = null;
+                this._value = _Sentinel;
                 this.onUpdated();
             }, true);
         }
     }
     get value() {
-        this._value ??= this.compute(...this.observables.map(observable => observable.value));
+        if (this._value instanceof Sentinel) {
+            this._value = this.compute(...this.observables.map(observable => observable.value));
+        }
         return this._value;
     }
 }
 function val(initialValue) {
     return new Val(initialValue);
 }
-function computed(compute, ...observables) {
-    return new Computed(compute, observables);
+function computed(observables, compute) {
+    return new Computed(observables, compute);
 }
 function ref() {
     return new Val(null);
