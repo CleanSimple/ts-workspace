@@ -1,13 +1,12 @@
 import { isObject, hasKey } from '@lib/utils';
 import { XMLNamespaces } from './namespaces.esm.js';
 import { Val, Observable } from './observable.esm.js';
-import { Show, renderShow, With, renderWith, For, renderFor, ReactiveNode } from './reactive.esm.js';
+import { Show, renderShow, For, renderFor, ReactiveNode } from './reactive.esm.js';
 
 const Fragment = 'Fragment';
 /* built-in components that have special handling */
 const BuiltinComponents = new Map([
     [Show, renderShow],
-    [With, renderWith],
     [For, renderFor],
 ]);
 function jsx(type, props) {

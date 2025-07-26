@@ -233,10 +233,6 @@ var PlainJSX = (function (exports) {
     }
     const Show = 'Show';
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    function With(props) {
-        throw new Error('This component cannot be called directly — it must be used through the render function.');
-    }
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     function For(props) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
@@ -286,7 +282,6 @@ var PlainJSX = (function (exports) {
     exports.For = For;
     exports.Fragment = Fragment;
     exports.Show = Show;
-    exports.With = With;
     exports.computed = computed;
     exports.nextTick = nextTick;
     exports.ref = ref;

@@ -80,9 +80,6 @@ class ReactiveNode {
 const Show = 'Show';
 const renderShow = (props, children, renderChildren) => {
     const { when, cache } = props;
-    if (when instanceof Observable === false) {
-        throw new Error("The 'when' prop on <Show> is required and must be an Observable.");
-    }
     const childrenOrFn = children;
     const getChildren = typeof childrenOrFn === 'function' ? childrenOrFn : () => childrenOrFn;
     let childNodes = null;
@@ -90,32 +87,19 @@ const renderShow = (props, children, renderChildren) => {
         ? () => renderChildren(getChildren())
         : () => childNodes ??= renderChildren(getChildren());
     const reactiveNode = new ReactiveNode();
-    if (when.value) {
-        reactiveNode.update(render());
+    if (when instanceof Observable) {
+        if (when.value) {
+            reactiveNode.update(render());
+        }
+        when.subscribe((value) => {
+            reactiveNode.update(value ? render() : null);
+        });
     }
-    when.subscribe((value) => {
-        reactiveNode.update(value ? render() : null);
-    });
-    return reactiveNode.getRoot();
-};
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function With(props) {
-    throw new Error('This component cannot be called directly — it must be used through the render function.');
-}
-const renderWith = (props, children, renderChildren) => {
-    const { value } = props;
-    if (value instanceof Observable === false) {
-        throw new Error("The 'value' prop on <With> is required and must be an Observable.");
+    else {
+        if (when) {
+            reactiveNode.update(render());
+        }
     }
-    if (typeof children !== 'function') {
-        throw new Error('The <With> component must have exactly one child — a function that maps the value.');
-    }
-    const mapFn = children;
-    const reactiveNode = new ReactiveNode();
-    reactiveNode.update(renderChildren(mapFn(value.value)));
-    value.subscribe((value) => {
-        reactiveNode.update(renderChildren(mapFn(value)));
-    });
     return reactiveNode.getRoot();
 };
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -156,4 +140,4 @@ const renderFor = (props, children, renderChildren) => {
     return reactiveNode.getRoot();
 };
 
-export { For, ReactiveNode, Show, With, renderFor, renderShow, renderWith };
+export { For, ReactiveNode, Show, renderFor, renderShow };

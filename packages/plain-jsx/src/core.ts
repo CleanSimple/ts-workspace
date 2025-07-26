@@ -2,7 +2,7 @@ import { hasKey, isObject } from '@lib/utils';
 import { XMLNamespaces } from './namespaces';
 import { Observable, Val } from './observable';
 import type { CustomRenderFn, ShowProps } from './reactive';
-import { For, ReactiveNode, renderFor, renderShow, renderWith, Show, With } from './reactive';
+import { For, ReactiveNode, renderFor, renderShow, Show } from './reactive';
 import type {
     DOMNode,
     DOMProps,
@@ -20,7 +20,6 @@ export const Fragment = 'Fragment';
 const BuiltinComponents = new Map<unknown, CustomRenderFn>(
     [
         [Show, renderShow],
-        [With, renderWith],
         [For, renderFor],
     ],
 );

@@ -97,7 +97,7 @@ export type CustomRenderFn = (
 
 /* Show */
 export interface ShowProps {
-    when: Observable<boolean>;
+    when: boolean | Observable<boolean>;
     /**
      * - `true`: (default) Cache the children on the first show and re-use each time they are shown.
      * - `false`: No caching, children get rendered each time they are shown.
@@ -114,9 +114,6 @@ export const renderShow: CustomRenderFn = (
     renderChildren: (children: VNodeChildren) => ChildNode[],
 ): RNode => {
     const { when, cache }: Partial<ShowProps> = props;
-    if (when instanceof Observable === false) {
-        throw new Error("The 'when' prop on <Show> is required and must be an Observable.");
-    }
 
     const childrenOrFn: ShowProps['children'] = children;
     const getChildren = typeof childrenOrFn === 'function' ? childrenOrFn : () => childrenOrFn;
@@ -128,54 +125,20 @@ export const renderShow: CustomRenderFn = (
 
     const reactiveNode = new ReactiveNode();
 
-    if (when.value) {
-        reactiveNode.update(render());
+    if (when instanceof Observable) {
+        if (when.value) {
+            reactiveNode.update(render());
+        }
+
+        when.subscribe((value) => {
+            reactiveNode.update(value ? render() : null);
+        });
     }
-
-    when.subscribe((value) => {
-        reactiveNode.update(value ? render() : null);
-    });
-
-    return reactiveNode.getRoot();
-};
-
-/* With */
-export interface WithProps<T> {
-    value: Observable<T>;
-    children: (value: T) => VNode;
-}
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function With<T>(props: WithProps<T>): VNode {
-    throw new Error(
-        'This component cannot be called directly — it must be used through the render function.',
-    );
-}
-
-export const renderWith: CustomRenderFn = (
-    props: PropsType,
-    children: VNodeChildren,
-    renderChildren: (children: VNodeChildren) => ChildNode[],
-): RNode => {
-    const { value }: Partial<WithProps<unknown>> = props;
-    if (value instanceof Observable === false) {
-        throw new Error("The 'value' prop on <With> is required and must be an Observable.");
+    else {
+        if (when) {
+            reactiveNode.update(render());
+        }
     }
-
-    if (typeof children !== 'function') {
-        throw new Error(
-            'The <With> component must have exactly one child — a function that maps the value.',
-        );
-    }
-    const mapFn: WithProps<unknown>['children'] = children;
-
-    const reactiveNode = new ReactiveNode();
-
-    reactiveNode.update(renderChildren(mapFn(value.value)));
-
-    value.subscribe((value) => {
-        reactiveNode.update(renderChildren(mapFn(value)));
-    });
 
     return reactiveNode.getRoot();
 };
