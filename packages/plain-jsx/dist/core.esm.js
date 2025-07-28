@@ -1,7 +1,7 @@
 import { isObject, hasKey } from '@lib/utils';
 import { XMLNamespaces } from './namespaces.esm.js';
 import { Val, Observable } from './observable.esm.js';
-import { Show, renderShow, For, renderFor, ReactiveNode } from './reactive.esm.js';
+import { resolveReactiveNodes, Show, renderShow, For, renderFor, ReactiveNode } from './reactive.esm.js';
 
 const Fragment = 'Fragment';
 /* built-in components that have special handling */
@@ -16,7 +16,7 @@ function jsx(type, props) {
 }
 // export let initialRenderDone = false;
 function render(root, vNode) {
-    root.append(...renderChildren(vNode));
+    root.append(...resolveReactiveNodes(renderChildren(vNode)));
     // initialRenderDone = true;
 }
 function renderVNode(type, props, children) {
@@ -51,7 +51,7 @@ function renderVNode(type, props, children) {
             props['ref'] = undefined;
         }
         setProps(domElement, props);
-        domElement.append(...renderChildren(children));
+        domElement.append(...resolveReactiveNodes(renderChildren(children)));
         return domElement;
     }
 }
@@ -82,7 +82,7 @@ function renderChildren(children) {
                     reactiveNode.update(children);
                 }
             });
-            childNodes.push(...reactiveNode.getRoot());
+            childNodes.push(reactiveNode);
         }
         else {
             childNodes.push(vNode);

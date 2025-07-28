@@ -1,13 +1,14 @@
 import type { MethodsOf, ReadonlyProps } from '@lib/utils';
 import type { Properties as CSS } from 'csstype';
 import type { Observable } from './observable';
+import type { ReactiveNode } from './reactive';
 export type PropsType = Record<string, unknown>;
 export type DOMNode = Observable<VNode> | ChildNode | string | number | boolean | null | undefined;
 export type VNode = VNode[] | DOMNode;
 export type VNodeChildren = VNode | VNode[];
 export type FunctionalComponent = (...args: unknown[]) => VNode;
-/** Represents a rendered VNode */
-export type RNode = ChildNode | ChildNode[] | null;
+export type IntermediateNode = ChildNode | ReactiveNode;
+export type IntermediateChildren = IntermediateNode | IntermediateNode[] | null;
 export interface Component {
     id: number;
     ref?: unknown;

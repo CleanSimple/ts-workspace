@@ -1,12 +1,13 @@
 import { Observable } from './observable';
-import type { PropsType, RNode, VNode, VNodeChildren } from './types';
+import type { IntermediateChildren, IntermediateNode, PropsType, VNode, VNodeChildren } from './types';
 export declare class ReactiveNode {
     private readonly placeholder;
-    private children;
-    update(rNode: RNode): void;
-    getRoot(): ChildNode[];
+    private _children;
+    get children(): IntermediateNode[];
+    update(rNode: IntermediateNode[] | null): void;
 }
-export type CustomRenderFn = (props: PropsType, children: VNodeChildren, renderChildren: (children: VNodeChildren) => ChildNode[]) => RNode;
+export declare function resolveReactiveNodes(children: IntermediateNode[]): ChildNode[];
+export type CustomRenderFn = (props: PropsType, children: VNodeChildren, renderChildren: (children: VNodeChildren) => IntermediateNode[]) => IntermediateChildren;
 export interface ShowProps {
     when: boolean | Observable<boolean>;
     /**

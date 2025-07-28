@@ -2,13 +2,14 @@ import { hasKey, isObject } from '@lib/utils';
 import { XMLNamespaces } from './namespaces';
 import { Observable, Val } from './observable';
 import type { CustomRenderFn, ShowProps } from './reactive';
-import { For, ReactiveNode, renderFor, renderShow, Show } from './reactive';
+import { For, ReactiveNode, renderFor, renderShow, resolveReactiveNodes, Show } from './reactive';
 import type {
     DOMNode,
     DOMProps,
     FunctionalComponent,
+    IntermediateChildren,
+    IntermediateNode,
     PropsType,
-    RNode,
     SVGProps,
     VNode,
     VNodeChildren,
@@ -27,7 +28,7 @@ const BuiltinComponents = new Map<unknown, CustomRenderFn>(
 export function jsx(
     type: string | FunctionalComponent,
     props: { children?: VNodeChildren },
-): RNode {
+): IntermediateChildren {
     const { children } = props;
     props.children = undefined;
     return renderVNode(type, props, children);
@@ -37,7 +38,7 @@ export { jsx as jsxDEV, jsx as jsxs };
 
 // export let initialRenderDone = false;
 export function render(root: Element | DocumentFragment, vNode: VNode) {
-    root.append(...renderChildren(vNode));
+    root.append(...resolveReactiveNodes(renderChildren(vNode)));
     // initialRenderDone = true;
 }
 
@@ -45,7 +46,7 @@ function renderVNode(
     type: string | FunctionalComponent,
     props: PropsType,
     children: VNodeChildren,
-): RNode {
+): IntermediateChildren {
     const renderBuiltin = BuiltinComponents.get(type);
     if (renderBuiltin) {
         return renderBuiltin(props, children, renderChildren);
@@ -84,17 +85,17 @@ function renderVNode(
         }
 
         setProps(domElement as HTMLElement, props);
-        domElement.append(...renderChildren(children));
+        domElement.append(...resolveReactiveNodes(renderChildren(children)));
         return domElement;
     }
 }
 
-function renderChildren(children: VNodeChildren): ChildNode[] {
+function renderChildren(children: VNodeChildren): IntermediateNode[] {
     const normalizedChildren = Array.isArray(children)
         ? children.flat(10) as DOMNode[]
         : [children];
 
-    const childNodes: ChildNode[] = [];
+    const childNodes: IntermediateNode[] = [];
     for (const vNode of normalizedChildren) {
         if (vNode == null || typeof vNode === 'boolean') {
             continue;
@@ -122,7 +123,7 @@ function renderChildren(children: VNodeChildren): ChildNode[] {
                 }
             });
 
-            childNodes.push(...reactiveNode.getRoot());
+            childNodes.push(reactiveNode);
         }
         else {
             childNodes.push(vNode);

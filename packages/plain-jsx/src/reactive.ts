@@ -1,37 +1,49 @@
 import { MultiEntryCache } from './cache';
 import { Observable, type Val, val } from './observable';
-import type { PropsType, RNode, VNode, VNodeChildren } from './types';
+import type {
+    IntermediateChildren,
+    IntermediateNode,
+    PropsType,
+    VNode,
+    VNodeChildren,
+} from './types';
 
 export class ReactiveNode {
     private readonly placeholder = document.createComment('');
-    private children = new Set<ChildNode>([this.placeholder]);
+    private _children: IntermediateNode[] = [this.placeholder];
 
-    public update(rNode: RNode) {
-        if (rNode === null || (Array.isArray(rNode) && rNode.length === 0)) {
+    public get children() {
+        return this._children;
+    }
+
+    public update(rNode: IntermediateNode[] | null) {
+        const children = resolveReactiveNodes(this._children);
+
+        if (rNode === null || rNode.length === 0) {
             // optimized clear path
-            if (this.children.has(this.placeholder)) {
+            if (this._children.length === 1 && this._children[0] === this.placeholder) {
                 return; // we are already cleared
             }
 
-            const first = this.children.values().next().value;
+            const first = children.values().next().value;
             const parent = first?.parentNode;
             if (parent) {
                 parent.insertBefore(this.placeholder, first);
                 const fragment = document.createDocumentFragment();
-                fragment.append(...this.children);
+                fragment.append(...children);
             }
-            this.children = new Set([this.placeholder]);
+            this._children = [this.placeholder];
             return;
         }
 
-        const newChildren = Array.isArray(rNode) ? rNode : [rNode];
+        const newChildren = resolveReactiveNodes(rNode);
         const newChildrenSet = new Set(newChildren);
 
-        const first = this.children.values().next().value;
+        const first = children.values().next().value;
         const parent = first?.parentNode;
         if (parent) {
             const domChildren = parent.childNodes;
-            const currentChildrenSet = this.children;
+            const currentChildrenSet = new Set(children);
 
             if (
                 currentChildrenSet.size === domChildren.length
@@ -80,20 +92,22 @@ export class ReactiveNode {
             }
         }
 
-        this.children = newChildrenSet;
+        this._children = rNode;
     }
+}
 
-    public getRoot(): ChildNode[] {
-        if (!this.children.size) throw new Error('?!?!?!?');
-        return [...this.children];
-    }
+export function resolveReactiveNodes(children: IntermediateNode[]): ChildNode[] {
+    console.info(children);
+    return children.flatMap((vNode) =>
+        vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode
+    );
 }
 
 export type CustomRenderFn = (
     props: PropsType,
     children: VNodeChildren,
-    renderChildren: (children: VNodeChildren) => ChildNode[],
-) => RNode;
+    renderChildren: (children: VNodeChildren) => IntermediateNode[],
+) => IntermediateChildren;
 
 /* Show */
 export interface ShowProps {
@@ -111,14 +125,14 @@ export const Show = 'Show';
 export const renderShow: CustomRenderFn = (
     props: PropsType,
     children: VNodeChildren,
-    renderChildren: (children: VNodeChildren) => ChildNode[],
-): RNode => {
+    renderChildren: (children: VNodeChildren) => IntermediateNode[],
+): IntermediateChildren => {
     const { when, cache }: Partial<ShowProps> = props;
 
     const childrenOrFn: ShowProps['children'] = children;
     const getChildren = typeof childrenOrFn === 'function' ? childrenOrFn : () => childrenOrFn;
 
-    let childNodes: ChildNode[] | null = null;
+    let childNodes: IntermediateNode[] | null = null;
     const render = cache === false
         ? () => renderChildren(getChildren())
         : () => childNodes ??= renderChildren(getChildren());
@@ -140,7 +154,7 @@ export const renderShow: CustomRenderFn = (
         }
     }
 
-    return reactiveNode.getRoot();
+    return reactiveNode;
 };
 
 /* For */
@@ -159,8 +173,8 @@ export function For<T>(props: ForProps<T>): VNode {
 export const renderFor: CustomRenderFn = (
     props: PropsType,
     children: VNodeChildren,
-    renderChildren: (children: VNodeChildren) => ChildNode[],
-): RNode => {
+    renderChildren: (children: VNodeChildren) => IntermediateNode[],
+): IntermediateChildren => {
     const { of }: Partial<ForProps<unknown>> = props;
     if (of instanceof Observable === false) {
         throw new Error("The 'of' prop on <For> is required and must be an Observable.");
@@ -172,7 +186,7 @@ export const renderFor: CustomRenderFn = (
     }
     const mapFn: ForProps<unknown>['children'] = children;
 
-    type CachedItem = [Val<number>, ChildNode[]];
+    type CachedItem = [Val<number>, IntermediateNode[]];
 
     let cache = new MultiEntryCache<CachedItem>();
     const render = (value: unknown, index: number): [unknown, CachedItem] => {
@@ -200,5 +214,5 @@ export const renderFor: CustomRenderFn = (
         reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
     });
 
-    return reactiveNode.getRoot();
+    return reactiveNode;
 };

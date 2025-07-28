@@ -157,30 +157,34 @@ var PlainJSX = (function (exports) {
 
     class ReactiveNode {
         placeholder = document.createComment('');
-        children = new Set([this.placeholder]);
+        _children = [this.placeholder];
+        get children() {
+            return this._children;
+        }
         update(rNode) {
-            if (rNode === null || (Array.isArray(rNode) && rNode.length === 0)) {
+            const children = resolveReactiveNodes(this._children);
+            if (rNode === null || rNode.length === 0) {
                 // optimized clear path
-                if (this.children.has(this.placeholder)) {
+                if (this._children.length === 1 && this._children[0] === this.placeholder) {
                     return; // we are already cleared
                 }
-                const first = this.children.values().next().value;
+                const first = children.values().next().value;
                 const parent = first?.parentNode;
                 if (parent) {
                     parent.insertBefore(this.placeholder, first);
                     const fragment = document.createDocumentFragment();
-                    fragment.append(...this.children);
+                    fragment.append(...children);
                 }
-                this.children = new Set([this.placeholder]);
+                this._children = [this.placeholder];
                 return;
             }
-            const newChildren = Array.isArray(rNode) ? rNode : [rNode];
+            const newChildren = resolveReactiveNodes(rNode);
             const newChildrenSet = new Set(newChildren);
-            const first = this.children.values().next().value;
+            const first = children.values().next().value;
             const parent = first?.parentNode;
             if (parent) {
                 const domChildren = parent.childNodes;
-                const currentChildrenSet = this.children;
+                const currentChildrenSet = new Set(children);
                 if (currentChildrenSet.size === domChildren.length
                     && newChildrenSet.isDisjointFrom(currentChildrenSet)) {
                     // optimized replace path
@@ -223,13 +227,12 @@ var PlainJSX = (function (exports) {
                     }
                 }
             }
-            this.children = newChildrenSet;
+            this._children = rNode;
         }
-        getRoot() {
-            if (!this.children.size)
-                throw new Error('?!?!?!?');
-            return [...this.children];
-        }
+    }
+    function resolveReactiveNodes(children) {
+        console.info(children);
+        return children.flatMap((vNode) => vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode);
     }
     const Show = 'Show';
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -240,7 +243,7 @@ var PlainJSX = (function (exports) {
     const Fragment = 'Fragment';
     // export let initialRenderDone = false;
     function render(root, vNode) {
-        root.append(...renderChildren(vNode));
+        root.append(...resolveReactiveNodes(renderChildren(vNode)));
         // initialRenderDone = true;
     }
     function renderChildren(children) {
@@ -270,7 +273,7 @@ var PlainJSX = (function (exports) {
                         reactiveNode.update(children);
                     }
                 });
-                childNodes.push(...reactiveNode.getRoot());
+                childNodes.push(reactiveNode);
             }
             else {
                 childNodes.push(vNode);
