@@ -13,6 +13,7 @@ export default defineConfig({
         }),
         importAsString({
             include: [
+                '**/*.txt',
                 '**/*.css',
                 '**/*.html',
             ],
