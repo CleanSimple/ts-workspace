@@ -77,7 +77,6 @@ class ReactiveNode {
     }
 }
 function resolveReactiveNodes(children) {
-    console.info(children);
     return children.flatMap((vNode) => vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode);
 }
 const Show = 'Show';

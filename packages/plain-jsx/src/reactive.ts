@@ -97,7 +97,6 @@ export class ReactiveNode {
 }
 
 export function resolveReactiveNodes(children: IntermediateNode[]): ChildNode[] {
-    console.info(children);
     return children.flatMap((vNode) =>
         vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode
     );
