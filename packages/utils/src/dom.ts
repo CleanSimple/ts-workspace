@@ -81,3 +81,14 @@ export function simulateMouseEvent(
         : rect.top + rect.height / 2;
     elem.dispatchEvent(new MouseEvent(event, { clientX, clientY }));
 }
+
+export function queryTextNodes(root: Node) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+
+    const nodes: Node[] = [];
+    let node: Node | null;
+    while ((node = walker.nextNode())) {
+        nodes.push(node);
+    }
+    return nodes;
+}

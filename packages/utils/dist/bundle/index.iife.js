@@ -143,6 +143,15 @@ var Utils = (function (exports) {
             : rect.top + rect.height / 2;
         elem.dispatchEvent(new MouseEvent(event, { clientX, clientY }));
     }
+    function queryTextNodes(root) {
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+        const nodes = [];
+        let node;
+        while ((node = walker.nextNode())) {
+            nodes.push(node);
+        }
+        return nodes;
+    }
 
     async function convertImageToJpg(blob) {
         return new Promise((resolve, reject) => {
@@ -409,6 +418,7 @@ var Utils = (function (exports) {
     exports.mapData = mapData;
     exports.poll = poll;
     exports.queryStringFromObject = queryStringFromObject;
+    exports.queryTextNodes = queryTextNodes;
     exports.remapData = remapData;
     exports.rndInt = rndInt;
     exports.setQueryParam = setQueryParam;

@@ -140,6 +140,15 @@ function simulateMouseEvent(elem, event, { x, y } = {}) {
         : rect.top + rect.height / 2;
     elem.dispatchEvent(new MouseEvent(event, { clientX, clientY }));
 }
+function queryTextNodes(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+        nodes.push(node);
+    }
+    return nodes;
+}
 
 async function convertImageToJpg(blob) {
     return new Promise((resolve, reject) => {
@@ -370,4 +379,4 @@ const ReactAutomation = {
     setInputValue,
 };
 
-export { ReactAutomation, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, downloadArrayBuffer, downloadBlob, downloadText, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };
+export { ReactAutomation, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, downloadArrayBuffer, downloadBlob, downloadText, dropDuplicates, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, queryTextNodes, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };

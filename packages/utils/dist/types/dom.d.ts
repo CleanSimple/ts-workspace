@@ -14,4 +14,5 @@ interface SimulateMouseEventOptions {
     y?: number;
 }
 export declare function simulateMouseEvent(elem: HTMLElement, event: string, { x, y }?: SimulateMouseEventOptions): void;
+export declare function queryTextNodes(root: Node): Node[];
 export {};

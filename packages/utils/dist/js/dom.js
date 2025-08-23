@@ -77,6 +77,19 @@ export function simulateMouseEvent(elem, event, { x, y } = {}) {
     elem.dispatchEvent(new MouseEvent(event, { clientX, clientY }));
 }
 /**
+ * @param {Node} root
+ * @returns {Node[]}
+ */
+export function queryTextNodes(root) {
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+    const nodes = [];
+    let node;
+    while ((node = walker.nextNode())) {
+        nodes.push(node);
+    }
+    return nodes;
+}
+/**
  * @typedef {Object} SimulateMouseEventOptions
  * @property {number} [x]
  * @property {number} [y]
