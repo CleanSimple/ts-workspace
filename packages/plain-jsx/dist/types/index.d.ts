@@ -2,7 +2,7 @@ import type { Setter } from '@lib/utils';
 import type { Observable } from './observable';
 import type { VNode, VNodeChildren } from './types';
 export { Fragment, type JSX, render } from './core';
-export { computed, type Observable, ref, type Val, val } from './observable';
+export { computed, type Observable, type Ref, ref, type Val, val } from './observable';
 export { For, Show } from './reactive';
 export { nextTick } from './scheduling';
 export interface Helpers<TRef> {

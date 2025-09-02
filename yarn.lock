@@ -2720,9 +2720,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"linkedin-resume-downloader@workspace:private-ts-projects/linkedin-automation":
+"linkedin-resume-downloader@workspace:private-ts-projects/resume-flow":
   version: 0.0.0-use.local
-  resolution: "linkedin-resume-downloader@workspace:private-ts-projects/linkedin-automation"
+  resolution: "linkedin-resume-downloader@workspace:private-ts-projects/resume-flow"
   dependencies:
     "@lib/dprint-config": "workspace:^"
     "@lib/eslint-config": "workspace:^"

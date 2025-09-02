@@ -172,10 +172,12 @@ export function computed<T extends readonly unknown[], R>(
     return new Computed(observables, compute);
 }
 
+export type Ref<T> = Observable<T | null>;
+
 export function ref<
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     T extends Element | FunctionalComponent<never, any>,
     U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never,
->(): Observable<U | null> {
+>(): Ref<U> {
     return new Val<U | null>(null);
 }

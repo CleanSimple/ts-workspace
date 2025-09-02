@@ -35,5 +35,6 @@ type ObservablesOf<T extends readonly unknown[]> = {
 };
 export declare function val<T>(initialValue: T): Val<T>;
 export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
-export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Observable<U | null>;
+export type Ref<T> = Observable<T | null>;
+export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Ref<U>;
 export {};
