@@ -2720,20 +2720,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"linkedin-resume-downloader@workspace:private-ts-projects/resume-flow":
-  version: 0.0.0-use.local
-  resolution: "linkedin-resume-downloader@workspace:private-ts-projects/resume-flow"
-  dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/plain-jsx": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@lib/utils": "workspace:^"
-    "@types/tampermonkey": "npm:^5.0.4"
-  languageName: unknown
-  linkType: soft
-
 "locate-path@npm:^5.0.0":
   version: 5.0.0
   resolution: "locate-path@npm:5.0.0"
@@ -3358,6 +3344,20 @@ __metadata:
   checksum: 10c0/360b6deb5f101a9f8a4174f7837c523c3ec78b7ca8a7c1d45a1062b303659308a23757e318b1e91ed8684ad1205721142dd664d94771cd63499353fd4ee732b5
   languageName: node
   linkType: hard
+
+"resume-flow@workspace:external-projects/resume-flow":
+  version: 0.0.0-use.local
+  resolution: "resume-flow@workspace:external-projects/resume-flow"
+  dependencies:
+    "@lib/dprint-config": "workspace:^"
+    "@lib/eslint-config": "workspace:^"
+    "@lib/plain-jsx": "workspace:^"
+    "@lib/rollup-config": "workspace:^"
+    "@lib/typescript-config": "workspace:^"
+    "@lib/utils": "workspace:^"
+    "@types/tampermonkey": "npm:^5.0.4"
+  languageName: unknown
+  linkType: soft
 
 "retry@npm:^0.12.0":
   version: 0.12.0

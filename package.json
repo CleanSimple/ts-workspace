@@ -10,7 +10,8 @@
         "packages/*",
         "project-templates/*",
         "projects/*",
-        "private-ts-projects/*"
+        "private-ts-projects/*",
+        "external-projects/*"
     ],
     "devDependencies": {
         "@lib/dprint-config": "workspace:^",
