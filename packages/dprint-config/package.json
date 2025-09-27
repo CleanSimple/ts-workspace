@@ -12,6 +12,6 @@
         "dprint:init-config": "cd $INIT_CWD && init-config"
     },
     "devDependencies": {
-        "dprint": "^0.49.1"
+        "dprint": "^0.50.2"
     }
 }
