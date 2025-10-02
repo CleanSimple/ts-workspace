@@ -82,9 +82,9 @@ var Utils = (function (exports) {
         return data.map(row => Object.fromEntries(Object.entries(row).map(([key, val]) => [mapping[key] || key, val])));
     }
     function dropDuplicates(data, key) {
-        return data.filter(key instanceof Function
-            ? (row1, index) => index === data.findIndex(row2 => key(row1) === key(row2))
-            : (row1, index) => index === data.findIndex(row2 => row1[key] === row2[key]));
+        return [
+            ...new Map(data.map(row => [key instanceof Function ? key(row) : row[key], row])).values(),
+        ];
     }
 
     /**
