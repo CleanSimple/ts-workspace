@@ -1,4 +1,4 @@
-import { debounce, isElementVisible } from '@lib/utils';
+import { debounce, isElementVisible } from '@cleansimple/utils-js';
 
 GM_addStyle(`
 .ltbf-btn {

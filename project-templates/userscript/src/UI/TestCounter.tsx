@@ -1,5 +1,5 @@
-import type { FunctionalComponent } from '@lib/plain-jsx';
-import type { Action } from '@lib/utils';
+import type { FunctionalComponent } from '@cleansimple/plain-jsx';
+import type { Action } from '@cleansimple/utils-js';
 
 interface TestCounterRefType {
     increment: Action;

@@ -1,7 +1,7 @@
 {
     "name": "plain-jsx-bench",
-    "private": true,
     "version": "0.0.0",
+    "private": true,
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -10,7 +10,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "@lib/plain-jsx": "workspace:^"
+        "@cleansimple/plain-jsx": "workspace:^"
     },
     "devDependencies": {
         "@rollup/plugin-node-resolve": "^15.3.0",

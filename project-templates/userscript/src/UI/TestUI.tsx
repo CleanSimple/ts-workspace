@@ -1,4 +1,4 @@
-import type { FunctionalComponent, RefType } from '@lib/plain-jsx';
+import type { FunctionalComponent, RefType } from '@cleansimple/plain-jsx';
 import { TestCounter } from './TestCounter';
 import { TestSpan } from './TestSpan';
 

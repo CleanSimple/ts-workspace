@@ -1,4 +1,4 @@
-import type { MaybePromise } from '@lib/utils';
+import type { MaybePromise } from '@cleansimple/utils-js';
 
 type Action = () => MaybePromise<void>;
 let callbacks = new Array<Action>();

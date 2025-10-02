@@ -1,4 +1,4 @@
-import type { Action } from '@lib/utils';
+import type { Action } from '@cleansimple/utils-js';
 import type { FunctionalComponent } from '.';
 import { nextTick } from './scheduling';
 import { _Sentinel, Sentinel } from './sentinel';

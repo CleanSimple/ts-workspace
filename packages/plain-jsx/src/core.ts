@@ -1,4 +1,4 @@
-import { hasKey, isObject } from '@lib/utils';
+import { hasKey, isObject } from '@cleansimple/utils-js';
 import { XMLNamespaces } from './namespaces';
 import { Observable, Val } from './observable';
 import type { CustomRenderFn, ShowProps } from './reactive';

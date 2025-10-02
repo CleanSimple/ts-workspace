@@ -1,6 +1,7 @@
 {
     "name": "universal-media-shortcuts",
     "packageManager": "yarn@4.6.0",
+    "private": true,
     "type": "module",
     "scripts": {
         "build": "yarn clean ./dist && yarn rollup:build",
@@ -9,14 +10,14 @@
         "fmt": "yarn dprint:fmt ./src/*"
     },
     "dependencies": {
-        "@lib/plain-jsx": "workspace:^",
-        "@lib/utils": "workspace:^"
+        "@cleansimple/plain-jsx": "workspace:^",
+        "@cleansimple/utils-js": "workspace:^"
     },
     "devDependencies": {
-        "@lib/dprint-config": "workspace:^",
-        "@lib/eslint-config": "workspace:^",
-        "@lib/rollup-config": "workspace:^",
-        "@lib/typescript-config": "workspace:^",
+        "@cleansimple/dprint-config": "workspace:^",
+        "@cleansimple/eslint-config": "workspace:^",
+        "@cleansimple/rollup-config": "workspace:^",
+        "@cleansimple/typescript-config": "workspace:^",
         "@types/tampermonkey": "^5.0.4"
     }
 }

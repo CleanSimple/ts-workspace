@@ -8,7 +8,7 @@
         "lib": ["ES2023", "DOM", "DOM.Iterable"],
         "skipLibCheck": true,
         "jsx": "react-jsx",
-        "jsxImportSource": "@lib/plain-jsx",
+        "jsxImportSource": "@cleansimple/plain-jsx",
 
         /* Bundler mode */
         "moduleResolution": "bundler",

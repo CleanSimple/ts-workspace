@@ -1,6 +1,6 @@
 node_modules
-/private-ts-projects
 
+# dprint generated config
 dprint.json
 
 # yarn

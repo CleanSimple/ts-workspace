@@ -1,4 +1,4 @@
-import { isObject, hasKey } from '@lib/utils';
+import { isObject, hasKey } from '@cleansimple/utils-js';
 import { XMLNamespaces } from './namespaces.esm.js';
 import { Val, Observable } from './observable.esm.js';
 import { resolveReactiveNodes, Show, renderShow, For, renderFor, ReactiveNode } from './reactive.esm.js';

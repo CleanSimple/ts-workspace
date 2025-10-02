@@ -1,5 +1,6 @@
 {
-    "name": "@lib/plain-jsx",
+    "name": "@cleansimple/plain-jsx",
+    "version": "1.0.2",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "exports": {
@@ -23,13 +24,13 @@
         "fmt": "yarn dprint:fmt ./src/*"
     },
     "dependencies": {
-        "@lib/utils": "workspace:^"
+        "@cleansimple/utils-js": "workspace:^"
     },
     "devDependencies": {
-        "@lib/dprint-config": "workspace:^",
-        "@lib/eslint-config": "workspace:^",
-        "@lib/rollup-config": "workspace:^",
-        "@lib/typescript-config": "workspace:^",
+        "@cleansimple/dprint-config": "workspace:^",
+        "@cleansimple/eslint-config": "workspace:^",
+        "@cleansimple/rollup-config": "workspace:^",
+        "@cleansimple/typescript-config": "workspace:^",
         "csstype": "^3.1.3"
     }
 }

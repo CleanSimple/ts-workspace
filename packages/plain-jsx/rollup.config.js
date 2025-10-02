@@ -1,4 +1,4 @@
-import baseConfig from '@lib/rollup-config/lib';
+import baseConfig from '@cleansimple/rollup-config/lib';
 
 export default [
     {
@@ -8,7 +8,7 @@ export default [
             'jsx-runtime': 'src/jsx-runtime.ts',
             'jsx-dev-runtime': 'src/jsx-dev-runtime.ts',
         },
-        external: ['@lib/utils'],
+        external: ['@cleansimple/utils-js'],
         output: [
             {
                 dir: 'dist',
@@ -21,12 +21,12 @@ export default [
     {
         ...baseConfig,
         input: 'src/index.ts',
-        external: ['@lib/utils'],
+        external: ['@cleansimple/utils-js'],
         output: [
             {
                 name: 'PlainJSX',
                 format: 'iife',
-                globals: { '@lib/utils': 'Utils' },
+                globals: { '@cleansimple/utils-js': 'Utils' },
                 file: './dist/index.iife.js',
             },
         ],

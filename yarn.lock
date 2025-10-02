@@ -14,6 +14,76 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@cleansimple/dprint-config@workspace:^, @cleansimple/dprint-config@workspace:packages/dprint-config":
+  version: 0.0.0-use.local
+  resolution: "@cleansimple/dprint-config@workspace:packages/dprint-config"
+  dependencies:
+    dprint: "npm:^0.50.2"
+  bin:
+    init-config: ./bin/init-config.js
+  languageName: unknown
+  linkType: soft
+
+"@cleansimple/eslint-config@workspace:^, @cleansimple/eslint-config@workspace:packages/eslint-config":
+  version: 0.0.0-use.local
+  resolution: "@cleansimple/eslint-config@workspace:packages/eslint-config"
+  dependencies:
+    "@eslint/js": "npm:^9.25.1"
+    eslint: "npm:^9.25.1"
+    eslint-plugin-only-warn: "npm:^1.1.0"
+    typescript: "npm:^5.8.3"
+    typescript-eslint: "npm:^8.30.1"
+  languageName: unknown
+  linkType: soft
+
+"@cleansimple/plain-jsx@workspace:^, @cleansimple/plain-jsx@workspace:packages/plain-jsx":
+  version: 0.0.0-use.local
+  resolution: "@cleansimple/plain-jsx@workspace:packages/plain-jsx"
+  dependencies:
+    "@cleansimple/dprint-config": "workspace:^"
+    "@cleansimple/eslint-config": "workspace:^"
+    "@cleansimple/rollup-config": "workspace:^"
+    "@cleansimple/typescript-config": "workspace:^"
+    "@cleansimple/utils-js": "workspace:^"
+    csstype: "npm:^3.1.3"
+  languageName: unknown
+  linkType: soft
+
+"@cleansimple/rollup-config@workspace:^, @cleansimple/rollup-config@workspace:packages/rollup-config":
+  version: 0.0.0-use.local
+  resolution: "@cleansimple/rollup-config@workspace:packages/rollup-config"
+  dependencies:
+    "@rollup/plugin-commonjs": "npm:^28.0.6"
+    "@rollup/plugin-node-resolve": "npm:^16.0.1"
+    rollup: "npm:4.20.0"
+    rollup-plugin-header: "npm:^1.0.0"
+    rollup-plugin-string-import: "npm:^1.2.5"
+    rollup-plugin-typescript2: "npm:^0.36.0"
+    typescript: "npm:^5.8.3"
+  bin:
+    clean: ./bin/clean.js
+  languageName: unknown
+  linkType: soft
+
+"@cleansimple/typescript-config@workspace:^, @cleansimple/typescript-config@workspace:packages/typescript-config":
+  version: 0.0.0-use.local
+  resolution: "@cleansimple/typescript-config@workspace:packages/typescript-config"
+  languageName: unknown
+  linkType: soft
+
+"@cleansimple/utils-js@workspace:^, @cleansimple/utils-js@workspace:packages/utils-js":
+  version: 0.0.0-use.local
+  resolution: "@cleansimple/utils-js@workspace:packages/utils-js"
+  dependencies:
+    "@cleansimple/dprint-config": "workspace:^"
+    "@cleansimple/eslint-config": "workspace:^"
+    "@cleansimple/rollup-config": "workspace:^"
+    "@cleansimple/typescript-config": "workspace:^"
+    "@yarnpkg/pnpify": "npm:^4.1.4"
+    ts-to-jsdoc: "npm:^2.4.0"
+  languageName: unknown
+  linkType: soft
+
 "@dprint/darwin-arm64@npm:0.50.2":
   version: 0.50.2
   resolution: "@dprint/darwin-arm64@npm:0.50.2"
@@ -457,76 +527,6 @@ __metadata:
   checksum: 10c0/3d1ce6ebc69df9682a5a8896b414c6537e428a1d68b02fcc8363b04284a8ca0df04d0ee3013132252ab14f2527bc13bea6526a912ecb5658f0e39fd2860b4df4
   languageName: node
   linkType: hard
-
-"@lib/dprint-config@workspace:^, @lib/dprint-config@workspace:packages/dprint-config":
-  version: 0.0.0-use.local
-  resolution: "@lib/dprint-config@workspace:packages/dprint-config"
-  dependencies:
-    dprint: "npm:^0.50.2"
-  bin:
-    init-config: ./bin/init-config.js
-  languageName: unknown
-  linkType: soft
-
-"@lib/eslint-config@workspace:^, @lib/eslint-config@workspace:packages/eslint-config":
-  version: 0.0.0-use.local
-  resolution: "@lib/eslint-config@workspace:packages/eslint-config"
-  dependencies:
-    "@eslint/js": "npm:^9.25.1"
-    eslint: "npm:^9.25.1"
-    eslint-plugin-only-warn: "npm:^1.1.0"
-    typescript: "npm:^5.8.3"
-    typescript-eslint: "npm:^8.30.1"
-  languageName: unknown
-  linkType: soft
-
-"@lib/plain-jsx@workspace:^, @lib/plain-jsx@workspace:packages/plain-jsx":
-  version: 0.0.0-use.local
-  resolution: "@lib/plain-jsx@workspace:packages/plain-jsx"
-  dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@lib/utils": "workspace:^"
-    csstype: "npm:^3.1.3"
-  languageName: unknown
-  linkType: soft
-
-"@lib/rollup-config@workspace:^, @lib/rollup-config@workspace:packages/rollup-config":
-  version: 0.0.0-use.local
-  resolution: "@lib/rollup-config@workspace:packages/rollup-config"
-  dependencies:
-    "@rollup/plugin-commonjs": "npm:^28.0.6"
-    "@rollup/plugin-node-resolve": "npm:^16.0.1"
-    rollup: "npm:4.20.0"
-    rollup-plugin-header: "npm:^1.0.0"
-    rollup-plugin-string-import: "npm:^1.2.5"
-    rollup-plugin-typescript2: "npm:^0.36.0"
-    typescript: "npm:^5.8.3"
-  bin:
-    clean: ./clean.js
-  languageName: unknown
-  linkType: soft
-
-"@lib/typescript-config@workspace:^, @lib/typescript-config@workspace:packages/typescript-config":
-  version: 0.0.0-use.local
-  resolution: "@lib/typescript-config@workspace:packages/typescript-config"
-  languageName: unknown
-  linkType: soft
-
-"@lib/utils@workspace:^, @lib/utils@workspace:packages/utils":
-  version: 0.0.0-use.local
-  resolution: "@lib/utils@workspace:packages/utils"
-  dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@yarnpkg/pnpify": "npm:^4.1.4"
-    ts-to-jsdoc: "npm:^2.4.0"
-  languageName: unknown
-  linkType: soft
 
 "@nodelib/fs.scandir@npm:2.1.5":
   version: 2.1.5
@@ -2701,11 +2701,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "let-there-be-full-screen@workspace:projects/let-there-be-fullscreen"
   dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@lib/utils": "workspace:^"
+    "@cleansimple/dprint-config": "workspace:^"
+    "@cleansimple/eslint-config": "workspace:^"
+    "@cleansimple/rollup-config": "workspace:^"
+    "@cleansimple/typescript-config": "workspace:^"
+    "@cleansimple/utils-js": "workspace:^"
     "@types/tampermonkey": "npm:^5.0.4"
   languageName: unknown
   linkType: soft
@@ -3199,9 +3199,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "plain-jsx-app@workspace:project-templates/plain-jsx-app"
   dependencies:
-    "@lib/plain-jsx": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@lib/utils": "workspace:^"
+    "@cleansimple/plain-jsx": "workspace:^"
+    "@cleansimple/typescript-config": "workspace:^"
+    "@cleansimple/utils-js": "workspace:^"
     typescript: "npm:~5.8.3"
     vite: "npm:^6.3.5"
   languageName: unknown
@@ -3211,7 +3211,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "plain-jsx-bench@workspace:project-templates/plain-jsx-bench"
   dependencies:
-    "@lib/plain-jsx": "workspace:^"
+    "@cleansimple/plain-jsx": "workspace:^"
     "@rollup/plugin-node-resolve": "npm:^15.3.0"
     "@rollup/plugin-terser": "npm:^0.4.4"
     rollup: "npm:^4.24.3"
@@ -3344,20 +3344,6 @@ __metadata:
   checksum: 10c0/360b6deb5f101a9f8a4174f7837c523c3ec78b7ca8a7c1d45a1062b303659308a23757e318b1e91ed8684ad1205721142dd664d94771cd63499353fd4ee732b5
   languageName: node
   linkType: hard
-
-"resume-flow@workspace:external-projects/resume-flow":
-  version: 0.0.0-use.local
-  resolution: "resume-flow@workspace:external-projects/resume-flow"
-  dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/plain-jsx": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@lib/utils": "workspace:^"
-    "@types/tampermonkey": "npm:^5.0.4"
-  languageName: unknown
-  linkType: soft
 
 "retry@npm:^0.12.0":
   version: 0.12.0
@@ -3647,12 +3633,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "sample-project@workspace:project-templates/userscript"
   dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/plain-jsx": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@lib/utils": "workspace:^"
+    "@cleansimple/dprint-config": "workspace:^"
+    "@cleansimple/eslint-config": "workspace:^"
+    "@cleansimple/plain-jsx": "workspace:^"
+    "@cleansimple/rollup-config": "workspace:^"
+    "@cleansimple/typescript-config": "workspace:^"
+    "@cleansimple/utils-js": "workspace:^"
     "@types/tampermonkey": "npm:^5.0.4"
   languageName: unknown
   linkType: soft
@@ -3976,7 +3962,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "ts-workspace@workspace:."
   dependencies:
-    "@lib/dprint-config": "workspace:^"
+    "@cleansimple/dprint-config": "workspace:^"
     eslint: "npm:^9.25.1"
     typescript: "npm:^5.8.3"
   languageName: unknown
@@ -4082,12 +4068,12 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "universal-media-shortcuts@workspace:projects/universal-media-shortcuts"
   dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/plain-jsx": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
-    "@lib/utils": "workspace:^"
+    "@cleansimple/dprint-config": "workspace:^"
+    "@cleansimple/eslint-config": "workspace:^"
+    "@cleansimple/plain-jsx": "workspace:^"
+    "@cleansimple/rollup-config": "workspace:^"
+    "@cleansimple/typescript-config": "workspace:^"
+    "@cleansimple/utils-js": "workspace:^"
     "@types/tampermonkey": "npm:^5.0.4"
   languageName: unknown
   linkType: soft
@@ -4246,11 +4232,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "youtube-save-time@workspace:projects/youtube-save-time"
   dependencies:
-    "@lib/dprint-config": "workspace:^"
-    "@lib/eslint-config": "workspace:^"
-    "@lib/plain-jsx": "workspace:^"
-    "@lib/rollup-config": "workspace:^"
-    "@lib/typescript-config": "workspace:^"
+    "@cleansimple/dprint-config": "workspace:^"
+    "@cleansimple/eslint-config": "workspace:^"
+    "@cleansimple/plain-jsx": "workspace:^"
+    "@cleansimple/rollup-config": "workspace:^"
+    "@cleansimple/typescript-config": "workspace:^"
     "@types/tampermonkey": "npm:^5.0.4"
   languageName: unknown
   linkType: soft

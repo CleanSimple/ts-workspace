@@ -1,9 +1,9 @@
 {
-    "extends": "@lib/typescript-config/browser.json",
+    "extends": "@cleansimple/typescript-config/browser.json",
     "include": ["src"],
     "compilerOptions": {
         "rootDir": "src",
         "jsx": "react-jsx",
-        "jsxImportSource": "@lib/plain-jsx"
+        "jsxImportSource": "@cleansimple/plain-jsx"
     }
 }

@@ -29,7 +29,7 @@ yarn init
 - Install configs
 
 ```sh
-yarn add @lib/rollup-config @lib/typescript-config @lib/eslint-config @lib/dprint-config -D
+yarn add @cleansimple/rollup-config @cleansimple/typescript-config @cleansimple/eslint-config @cleansimple/dprint-config -D
 ```
 
 - Install Tampermonkey types
@@ -41,14 +41,14 @@ yarn add @types/tampermonkey -D
 - Install utils package (Optional):
 
 ```
-yarn add @lib/utils
+yarn add @cleansimple/utils-js
 ```
 
 - Create `tsconfig.json`
 
 ```json
 {
-    "extends": "@lib/typescript-config/browser.json",
+    "extends": "@cleansimple/typescript-config/browser.json",
     "include": ["src"]
 }
 ```
@@ -56,7 +56,7 @@ yarn add @lib/utils
 - Create `rollup.config.js`
 
 ```js
-import baseConfig from '@lib/rollup-config/userscript';
+import baseConfig from '@cleansimple/rollup-config/userscript';
 import { defineConfig } from 'rollup';
 
 export default defineConfig({
@@ -75,7 +75,7 @@ export default defineConfig({
 - Create `eslint.config.js`
 
 ```js
-import config from '@lib/eslint-config/config';
+import config from '@cleansimple/eslint-config/config';
 
 export default config;
 ```

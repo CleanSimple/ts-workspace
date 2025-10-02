@@ -1,5 +1,5 @@
 {
-    "name": "@lib/typescript-config",
-    "packageManager": "yarn@4.6.0",
-    "private": true
+    "name": "@cleansimple/typescript-config",
+    "version": "1.0.0",
+    "packageManager": "yarn@4.6.0"
 }

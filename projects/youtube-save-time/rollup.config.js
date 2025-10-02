@@ -1,4 +1,4 @@
-import baseConfig from '@lib/rollup-config/userscript';
+import baseConfig from '@cleansimple/rollup-config/userscript';
 
 export default {
     ...baseConfig,

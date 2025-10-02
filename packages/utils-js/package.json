@@ -1,5 +1,6 @@
 {
-    "name": "@lib/utils",
+    "name": "@cleansimple/utils-js",
+    "version": "1.0.1",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "exports": {
@@ -16,10 +17,10 @@
         "jsdocify": "yarn pnpify ts-to-jsdoc --project tsconfig.jsdocify.json"
     },
     "devDependencies": {
-        "@lib/dprint-config": "workspace:^",
-        "@lib/eslint-config": "workspace:^",
-        "@lib/rollup-config": "workspace:^",
-        "@lib/typescript-config": "workspace:^",
+        "@cleansimple/dprint-config": "workspace:^",
+        "@cleansimple/eslint-config": "workspace:^",
+        "@cleansimple/rollup-config": "workspace:^",
+        "@cleansimple/typescript-config": "workspace:^",
         "@yarnpkg/pnpify": "^4.1.4",
         "ts-to-jsdoc": "^2.4.0"
     }

@@ -1,6 +1,6 @@
-import type { Observable } from '@lib/plain-jsx';
-import { ref } from '@lib/plain-jsx';
-import type { JSX } from '@lib/plain-jsx/jsx-runtime';
+import type { Observable } from '@cleansimple/plain-jsx';
+import { ref } from '@cleansimple/plain-jsx';
+import type { JSX } from '@cleansimple/plain-jsx/jsx-runtime';
 
 interface UpDownProps extends JSX.PropsOf<HTMLDivElement> {
     value?: Observable<number> | number;

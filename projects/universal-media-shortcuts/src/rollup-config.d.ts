@@ -1,1 +1,1 @@
-/// <reference types="@lib/rollup-config" />
+/// <reference types="@cleansimple/rollup-config" />

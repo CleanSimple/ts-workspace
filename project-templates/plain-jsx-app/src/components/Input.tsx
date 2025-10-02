@@ -1,4 +1,4 @@
-import { type FunctionalComponent, type JSX, nextTick, ref } from '@lib/plain-jsx';
+import { type FunctionalComponent, type JSX, nextTick, ref } from '@cleansimple/plain-jsx';
 
 interface InputProps extends JSX.PropsOf<HTMLInputElement> {
     focus?: boolean;

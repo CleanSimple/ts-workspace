@@ -1,6 +1,6 @@
 import './style.css';
 import viteLogo from '/vite.svg';
-import { For, type FunctionalComponent, render, Show, val, With } from '@lib/plain-jsx';
+import { For, type FunctionalComponent, render, Show, val, With } from '@cleansimple/plain-jsx';
 import { Counter, type CounterRefType } from './components/Counter';
 import { Fragments } from './components/Fragments';
 import { Input } from './components/Input';

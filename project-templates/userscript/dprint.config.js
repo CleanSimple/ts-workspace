@@ -1,3 +1,3 @@
-import baseConfig from "@lib/dprint-config"
+import baseConfig from "@cleansimple/dprint-config"
 
 export default baseConfig

@@ -1,4 +1,4 @@
-import type { Action } from '@lib/utils';
+import type { Action } from '@cleansimple/utils-js';
 import type { FunctionalComponent } from '.';
 export interface Subscription {
     unsubscribe: Action;

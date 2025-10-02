@@ -1,4 +1,4 @@
-import type { Setter } from '@lib/utils';
+import type { Setter } from '@cleansimple/utils-js';
 import type { Observable } from './observable';
 import type { VNode, VNodeChildren } from './types';
 

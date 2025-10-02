@@ -1,4 +1,4 @@
-import { For, render, type Val, val } from '@lib/plain-jsx';
+import { For, render, type Val, val } from '@cleansimple/plain-jsx';
 
 const adjectives = [
     'pretty',

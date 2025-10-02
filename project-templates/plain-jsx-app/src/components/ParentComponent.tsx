@@ -2,7 +2,7 @@ import {
     type FunctionalComponent,
     type ParentComponent as _ParentComponent,
     val,
-} from '@lib/plain-jsx';
+} from '@cleansimple/plain-jsx';
 
 interface DynamicChildrenProps extends _ParentComponent {
 }

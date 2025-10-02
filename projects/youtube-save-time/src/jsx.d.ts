@@ -1,6 +1,6 @@
-import '@lib/plain-jsx';
+import '@cleansimple/plain-jsx';
 
-declare module '@lib/plain-jsx' {
+declare module '@cleansimple/plain-jsx' {
     namespace JSX {
         interface IntrinsicElements {
             'yt-icon-button': PropsOf<HTMLElement>;

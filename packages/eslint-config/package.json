@@ -1,7 +1,7 @@
 {
-    "name": "@lib/eslint-config",
+    "name": "@cleansimple/eslint-config",
+    "version": "1.0.0",
     "packageManager": "yarn@4.6.0",
-    "private": true,
     "type": "module",
     "exports": {
         "./config": "./config.js"

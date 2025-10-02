@@ -1,6 +1,6 @@
-import type { RefType } from '@lib/plain-jsx';
-import { render } from '@lib/plain-jsx';
-import { sleep } from '@lib/utils';
+import type { RefType } from '@cleansimple/plain-jsx';
+import { render } from '@cleansimple/plain-jsx';
+import { sleep } from '@cleansimple/utils-js';
 import { TestUI } from './UI/TestUI';
 
 async function main() {

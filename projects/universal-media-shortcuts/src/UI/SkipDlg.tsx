@@ -1,5 +1,5 @@
-import { type FunctionalComponent, ref, val } from '@lib/plain-jsx';
-import type { Action } from '@lib/utils';
+import { type FunctionalComponent, ref, val } from '@cleansimple/plain-jsx';
+import type { Action } from '@cleansimple/utils-js';
 import type { HotkeyRule } from '../types';
 import { UpDown } from './UpDown';
 

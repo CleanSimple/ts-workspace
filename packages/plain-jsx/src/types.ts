@@ -1,4 +1,4 @@
-import type { MethodsOf, ReadonlyProps } from '@lib/utils';
+import type { MethodsOf, ReadonlyProps } from '@cleansimple/utils-js';
 import type { Properties as CSS } from 'csstype';
 import type { Observable } from './observable';
 import type { ReactiveNode } from './reactive';

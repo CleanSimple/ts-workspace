@@ -1,7 +1,7 @@
 {
     "name": "plain-jsx-app",
-    "private": true,
     "packageManager": "yarn@4.6.0",
+    "private": true,
     "type": "module",
     "scripts": {
         "dev": "vite",
@@ -9,11 +9,11 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "@lib/plain-jsx": "workspace:^",
-        "@lib/utils": "workspace:^"
+        "@cleansimple/plain-jsx": "workspace:^",
+        "@cleansimple/utils-js": "workspace:^"
     },
     "devDependencies": {
-        "@lib/typescript-config": "workspace:^",
+        "@cleansimple/typescript-config": "workspace:^",
         "typescript": "~5.8.3",
         "vite": "^6.3.5"
     }

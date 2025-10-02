@@ -12,6 +12,7 @@
         "**/.pnp.*": true
     },
     "cSpell.words": [
+        "cleansimple",
         "csstype",
         "dprint",
         "fullscreen",

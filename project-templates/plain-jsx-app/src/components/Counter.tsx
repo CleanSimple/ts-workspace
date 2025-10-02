@@ -1,4 +1,4 @@
-import { type FunctionalComponent, val } from '@lib/plain-jsx';
+import { type FunctionalComponent, val } from '@cleansimple/plain-jsx';
 
 interface CounterProps {
 }

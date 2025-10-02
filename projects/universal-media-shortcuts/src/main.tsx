@@ -1,5 +1,5 @@
-import { ref, render } from '@lib/plain-jsx';
-import { isTopFrame, sleep } from '@lib/utils';
+import { ref, render } from '@cleansimple/plain-jsx';
+import { isTopFrame, sleep } from '@cleansimple/utils-js';
 import skipDlgStyles from './styles/skip-dlg.css';
 import styles from './styles/styles.css';
 import upDownControlStyles from './styles/up-down-control.css';

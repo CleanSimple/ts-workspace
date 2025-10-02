@@ -1,4 +1,4 @@
-import baseConfig from '@lib/rollup-config/lib';
+import baseConfig from '@cleansimple/rollup-config/lib';
 
 export default {
     ...baseConfig,

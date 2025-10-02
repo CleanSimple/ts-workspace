@@ -9,12 +9,10 @@
     "workspaces": [
         "packages/*",
         "project-templates/*",
-        "projects/*",
-        "private-ts-projects/*",
-        "external-projects/*"
+        "projects/*"
     ],
     "devDependencies": {
-        "@lib/dprint-config": "workspace:^",
+        "@cleansimple/dprint-config": "workspace:^",
         "eslint": "^9.25.1",
         "typescript": "^5.8.3"
     },

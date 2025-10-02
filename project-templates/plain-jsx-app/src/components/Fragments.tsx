@@ -1,4 +1,4 @@
-import type { FunctionalComponent } from '@lib/plain-jsx';
+import type { FunctionalComponent } from '@cleansimple/plain-jsx';
 
 const Fragments: FunctionalComponent = (_props) => {
     return (

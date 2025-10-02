@@ -1,4 +1,4 @@
-import { type FunctionalComponent, type ParentComponent, ref, val } from '@lib/plain-jsx';
+import { type FunctionalComponent, type ParentComponent, ref, val } from '@cleansimple/plain-jsx';
 
 interface LifecycleComponentProps extends ParentComponent {
     name?: string;

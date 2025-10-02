@@ -1,4 +1,4 @@
-import type { FunctionalComponent } from '@lib/plain-jsx';
+import type { FunctionalComponent } from '@cleansimple/plain-jsx';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const TestSpan: FunctionalComponent = (props, { onMounted }) => {
