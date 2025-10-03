@@ -5,6 +5,7 @@
     "type": "module",
     "scripts": {
         "dprint:init-config": "yarn workspaces foreach -Ap run init-dprint-config",
+        "publish": "yarn workspaces foreach --from 'packages/*' -Rpt npm publish --access public --tolerate-republish",
         "build": "yarn workspaces foreach -Apt run build",
         "lint": "yarn workspaces foreach -Ap run lint",
         "fmt": "yarn workspaces foreach -Ap run fmt"
