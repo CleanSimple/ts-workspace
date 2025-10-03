@@ -9,7 +9,7 @@ yarn install
 - Generate dprint.json configs from dprint.config.js for all packages (Should also run each time you edit a dprint.config.js):
 
 ```sh
-yarn run init-dprint-config
+yarn run dprint:init-config
 ```
 
 - Install dprint globally for editor integration
@@ -18,7 +18,7 @@ yarn run init-dprint-config
 iwr https://dprint.dev/install.ps1 -useb | iex
 ```
 
-# Create user script project:
+# Create a userscript project:
 
 - Init project:
 
@@ -49,7 +49,10 @@ yarn add @cleansimple/utils-js
 ```json
 {
     "extends": "@cleansimple/typescript-config/browser.json",
-    "include": ["src"]
+    "include": ["src"],
+    "compilerOptions": {
+        "rootDir": "src"
+    }
 }
 ```
 

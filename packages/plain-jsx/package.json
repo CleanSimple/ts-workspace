@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/plain-jsx",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "exports": {
@@ -18,10 +18,10 @@
         }
     },
     "scripts": {
-        "build": "yarn clean ./dist && yarn rollup:build",
-        "dev": "yarn rollup:watch",
-        "lint": "yarn eslint:lint ./src",
-        "fmt": "yarn dprint:fmt ./src/*"
+        "build": "yarn clean ./dist && yarn rollup -c",
+        "dev": "yarn rollup -c -w",
+        "lint": "yarn eslint ./src",
+        "fmt": "yarn dprint fmt ./src/*"
     },
     "dependencies": {
         "@cleansimple/utils-js": "workspace:^"
@@ -31,6 +31,10 @@
         "@cleansimple/eslint-config": "workspace:^",
         "@cleansimple/rollup-config": "workspace:^",
         "@cleansimple/typescript-config": "workspace:^",
-        "csstype": "^3.1.3"
+        "csstype": "^3.1.3",
+        "dprint": "0.50.2",
+        "eslint": "9.36.0",
+        "rollup": "4.52.4",
+        "typescript": "5.9.3"
     }
 }

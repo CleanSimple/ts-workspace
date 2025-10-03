@@ -10,6 +10,24 @@
 (function () {
     'use strict';
 
+    Array.prototype.first = function () {
+        return this[0];
+    };
+    Array.prototype.last = function () {
+        return this[this.length - 1];
+    };
+    Array.prototype.insertAt = function (index, ...items) {
+        return this.splice(index, 0, ...items);
+    };
+    Array.prototype.removeAt = function (index) {
+        return this.splice(index, 1)[0];
+    };
+    Array.prototype.remove = function (item) {
+        const index = this.indexOf(item);
+        if (index !== -1) {
+            this.splice(index, 1);
+        }
+    };
     function isElementVisible(elem) {
         if (elem.offsetParent === null || elem.ariaHidden === 'true') {
             return false;
@@ -18,7 +36,7 @@
         if (rect.width === 0 || rect.height == 0) {
             return false;
         }
-        // advanced logic to check if the element is within the documents scrollable area.
+        // advanced logic to check if the element is within the document's scrollable area.
         const docElem = document.documentElement;
         const scrollableWidth = Math.max(docElem.scrollWidth, document.body.scrollWidth);
         const scrollableHeight = Math.max(docElem.scrollHeight, document.body.scrollHeight);

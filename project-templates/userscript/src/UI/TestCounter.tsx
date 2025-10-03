@@ -1,4 +1,4 @@
-import type { FunctionalComponent } from '@cleansimple/plain-jsx';
+import { type FunctionalComponent, ref } from '@cleansimple/plain-jsx';
 import type { Action } from '@cleansimple/utils-js';
 
 interface TestCounterRefType {
@@ -13,31 +13,28 @@ interface TestCounterProps {
 
 const TestCounter: FunctionalComponent<TestCounterProps, TestCounterRefType> = (
     { initialValue: initialCount = 1 },
-    { onMounted },
+    { defineRef },
 ) => {
     let count: number = initialCount;
-    let countElem: HTMLSpanElement;
+    const countElem = ref<HTMLElement>();
 
     const setCount = (newCount: number) => {
         count = newCount;
-        countElem.textContent = count.toString();
+        if (!countElem.value) return;
+        countElem.value.textContent = count.toString();
     };
     const increment = () => setCount(count + 1);
     const decrement = () => setCount(count - 1);
 
-    onMounted(({ getRef, defineRef }) => {
-        countElem = getRef<HTMLSpanElement>('count');
-
-        defineRef({
-            increment,
-            decrement,
-            get count() {
-                return count;
-            },
-        });
+    defineRef({
+        increment,
+        decrement,
+        get count() {
+            return count;
+        },
     });
 
-    return <span ref='count'>{count}</span>;
+    return <span ref={countElem}>{count}</span>;
 };
 
 export { TestCounter };

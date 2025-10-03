@@ -64,7 +64,7 @@
     function runNextTickCallbacks() {
         queued = false;
         for (const callback of callbacks) {
-            callback();
+            void callback();
         }
         callbacks = [];
     }
@@ -77,7 +77,16 @@
         queueMicrotask(runNextTickCallbacks);
     }
 
+    class Sentinel {
+        static Instance = new Sentinel();
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        constructor() { }
+    }
+
     class Observable {
+        computed(compute) {
+            return new ComputedSingle(compute, this);
+        }
     }
     /** internal use */
     class ObservableImpl extends Observable {
@@ -147,26 +156,23 @@
             this._value = newValue;
             this.onUpdated();
         }
-        computed(compute) {
-            return new ComputedVal(compute, this);
-        }
     }
     /** internal use */
-    class ComputedVal extends Observable {
-        val;
+    class ComputedSingle extends Observable {
+        observable;
         compute;
         _value;
-        constructor(compute, val) {
+        constructor(compute, observable) {
             super();
             this.compute = compute;
-            this.val = val;
-            this._value = compute(val.value);
+            this.observable = observable;
+            this._value = compute(observable.value);
         }
         get value() {
             return this._value;
         }
         subscribe(observer, immediate) {
-            return this.val.subscribe((value) => {
+            return this.observable.subscribe((value) => {
                 this._value = this.compute(value);
                 observer(this._value);
             }, immediate);
@@ -220,32 +226,35 @@
 
     class ReactiveNode {
         placeholder = document.createComment('');
-        children = new Set([this.placeholder]);
+        _children = [this.placeholder];
+        get children() {
+            return this._children;
+        }
         update(rNode) {
-            if (rNode === null || (Array.isArray(rNode) && rNode.length === 0)) {
+            const children = resolveReactiveNodes(this._children);
+            if (rNode === null || rNode.length === 0) {
                 // optimized clear path
-                if (this.children.has(this.placeholder)) {
-                    // we are already cleared
-                    return;
+                if (this._children.length === 1 && this._children[0] === this.placeholder) {
+                    return; // we are already cleared
                 }
-                const first = this.children.values().next().value;
+                const first = children.values().next().value;
                 const parent = first?.parentNode;
                 if (parent) {
                     parent.insertBefore(this.placeholder, first);
                     const fragment = document.createDocumentFragment();
-                    fragment.append(...this.children);
+                    fragment.append(...children);
                 }
-                this.children = new Set([this.placeholder]);
+                this._children = [this.placeholder];
                 return;
             }
-            const newChildren = Array.isArray(rNode) ? rNode : [rNode];
+            const newChildren = resolveReactiveNodes(rNode);
             const newChildrenSet = new Set(newChildren);
-            const first = this.children.values().next().value;
+            const first = children.values().next().value;
             const parent = first?.parentNode;
             if (parent) {
-                const childNodes = parent.childNodes;
-                const currentChildrenSet = this.children;
-                if (currentChildrenSet.size === childNodes.length
+                const domChildren = parent.childNodes;
+                const currentChildrenSet = new Set(children);
+                if (currentChildrenSet.size === domChildren.length
                     && newChildrenSet.isDisjointFrom(currentChildrenSet)) {
                     // optimized replace path
                     parent.replaceChildren(...newChildren);
@@ -254,9 +263,10 @@
                     const fragment = document.createDocumentFragment(); // used in bulk updates
                     const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
                     const replacedSet = new Set();
-                    const start = Array.prototype.indexOf.call(childNodes, first);
+                    const start = Array.prototype.indexOf.call(domChildren, first);
                     for (let i = 0; i < replaceCount; ++i) {
-                        const child = childNodes[start + i];
+                        const child = domChildren[start + i];
+                        const newChild = newChildren[i];
                         if (!child) {
                             parent.append(...newChildren.slice(i));
                             break;
@@ -266,13 +276,13 @@
                             parent.insertBefore(fragment, child);
                             break;
                         }
-                        else if (child !== newChildren[i]) {
-                            if (!replacedSet.has(newChildren[i])) {
-                                parent.replaceChild(newChildren[i], child);
+                        else if (child !== newChild) {
+                            if (!replacedSet.has(newChild)) {
+                                parent.replaceChild(newChild, child);
                                 replacedSet.add(child);
                             }
                             else {
-                                parent.insertBefore(newChildren[i], child);
+                                parent.insertBefore(newChild, child);
                             }
                         }
                     }
@@ -286,21 +296,15 @@
                     }
                 }
             }
-            this.children = newChildrenSet;
+            this._children = rNode;
         }
-        getRoot() {
-            if (!this.children.size) {
-                throw new Error('?!?!?!?');
-            }
-            return [...this.children];
-        }
+    }
+    function resolveReactiveNodes(children) {
+        return children.flatMap((vNode) => vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode);
     }
     const Show = 'Show';
     const renderShow = (props, children, renderChildren) => {
         const { when, cache } = props;
-        if (when instanceof Observable === false) {
-            throw new Error("The 'when' prop on <Show> is required and must be an Observable.");
-        }
         const childrenOrFn = children;
         const getChildren = typeof childrenOrFn === 'function' ? childrenOrFn : () => childrenOrFn;
         let childNodes = null;
@@ -308,33 +312,20 @@
             ? () => renderChildren(getChildren())
             : () => childNodes ??= renderChildren(getChildren());
         const reactiveNode = new ReactiveNode();
-        if (when.value) {
-            reactiveNode.update(render());
+        if (when instanceof Observable) {
+            if (when.value) {
+                reactiveNode.update(render());
+            }
+            when.subscribe((value) => {
+                reactiveNode.update(value ? render() : null);
+            });
         }
-        when.subscribe((value) => {
-            reactiveNode.update(value ? render() : null);
-        });
-        return reactiveNode.getRoot();
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    function With(props) {
-        throw new Error('This component cannot be called directly — it must be used through the render function.');
-    }
-    const renderWith = (props, children, renderChildren) => {
-        const { value } = props;
-        if (value instanceof Observable === false) {
-            throw new Error("The 'value' prop on <With> is required and must be an Observable.");
+        else {
+            if (when) {
+                reactiveNode.update(render());
+            }
         }
-        if (typeof children !== 'function') {
-            throw new Error('The <With> component must have exactly one child — a function that maps the value.');
-        }
-        const mapFn = children;
-        const reactiveNode = new ReactiveNode();
-        reactiveNode.update(renderChildren(mapFn(value.value)));
-        value.subscribe((value) => {
-            reactiveNode.update(renderChildren(mapFn(value)));
-        });
-        return reactiveNode.getRoot();
+        return reactiveNode;
     };
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     function For(props) {
@@ -371,14 +362,13 @@
             cache = new MultiEntryCache(childNodes);
             reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
         });
-        return reactiveNode.getRoot();
+        return reactiveNode;
     };
 
     const Fragment = 'Fragment';
     /* built-in components that have special handling */
     const BuiltinComponents = new Map([
         [Show, renderShow],
-        [With, renderWith],
         [For, renderFor],
     ]);
     function jsx(type, props) {
@@ -388,7 +378,7 @@
     }
     // export let initialRenderDone = false;
     function render(root, vNode) {
-        root.append(...renderChildren(vNode));
+        root.append(...resolveReactiveNodes(renderChildren(vNode)));
         // initialRenderDone = true;
     }
     function renderVNode(type, props, children) {
@@ -423,7 +413,7 @@
                 props['ref'] = undefined;
             }
             setProps(domElement, props);
-            domElement.append(...renderChildren(children));
+            domElement.append(...resolveReactiveNodes(renderChildren(children)));
             return domElement;
         }
     }
@@ -454,7 +444,7 @@
                         reactiveNode.update(children);
                     }
                 });
-                childNodes.push(...reactiveNode.getRoot());
+                childNodes.push(reactiveNode);
             }
             else {
                 childNodes.push(vNode);
@@ -541,12 +531,19 @@
                         elem[key] = value;
                     });
                     // two way updates for input element
-                    if (value instanceof Val
-                        && ((elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
-                            || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key)))) {
-                        elem.addEventListener('change', (e) => {
-                            value.value = e.target[key];
-                        });
+                    if ((elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
+                        || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))) {
+                        if (value instanceof Val) {
+                            elem.addEventListener('change', (e) => {
+                                value.value = e.target[key];
+                            });
+                        }
+                        else {
+                            elem.addEventListener('change', (e) => {
+                                e.preventDefault();
+                                e.target[key] = value.value;
+                            });
+                        }
                     }
                     elemObj[key] = value.value;
                 }

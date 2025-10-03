@@ -1,7 +1,7 @@
-import { isObject, hasKey } from '@cleansimple/utils-js';
+import { hasKey, isObject } from '@cleansimple/utils-js';
 import { XMLNamespaces } from './namespaces.esm.js';
-import { Val, Observable } from './observable.esm.js';
-import { resolveReactiveNodes, Show, renderShow, For, renderFor, ReactiveNode } from './reactive.esm.js';
+import { Observable, Val } from './observable.esm.js';
+import { resolveReactiveNodes, ReactiveNode, Show, renderShow, For, renderFor } from './reactive.esm.js';
 
 const Fragment = 'Fragment';
 /* built-in components that have special handling */

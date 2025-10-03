@@ -1,19 +1,22 @@
 {
     "name": "@cleansimple/eslint-config",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "exports": {
         "./config": "./config.js"
     },
-    "scripts": {
-        "eslint:lint": "cd $INIT_CWD && eslint"
+    "dependencies": {
+        "@eslint/js": "^9.36.0",
+        "eslint-plugin-only-warn": "^1.1.0",
+        "typescript-eslint": "^8.45.0"
     },
     "devDependencies": {
-        "@eslint/js": "^9.25.1",
-        "eslint": "^9.25.1",
-        "eslint-plugin-only-warn": "^1.1.0",
-        "typescript": "^5.8.3",
-        "typescript-eslint": "^8.30.1"
+        "eslint": "9.36.0",
+        "typescript": "5.9.3"
+    },
+    "peerDependencies": {
+        "eslint": "9.36.0",
+        "typescript": "5.9.3"
     }
 }

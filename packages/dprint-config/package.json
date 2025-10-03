@@ -1,17 +1,10 @@
 {
     "name": "@cleansimple/dprint-config",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "main": "./config.js",
     "bin": {
-        "init-config": "./bin/init-config.js"
-    },
-    "scripts": {
-        "dprint:fmt": "cd $INIT_CWD && dprint fmt",
-        "dprint:init-config": "cd $INIT_CWD && init-config"
-    },
-    "devDependencies": {
-        "dprint": "^0.50.2"
+        "init-dprint-config": "./bin/init-config.js"
     }
 }

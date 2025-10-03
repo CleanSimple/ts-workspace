@@ -4,20 +4,22 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "init-dprint-config": "yarn workspaces foreach -A run dprint:init-config"
+        "dprint:init-config": "yarn workspaces foreach -Ap run init-dprint-config",
+        "build": "yarn workspaces foreach -Apt run build",
+        "lint": "yarn workspaces foreach -Ap run lint",
+        "fmt": "yarn workspaces foreach -Ap run fmt"
     },
     "workspaces": [
         "packages/*",
-        "project-templates/*",
-        "projects/*"
+        "projects/*",
+        "project-templates/*"
     ],
     "devDependencies": {
         "@cleansimple/dprint-config": "workspace:^",
-        "eslint": "^9.25.1",
-        "typescript": "^5.8.3"
-    },
-    "resolutions": {
-        "eslint": "9.25.1",
-        "typescript": "5.8.3"
+        "@yarnpkg/types": "^4.0.1",
+        "dprint": "0.50.2",
+        "eslint": "9.36.0",
+        "rollup": "4.52.4",
+        "typescript": "5.9.3"
     }
 }

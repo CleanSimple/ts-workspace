@@ -1,8 +1,9 @@
+import { defineConfig } from 'eslint/config';
 import eslint from '@eslint/js';
 import onlyWarn from 'eslint-plugin-only-warn';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default defineConfig([
     eslint.configs.recommended,
     tseslint.configs.recommendedTypeChecked,
     tseslint.configs.stylisticTypeChecked,
@@ -38,4 +39,4 @@ export default tseslint.config(
             '@typescript-eslint/prefer-regexp-exec': 'off',
         },
     },
-);
+]);

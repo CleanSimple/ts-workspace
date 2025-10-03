@@ -1,4 +1,5 @@
-import type { FunctionalComponent, RefType } from '@cleansimple/plain-jsx';
+import type { FunctionalComponent } from '@cleansimple/plain-jsx';
+import { ref } from '@cleansimple/plain-jsx';
 import { TestCounter } from './TestCounter';
 import { TestSpan } from './TestSpan';
 
@@ -12,21 +13,14 @@ interface TestUIRefType {
 
 const TestUI: FunctionalComponent<TestUIProps, TestUIRefType> = (
     { uId = '1-1' },
-    { onMounted },
+    { defineRef },
 ) => {
-    let counter: RefType<typeof TestCounter>;
+    const counter = ref<typeof TestCounter>();
 
-    onMounted(({ getRef, defineRef }) => {
-        counter = getRef<typeof TestCounter>('counter');
-
-        // should throw since TestSpan does not define a ref type
-        // const span = getRef<typeof TestSpan>('span');
-
-        defineRef({
-            get count() {
-                return counter.count;
-            },
-        });
+    defineRef({
+        get count() {
+            return counter.value?.count ?? NaN;
+        },
     });
 
     return (
@@ -44,13 +38,13 @@ const TestUI: FunctionalComponent<TestUIProps, TestUIRefType> = (
         >
             <>
                 {uId}
-                <TestCounter ref='counter' />
-                <button onClick={() => counter.increment()}>
+                <TestCounter ref={counter} />
+                <button on:click={() => counter.value?.increment()}>
                     Increment
                 </button>
-                <button onClick={() => counter.decrement()}>Decrement</button>
-                <button onClick={() => alert(counter.count)}>Show count</button>
-                <TestSpan ref='span' />
+                <button on:click={() => counter.value?.decrement()}>Decrement</button>
+                <button on:click={() => alert(counter.value?.count)}>Show count</button>
+                <TestSpan />
             </>
         </div>
     );

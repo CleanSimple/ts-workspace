@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/rollup-config",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "exports": {
@@ -13,17 +13,19 @@
     "bin": {
         "clean": "./bin/clean.js"
     },
-    "scripts": {
-        "rollup:build": "cd $INIT_CWD && rollup -c",
-        "rollup:watch": "cd $INIT_CWD && rollup -c -w"
-    },
-    "devDependencies": {
+    "dependencies": {
         "@rollup/plugin-commonjs": "^28.0.6",
         "@rollup/plugin-node-resolve": "^16.0.1",
-        "rollup": "4.20.0",
         "rollup-plugin-header": "^1.0.0",
-        "rollup-plugin-string-import": "^1.2.5",
-        "rollup-plugin-typescript2": "^0.36.0",
-        "typescript": "^5.8.3"
+        "rollup-plugin-string-import": "^1.2.6",
+        "rollup-plugin-typescript2": "^0.36.0"
+    },
+    "devDependencies": {
+        "rollup": "4.52.4",
+        "typescript": "5.9.3"
+    },
+    "peerDependencies": {
+        "rollup": "4.52.4",
+        "typescript": "5.9.3"
     }
 }

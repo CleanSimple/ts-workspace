@@ -9,6 +9,25 @@
 (function () {
     'use strict';
 
+    Array.prototype.first = function () {
+        return this[0];
+    };
+    Array.prototype.last = function () {
+        return this[this.length - 1];
+    };
+    Array.prototype.insertAt = function (index, ...items) {
+        return this.splice(index, 0, ...items);
+    };
+    Array.prototype.removeAt = function (index) {
+        return this.splice(index, 1)[0];
+    };
+    Array.prototype.remove = function (item) {
+        const index = this.indexOf(item);
+        if (index !== -1) {
+            this.splice(index, 1);
+        }
+    };
+
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
     }
@@ -16,7 +35,527 @@
     function hasKey(obj, key) {
         return key in obj;
     }
-    function isKeyReadonly(obj, key) {
+    function isObject(value) {
+        return typeof value === 'object'
+            && value !== null
+            && Object.getPrototypeOf(value) === Object.prototype;
+    }
+
+    const XMLNamespaces = {
+        'svg': 'http://www.w3.org/2000/svg',
+        'xhtml': 'http://www.w3.org/1999/xhtml',
+    };
+
+    let callbacks = new Array();
+    let queued = false;
+    function runNextTickCallbacks() {
+        queued = false;
+        for (const callback of callbacks) {
+            void callback();
+        }
+        callbacks = [];
+    }
+    function nextTick(callback) {
+        callbacks.push(callback);
+        if (queued) {
+            return;
+        }
+        queued = true;
+        queueMicrotask(runNextTickCallbacks);
+    }
+
+    class Sentinel {
+        static Instance = new Sentinel();
+        // eslint-disable-next-line @typescript-eslint/no-empty-function
+        constructor() { }
+    }
+
+    class Observable {
+        computed(compute) {
+            return new ComputedSingle(compute, this);
+        }
+    }
+    /** internal use */
+    class ObservableImpl extends Observable {
+        observers = [];
+        immediateObservers = [];
+        hasDeferredNotifications = false;
+        notifyObserversCallback;
+        constructor() {
+            super();
+            this.notifyObserversCallback = this.notifyObservers.bind(this);
+        }
+        onUpdated() {
+            if (this.immediateObservers.length) {
+                const value = this.value;
+                for (const observer of this.immediateObservers) {
+                    observer(value);
+                }
+            }
+            if (this.observers.length) {
+                if (this.hasDeferredNotifications) {
+                    return;
+                }
+                this.hasDeferredNotifications = true;
+                nextTick(this.notifyObserversCallback);
+            }
+        }
+        notifyObservers() {
+            this.hasDeferredNotifications = false;
+            const value = this.value;
+            for (const observer of this.observers) {
+                observer(value);
+            }
+        }
+        subscribe(observer, immediate = true) {
+            const observers = immediate ? this.immediateObservers : this.observers;
+            if (!observers.includes(observer)) {
+                observers.push(observer);
+            }
+            return {
+                unsubscribe: this.unsubscribe.bind(this, observer, immediate),
+            };
+        }
+        unsubscribe(observer, immediate) {
+            const observers = immediate ? this.immediateObservers : this.observers;
+            const index = observers.indexOf(observer);
+            if (index > -1) {
+                observers.splice(index, 1);
+            }
+        }
+    }
+    /**
+     * Simple observable value implementation
+     */
+    class Val extends ObservableImpl {
+        _value;
+        constructor(initialValue) {
+            super();
+            this._value = initialValue;
+        }
+        get value() {
+            return this._value;
+        }
+        set value(newValue) {
+            if (this._value === newValue) {
+                return;
+            }
+            this._value = newValue;
+            this.onUpdated();
+        }
+    }
+    /** internal use */
+    class ComputedSingle extends Observable {
+        observable;
+        compute;
+        _value;
+        constructor(compute, observable) {
+            super();
+            this.compute = compute;
+            this.observable = observable;
+            this._value = compute(observable.value);
+        }
+        get value() {
+            return this._value;
+        }
+        subscribe(observer, immediate) {
+            return this.observable.subscribe((value) => {
+                this._value = this.compute(value);
+                observer(this._value);
+            }, immediate);
+        }
+    }
+    function val(initialValue) {
+        return new Val(initialValue);
+    }
+    function ref() {
+        return new Val(null);
+    }
+
+    class MultiEntryCache {
+        map = new Map();
+        readIndex = new Map();
+        constructor(entries = []) {
+            for (const [key, value] of entries) {
+                this.add(key, value);
+            }
+        }
+        add(key, value) {
+            let list = this.map.get(key);
+            if (!list) {
+                list = [];
+                this.map.set(key, list);
+                this.readIndex.set(key, 0);
+            }
+            list.push(value);
+        }
+        get(key) {
+            const list = this.map.get(key);
+            if (!list)
+                return undefined;
+            const index = this.readIndex.get(key) ?? 0;
+            if (index >= list.length)
+                return undefined;
+            const result = list[index];
+            this.readIndex.set(key, index + 1);
+            return result;
+        }
+        reset() {
+            for (const key of this.map.keys()) {
+                this.readIndex.set(key, 0);
+            }
+        }
+        clear() {
+            this.map.clear();
+            this.readIndex.clear();
+        }
+    }
+
+    class ReactiveNode {
+        placeholder = document.createComment('');
+        _children = [this.placeholder];
+        get children() {
+            return this._children;
+        }
+        update(rNode) {
+            const children = resolveReactiveNodes(this._children);
+            if (rNode === null || rNode.length === 0) {
+                // optimized clear path
+                if (this._children.length === 1 && this._children[0] === this.placeholder) {
+                    return; // we are already cleared
+                }
+                const first = children.values().next().value;
+                const parent = first?.parentNode;
+                if (parent) {
+                    parent.insertBefore(this.placeholder, first);
+                    const fragment = document.createDocumentFragment();
+                    fragment.append(...children);
+                }
+                this._children = [this.placeholder];
+                return;
+            }
+            const newChildren = resolveReactiveNodes(rNode);
+            const newChildrenSet = new Set(newChildren);
+            const first = children.values().next().value;
+            const parent = first?.parentNode;
+            if (parent) {
+                const domChildren = parent.childNodes;
+                const currentChildrenSet = new Set(children);
+                if (currentChildrenSet.size === domChildren.length
+                    && newChildrenSet.isDisjointFrom(currentChildrenSet)) {
+                    // optimized replace path
+                    parent.replaceChildren(...newChildren);
+                }
+                else {
+                    const fragment = document.createDocumentFragment(); // used in bulk updates
+                    const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
+                    const replacedSet = new Set();
+                    const start = Array.prototype.indexOf.call(domChildren, first);
+                    for (let i = 0; i < replaceCount; ++i) {
+                        const child = domChildren[start + i];
+                        const newChild = newChildren[i];
+                        if (!child) {
+                            parent.append(...newChildren.slice(i));
+                            break;
+                        }
+                        else if (!currentChildrenSet.has(child)) {
+                            fragment.append(...newChildren.slice(i));
+                            parent.insertBefore(fragment, child);
+                            break;
+                        }
+                        else if (child !== newChild) {
+                            if (!replacedSet.has(newChild)) {
+                                parent.replaceChild(newChild, child);
+                                replacedSet.add(child);
+                            }
+                            else {
+                                parent.insertBefore(newChild, child);
+                            }
+                        }
+                    }
+                    if (currentChildrenSet.size > newChildren.length) {
+                        // appending the excess children to the fragment will move them from their current parent to the fragment effectively removing them.
+                        fragment.append(...currentChildrenSet.difference(newChildrenSet));
+                    }
+                    else if (currentChildrenSet.size < newChildren.length) {
+                        fragment.append(...newChildren.slice(replaceCount));
+                        parent.insertBefore(fragment, newChildren[replaceCount - 1].nextSibling);
+                    }
+                }
+            }
+            this._children = rNode;
+        }
+    }
+    function resolveReactiveNodes(children) {
+        return children.flatMap((vNode) => vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode);
+    }
+    const Show = 'Show';
+    const renderShow = (props, children, renderChildren) => {
+        const { when, cache } = props;
+        const childrenOrFn = children;
+        const getChildren = typeof childrenOrFn === 'function' ? childrenOrFn : () => childrenOrFn;
+        let childNodes = null;
+        const render = cache === false
+            ? () => renderChildren(getChildren())
+            : () => childNodes ??= renderChildren(getChildren());
+        const reactiveNode = new ReactiveNode();
+        if (when instanceof Observable) {
+            if (when.value) {
+                reactiveNode.update(render());
+            }
+            when.subscribe((value) => {
+                reactiveNode.update(value ? render() : null);
+            });
+        }
+        else {
+            if (when) {
+                reactiveNode.update(render());
+            }
+        }
+        return reactiveNode;
+    };
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    function For(props) {
+        throw new Error('This component cannot be called directly — it must be used through the render function.');
+    }
+    const renderFor = (props, children, renderChildren) => {
+        const { of } = props;
+        if (of instanceof Observable === false) {
+            throw new Error("The 'of' prop on <For> is required and must be an Observable.");
+        }
+        if (typeof children !== 'function') {
+            throw new Error('The <For> component must have exactly one child — a function that maps each item.');
+        }
+        const mapFn = children;
+        let cache = new MultiEntryCache();
+        const render = (value, index) => {
+            let item = cache.get(value);
+            if (!item) {
+                const indexObservable = val(index);
+                item = [indexObservable, renderChildren(mapFn(value, indexObservable))];
+                cache.add(value, item);
+            }
+            else {
+                item[0].value = index;
+            }
+            return [value, item];
+        };
+        const reactiveNode = new ReactiveNode();
+        const childNodes = of.value.map(render);
+        cache = new MultiEntryCache(childNodes);
+        reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
+        of.subscribe((items) => {
+            const childNodes = items.map(render);
+            cache = new MultiEntryCache(childNodes);
+            reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
+        });
+        return reactiveNode;
+    };
+
+    const Fragment = 'Fragment';
+    /* built-in components that have special handling */
+    const BuiltinComponents = new Map([
+        [Show, renderShow],
+        [For, renderFor],
+    ]);
+    function jsx(type, props) {
+        const { children } = props;
+        props.children = undefined;
+        return renderVNode(type, props, children);
+    }
+    // export let initialRenderDone = false;
+    function render(root, vNode) {
+        root.append(...resolveReactiveNodes(renderChildren(vNode)));
+        // initialRenderDone = true;
+    }
+    function renderVNode(type, props, children) {
+        const renderBuiltin = BuiltinComponents.get(type);
+        if (renderBuiltin) {
+            return renderBuiltin(props, children, renderChildren);
+        }
+        /* general handling */
+        if (typeof type === 'function') {
+            let componentRef = null;
+            const defineRef = (ref) => {
+                componentRef = ref;
+            };
+            const vNode = type({ ...props, children }, { defineRef });
+            if (props['ref'] instanceof Val) {
+                props['ref'].value = componentRef;
+            }
+            componentRef = null;
+            return renderChildren(vNode);
+        }
+        else if (type === Fragment) {
+            return renderChildren(children);
+        }
+        else {
+            const hasNS = type.includes(':');
+            const domElement = hasNS
+                ? document.createElementNS(...splitNamespace(type))
+                : document.createElement(type);
+            // handle ref prop
+            if (props['ref'] instanceof Val) {
+                props['ref'].value = domElement;
+                props['ref'] = undefined;
+            }
+            setProps(domElement, props);
+            domElement.append(...resolveReactiveNodes(renderChildren(children)));
+            return domElement;
+        }
+    }
+    function renderChildren(children) {
+        const normalizedChildren = Array.isArray(children)
+            ? children.flat(10)
+            : [children];
+        const childNodes = [];
+        for (const vNode of normalizedChildren) {
+            if (vNode == null || typeof vNode === 'boolean') {
+                continue;
+            }
+            else if (typeof vNode === 'string' || typeof vNode === 'number') {
+                childNodes.push(document.createTextNode(String(vNode)));
+            }
+            else if (vNode instanceof Observable) {
+                const reactiveNode = new ReactiveNode();
+                let children = renderChildren(vNode.value);
+                reactiveNode.update(children);
+                vNode.subscribe((value) => {
+                    if ((typeof value === 'string' || typeof value === 'number')
+                        && children instanceof Node && children.nodeType === Node.TEXT_NODE) {
+                        // optimized update path for text nodes
+                        children.textContent = value.toString();
+                    }
+                    else {
+                        children = renderChildren(value);
+                        reactiveNode.update(children);
+                    }
+                });
+                childNodes.push(reactiveNode);
+            }
+            else {
+                childNodes.push(vNode);
+            }
+        }
+        return childNodes;
+    }
+    const handledEvents = new Set();
+    const InputTwoWayProps = ['value', 'valueAsNumber', 'valueAsDate', 'checked', 'files'];
+    const SelectTwoWayProps = ['value', 'selectedIndex'];
+    function setProps(elem, props) {
+        const elemObj = elem;
+        let elemRef = null;
+        if ('style' in props) {
+            const value = props['style'];
+            props['style'] = undefined;
+            if (isObject(value)) {
+                Object.assign(elem.style, value);
+            }
+            else if (typeof value === 'string') {
+                elem.setAttribute('style', value);
+            }
+            else {
+                throw new Error("Invalid value type for 'style' prop.");
+            }
+        }
+        else if ('dataset' in props) {
+            const value = props['dataset'];
+            props['dataset'] = undefined;
+            if (!isObject(value)) {
+                throw new Error('Dataset value must be an object');
+            }
+            Object.assign(elem.dataset, value);
+        }
+        // handle class prop early so it doesn't overwrite class:* props
+        else if ('class' in props) {
+            const value = props['class'];
+            props['class'] = undefined;
+            elem.className = value;
+        }
+        for (const key in props) {
+            const value = props[key];
+            if (value === undefined) {
+                continue;
+            }
+            if (key.startsWith('class:')) {
+                const className = key.slice(6);
+                if (value instanceof Observable) {
+                    value.subscribe((value) => {
+                        if (value) {
+                            elem.classList.add(className);
+                        }
+                        else {
+                            elem.classList.remove(className);
+                        }
+                    });
+                    if (value.value) {
+                        elem.classList.add(className);
+                    }
+                }
+                else {
+                    if (value) {
+                        elem.classList.add(className);
+                    }
+                }
+            }
+            else if (key.startsWith('on:')) {
+                const event = key.slice(3);
+                elemObj[`@@${event}`] = value;
+                if (!handledEvents.has(event)) {
+                    handledEvents.add(event);
+                    document.addEventListener(event, globalEventHandler);
+                }
+            }
+            else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+                if (value instanceof Observable) {
+                    elemRef ??= new WeakRef(elemObj);
+                    const unsubscribe = value.subscribe((value) => {
+                        const elem = elemRef.deref();
+                        if (!elem) {
+                            unsubscribe.unsubscribe();
+                            return;
+                        }
+                        elem[key] = value;
+                    });
+                    // two way updates for input element
+                    if ((elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
+                        || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))) {
+                        if (value instanceof Val) {
+                            elem.addEventListener('change', (e) => {
+                                value.value = e.target[key];
+                            });
+                        }
+                        else {
+                            elem.addEventListener('change', (e) => {
+                                e.preventDefault();
+                                e.target[key] = value.value;
+                            });
+                        }
+                    }
+                    elemObj[key] = value.value;
+                }
+                else {
+                    elemObj[key] = value;
+                }
+            }
+            else {
+                if (key.includes(':')) {
+                    elem.setAttributeNS(splitNamespace(key)[0], key, value);
+                }
+                else {
+                    elem.setAttribute(key, value);
+                }
+            }
+        }
+    }
+    function splitNamespace(tagNS) {
+        const [ns, tag] = tagNS.split(':', 2);
+        if (!hasKey(XMLNamespaces, ns)) {
+            throw new Error('Invalid namespace');
+        }
+        return [XMLNamespaces[ns], tag];
+    }
+    function isReadonlyProp(obj, key) {
         let currentObj = obj;
         while (currentObj !== null) {
             const desc = Object.getOwnPropertyDescriptor(currentObj, key);
@@ -27,251 +566,50 @@
         }
         return true;
     }
-
-    class LifecycleEvents {
-        mountedHandlers = [[]];
-        readyHandlers = [[]];
-        renderedHandlers = [[]];
-        isListening = false;
-        level = 0;
-        listen(node) {
-            if (this.isListening) {
-                throw new Error('Invalid operation. Can only listen once.');
+    function globalEventHandler(evt) {
+        const key = `@@${evt.type}`;
+        let node = evt.target;
+        while (node) {
+            const handler = node[key];
+            if (handler) {
+                return handler.call(node, evt);
             }
-            this.isListening = true;
-            const observer = new MutationObserver((mutations) => {
-                for (const mutation of mutations) {
-                    for (const addedNode of mutation.addedNodes) {
-                        if (addedNode === node || addedNode.contains(node)) {
-                            this.isListening = false;
-                            observer.disconnect();
-                            void this.mounted();
-                            return;
-                        }
-                    }
-                }
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-        }
-        async mounted() {
-            for (const handlers of this.mountedHandlers.reverse()) {
-                await Promise.all(handlers.map((handler) => handler()));
-            }
-            setTimeout(async () => {
-                for (const handlers of this.readyHandlers.reverse()) {
-                    await Promise.all(handlers.map((handler) => handler()));
-                }
-            }, 0);
-            requestAnimationFrame(() => {
-                // can potentially handle onRender (before render) here!
-                void Promise.resolve().then(async () => {
-                    for (const handlers of this.renderedHandlers.reverse()) {
-                        await Promise.all(handlers.map((handler) => handler()));
-                    }
-                });
-            });
-        }
-        pushLevel() {
-            this.level += 1;
-            this.mountedHandlers[this.level] = this.mountedHandlers?.[this.level] ?? [];
-            this.readyHandlers[this.level] = this.readyHandlers?.[this.level] ?? [];
-            this.renderedHandlers[this.level] = this.renderedHandlers?.[this.level] ?? [];
-        }
-        popLevel() {
-            this.level -= 1;
-        }
-        onMounted(handler) {
-            this.mountedHandlers[this.level].push(handler);
-        }
-        onReady(handler) {
-            this.readyHandlers[this.level].push(handler);
-        }
-        onRendered(handler) {
-            this.renderedHandlers[this.level].push(handler);
+            node = node.parentNode;
         }
     }
 
-    const XMLNamespaces = {
-        'svg': 'http://www.w3.org/2000/svg',
-    };
-    const Fragment = 'Fragment';
-    function createVNode(type, props = {}, children = [], isDev = false) {
-        return { type, props, children, isDev };
-    }
-    function jsx(type, props) {
-        let children = props.children ?? [];
-        children = Array.isArray(children) ? children : [children];
-        delete props.children;
-        return createVNode(type, props, children, false);
-    }
-    async function render(root, element, handlers) {
-        const events = new LifecycleEvents();
-        const refs = {};
-        if (element && typeof element === 'object') {
-            element.props['ref'] = 'default';
-            events.onMounted(() => handlers.onMounted(refs.default));
-        }
-        const node = await renderVNode(root, element, events, refs);
-        if (node === null) {
-            return;
-        }
-        events.listen(node);
-        root.appendChild(node);
-    }
-    async function renderVNode(root, element, events, refs) {
-        if (element === undefined || element === null || typeof element === 'boolean') {
-            return null;
-        }
-        else if (typeof element === 'string' || typeof element === 'number') {
-            return document.createTextNode(String(element));
-        }
-        const renderChildren = async (node, children) => {
-            const childNodes = await Promise.all(children.flat().map(async (child) => renderVNode(node, child, events, refs)));
-            node.append(...childNodes.filter(node => node !== null));
-        };
-        const { type, props, children } = element;
-        if (typeof type === 'function') {
-            return await renderFunctionalComponent(root, type, props, children, events, refs);
-        }
-        else if (type === Fragment) {
-            const fragment = document.createDocumentFragment();
-            await renderChildren(fragment, children);
-            return fragment;
-        }
-        else {
-            const hasNS = type.includes(':');
-            const domElement = hasNS
-                ? document.createElementNS(...splitNamespace(type))
-                : document.createElement(type);
-            // handle ref prop
-            if ('ref' in props && typeof props['ref'] === 'string') {
-                if (refs) {
-                    refs[props['ref']] = domElement;
-                }
-                delete props['ref'];
-            }
-            setProps(domElement, props);
-            await renderChildren(domElement, children);
-            return domElement;
-        }
-    }
-    async function renderFunctionalComponent(root, type, props, children, events, refs) {
-        const componentRefs = {};
-        const utils = {
-            getRef: (key) => {
-                if (key in componentRefs === false) {
-                    throw new Error(`Invalid ref key: ${key}`);
-                }
-                return componentRefs[key];
-            },
-            defineRef: (ref) => {
-                if ('ref' in props && typeof props['ref'] === 'string') {
-                    if (refs) {
-                        refs[props['ref']] = ref;
-                    }
-                }
-            },
-        };
-        const setupHandlers = [];
-        const errorCapturedHandlers = [];
-        const componentEvents = {
-            onSetup: (handler) => setupHandlers.push(handler),
-            onMounted: (handler) => events.onMounted(() => handler(utils)),
-            onReady: (handler) => events.onReady(handler),
-            onRendered: (handler) => events.onRendered(handler),
-            onErrorCaptured: (handler) => errorCapturedHandlers.push(handler),
-        };
-        let node = null;
-        events.pushLevel();
-        try {
-            const vNode = type({ ...props, children }, componentEvents);
-            await Promise.all(setupHandlers.map((setupHandler) => setupHandler()));
-            node = await renderVNode(root, vNode, events, componentRefs);
-        }
-        catch (error) {
-            const handled = errorCapturedHandlers.some(errorCapturedHandler => errorCapturedHandler(error) === false);
-            if (!handled) {
-                throw error;
-            }
-        }
-        finally {
-            events.popLevel();
-        }
-        return node;
-    }
-    function setProps(elem, props) {
-        Object.entries(props).forEach(([key, value]) => {
-            if (key === 'style' && value instanceof Object) {
-                Object.assign(elem.style, value);
-            }
-            else if (key === 'dataset' && value instanceof Object) {
-                Object.assign(elem.dataset, value);
-            }
-            else if (/^on[A-Z]/.exec(key)) {
-                elem.addEventListener(key.slice(2).toLowerCase(), value);
-            }
-            else if (hasKey(elem, key) && !isKeyReadonly(elem, key)) {
-                Object.assign(elem, { [key]: value });
-            }
-            else {
-                if (key.includes(':')) {
-                    elem.setAttributeNS(splitNamespace(key)[0], key, String(value));
-                }
-                else {
-                    elem.setAttribute(key, String(value));
-                }
-            }
-        });
-    }
-    function splitNamespace(tagNS) {
-        const [ns, tag] = tagNS.split(':', 1);
-        if (!hasKey(XMLNamespaces, ns)) {
-            throw new Error('Invalid namespace');
-        }
-        return [XMLNamespaces[ns], tag];
-    }
-
-    const TestCounter = ({ initialValue: initialCount = 1 }, { onMounted }) => {
+    const TestCounter = ({ initialValue: initialCount = 1 }, { defineRef }) => {
         let count = initialCount;
-        let countElem;
+        const countElem = ref();
         const setCount = (newCount) => {
             count = newCount;
-            countElem.textContent = count.toString();
+            if (!countElem.value)
+                return;
+            countElem.value.textContent = count.toString();
         };
         const increment = () => setCount(count + 1);
         const decrement = () => setCount(count - 1);
-        onMounted(({ getRef, defineRef }) => {
-            countElem = getRef('count');
-            defineRef({
-                increment,
-                decrement,
-                get count() {
-                    return count;
-                },
-            });
+        defineRef({
+            increment,
+            decrement,
+            get count() {
+                return count;
+            },
         });
-        return jsx("span", { ref: 'count', children: count });
+        return jsx("span", { ref: countElem, children: count });
     };
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const TestSpan = (props, { onMounted }) => {
-        // onMounted(({ defineRef }) => {
-        //     defineRef({}); // should be invalid
-        // });
+    const TestSpan = (props) => {
         return jsx("span", { children: "Test span" });
     };
 
-    const TestUI = ({ uId = '1-1' }, { onMounted }) => {
-        let counter;
-        onMounted(({ getRef, defineRef }) => {
-            counter = getRef('counter');
-            // should throw since TestSpan does not define a ref type
-            // const span = getRef<typeof TestSpan>('span');
-            defineRef({
-                get count() {
-                    return counter.count;
-                },
-            });
+    const TestUI = ({ uId = '1-1' }, { defineRef }) => {
+        const counter = ref();
+        defineRef({
+            get count() {
+                return counter.value?.count ?? NaN;
+            },
         });
         return (jsx("div", { style: {
                 position: 'fixed',
@@ -282,7 +620,7 @@
                 zIndex: '10000',
                 width: '100px',
                 height: '300px',
-            }, children: jsx(Fragment, { children: [uId, jsx(TestCounter, { ref: 'counter' }), jsx("button", { onClick: () => counter.increment(), children: "Increment" }), jsx("button", { onClick: () => counter.decrement(), children: "Decrement" }), jsx("button", { onClick: () => alert(counter.count), children: "Show count" }), jsx(TestSpan, { ref: 'span' })] }) }));
+            }, children: jsx(Fragment, { children: [uId, jsx(TestCounter, { ref: counter }), jsx("button", { "on:click": () => counter.value?.increment(), children: "Increment" }), jsx("button", { "on:click": () => counter.value?.decrement(), children: "Decrement" }), jsx("button", { "on:click": () => alert(counter.value?.count), children: "Show count" }), jsx(TestSpan, {})] }) }));
     };
 
     async function main() {
@@ -290,11 +628,7 @@
         console.info('Hi!');
         await sleep(1000);
         console.info('Bye!');
-        async function onMounted(ref) {
-            await sleep(1000);
-            console.info('count', ref?.count);
-        }
-        void render(document.body, jsx(TestUI, {}), { onMounted });
+        void render(document.body, jsx(TestUI, {}));
     }
     void main();
 
