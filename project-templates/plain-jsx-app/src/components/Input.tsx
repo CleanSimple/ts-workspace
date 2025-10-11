@@ -1,25 +1,23 @@
-import { type FunctionalComponent, type JSX, nextTick, ref } from '@cleansimple/plain-jsx';
+import { type FunctionalComponent, type JSX, ref } from '@cleansimple/plain-jsx';
 
 interface InputProps extends JSX.PropsOf<HTMLInputElement> {
     focus?: boolean;
 }
 
 const Input: FunctionalComponent<InputProps, HTMLInputElement> = (
-    { focus, ...props },
-    { defineRef },
+    { ref: inputRef, focus, ...props },
+    { onMount },
 ) => {
-    const input = ref<HTMLInputElement>();
+    inputRef = inputRef ?? ref<HTMLInputElement>();
 
-    input.subscribe((input) => {
-        if (!input) return;
-
-        defineRef(input);
+    onMount(() => {
+        console.info('Input mounted');
         if (focus) {
-            nextTick(() => input.focus());
+            inputRef.value?.focus();
         }
     });
 
-    return <input ref={input} {...props} />;
+    return <input ref={inputRef} {...props} />;
 };
 
 export { Input };

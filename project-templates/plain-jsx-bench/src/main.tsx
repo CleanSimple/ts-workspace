@@ -136,7 +136,7 @@ const Main = () => {
             <table class='table table-hover table-striped test-data'>
                 <tbody>
                     <For of={data}>
-                        {(row) => {
+                        {({ item: row }) => {
                             let rowId = row.id;
                             return (
                                 <tr class:danger={selected.computed((id) => id == rowId)}>

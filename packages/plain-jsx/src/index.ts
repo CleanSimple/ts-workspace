@@ -1,10 +1,11 @@
-import type { Setter } from '@cleansimple/utils-js';
+import type { MaybePromise, Setter } from '@cleansimple/utils-js';
 import type { Observable } from './observable';
-import type { VNode, VNodeChildren } from './types';
+import type { JSXNode } from './types';
 
+export { For } from './components/For';
+export { Show } from './components/Show';
 export { Fragment, type JSX, render } from './core';
 export { computed, type Observable, type Ref, ref, type Val, val } from './observable';
-export { For, Show } from './reactive';
 export { nextTick } from './scheduling';
 
 export interface Helpers<TRef> {
@@ -20,14 +21,16 @@ export interface Helpers<TRef> {
      * };
      */
     defineRef: Setter<TRef>;
+    onMount: (handler: () => MaybePromise<void>) => void;
+    onUnmount: (handler: () => MaybePromise<void>) => void;
 }
 
 export type FunctionalComponent<TProps = object, TRef = unknown> = (
     props: TProps & { ref?: Observable<TRef | null> },
     helpers: Helpers<TRef>,
-) => VNode;
+) => JSXNode;
 
 /** To be extended for components with children */
 export interface ParentComponent {
-    children?: VNodeChildren;
+    children?: JSXNode;
 }

@@ -1,291 +1,523 @@
-import { hasKey, isObject } from '@cleansimple/utils-js';
-import { XMLNamespaces } from './namespaces';
-import { Observable, Val } from './observable';
-import type { CustomRenderFn, ShowProps } from './reactive';
-import { For, ReactiveNode, renderFor, renderShow, resolveReactiveNodes, Show } from './reactive';
+import type { MaybePromise } from '@cleansimple/utils-js';
+import { MultiEntryCache } from './cache';
+import { For, type ForCallbackProps, type ForProps } from './components/For';
+import { Show, type ShowProps } from './components/Show';
+import { observeProps, patchNode, setProps } from './dom';
+import { mountNodes } from './lifecycle-events';
+import {
+    type Observable,
+    ObservableImpl,
+    type Subscription,
+    type Val,
+    val,
+    ValImpl,
+} from './observable';
+import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
+import { runAsync } from './scheduling';
 import type {
     DOMNode,
     DOMProps,
     FunctionalComponent,
-    IntermediateChildren,
-    IntermediateNode,
+    JSXElement,
+    JSXNode,
     PropsType,
     SVGProps,
     VNode,
-    VNodeChildren,
+    VNodeBuiltinComponent,
+    VNodeElement,
+    VNodeFunctionalComponent,
+    VNodeObservable,
+    VNodeText,
 } from './types';
+import { splitNamespace } from './utils';
 
 export const Fragment = 'Fragment';
 
-/* built-in components that have special handling */
-const BuiltinComponents = new Map<unknown, CustomRenderFn>(
-    [
-        [Show, renderShow],
-        [For, renderFor],
-    ],
-);
-
 export function jsx(
     type: string | FunctionalComponent,
-    props: { children?: VNodeChildren },
-): IntermediateChildren {
-    const { children } = props;
-    props.children = undefined;
-    return renderVNode(type, props, children);
+    props: PropsType,
+): JSXElement {
+    return { type, props };
 }
 
 export { jsx as jsxDEV, jsx as jsxs };
 
 // export let initialRenderDone = false;
-export function render(root: Element | DocumentFragment, vNode: VNode) {
-    root.append(...resolveReactiveNodes(renderChildren(vNode)));
+export function render(root: Element | DocumentFragment, jsxNode: JSXNode): void {
+    const children = resolveReactiveNodes(renderJSX(jsxNode, null));
+    root.append(...children);
+    mountNodes(children);
     // initialRenderDone = true;
 }
 
-function renderVNode(
-    type: string | FunctionalComponent,
-    props: PropsType,
-    children: VNodeChildren,
-): IntermediateChildren {
-    const renderBuiltin = BuiltinComponents.get(type);
-    if (renderBuiltin) {
-        return renderBuiltin(props, children, renderChildren);
-    }
-
-    /* general handling */
-    if (typeof type === 'function') {
-        let componentRef: unknown = null;
-        const defineRef = (ref: unknown) => {
-            componentRef = ref;
-        };
-
-        const vNode = type({ ...props, children }, { defineRef });
-
-        if (props['ref'] instanceof Val) {
-            props['ref'].value = componentRef;
-        }
-        componentRef = null;
-
-        return renderChildren(vNode);
-    }
-    else if (type === Fragment) {
-        return renderChildren(children);
+function appendVNodeChild(parent: VNode | null, vNode: VNode) {
+    if (!parent) return;
+    if (parent.lastChild) {
+        parent.lastChild.next = vNode;
+        parent.lastChild = vNode;
     }
     else {
-        const hasNS = type.includes(':');
-
-        const domElement = hasNS
-            ? document.createElementNS(...splitNamespace(type))
-            : document.createElement(type);
-
-        // handle ref prop
-        if (props['ref'] instanceof Val) {
-            props['ref'].value = domElement;
-            props['ref'] = undefined;
-        }
-
-        setProps(domElement as HTMLElement, props);
-        domElement.append(...resolveReactiveNodes(renderChildren(children)));
-        return domElement;
+        parent.firstChild = parent.lastChild = vNode;
     }
 }
 
-function renderChildren(children: VNodeChildren): IntermediateNode[] {
-    const normalizedChildren = Array.isArray(children)
-        ? children.flat(10) as DOMNode[]
-        : [children];
+function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] = []): DOMNode[] {
+    const nodes: JSXNode[] = [];
 
-    const childNodes: IntermediateNode[] = [];
-    for (const vNode of normalizedChildren) {
-        if (vNode == null || typeof vNode === 'boolean') {
+    nodes.push(jsxNode);
+    while (nodes.length > 0) {
+        const node = nodes.shift();
+
+        // skip null, undefined and boolean
+        if (node == null || typeof node === 'boolean') {
             continue;
         }
-        else if (typeof vNode === 'string' || typeof vNode === 'number') {
-            childNodes.push(document.createTextNode(String(vNode)));
+        // flatten arrays
+        if (Array.isArray(node)) {
+            nodes.unshift(...node);
+            continue;
         }
-        else if (vNode instanceof Observable) {
+        // flatten fragments
+        if (typeof node === 'object' && 'type' in node && node.type === Fragment) {
+            if (Array.isArray(node.props.children)) {
+                nodes.unshift(...node.props.children);
+            }
+            else {
+                nodes.unshift(node.props.children);
+            }
+            continue;
+        }
+
+        if (typeof node === 'string' || typeof node === 'number') {
+            const textNode = document.createTextNode(String(node));
+            if (parent?.type !== 'element') {
+                const vNode = new _VNodeText(textNode, node, parent);
+                patchNode(textNode, vNode);
+                appendVNodeChild(parent, vNode);
+            }
+            domNodes.push(textNode);
+        }
+        else if (node instanceof ObservableImpl) {
             const reactiveNode = new ReactiveNode();
+            const vNode = new _VNodeObservable(reactiveNode, node, parent);
 
-            let children = renderChildren(vNode.value);
-            reactiveNode.update(children);
+            appendVNodeChild(parent, vNode);
 
-            vNode.subscribe((value) => {
-                if (
-                    (typeof value === 'string' || typeof value === 'number')
-                    && children instanceof Node && children.nodeType === Node.TEXT_NODE
-                ) {
-                    // optimized update path for text nodes
-                    children.textContent = value.toString();
+            domNodes.push(reactiveNode);
+        }
+        else if ('type' in node) {
+            if (typeof node.type === 'string') {
+                const hasNS = node.type.includes(':');
+
+                const domElement = hasNS
+                    ? document.createElementNS(...splitNamespace(node.type))
+                    : document.createElement(node.type);
+
+                setProps(domElement as HTMLElement, node.props);
+                if (parent?.type === 'element') {
+                    const subscriptions = observeProps(domElement as HTMLElement, node.props);
+                    if (subscriptions) {
+                        if (parent.subscriptions) {
+                            parent.subscriptions.push(...subscriptions);
+                        }
+                        else {
+                            parent.subscriptions = subscriptions;
+                        }
+                    }
+
+                    const children = renderJSX(node.props.children, parent);
+                    domElement.append(...resolveReactiveNodes(children));
                 }
                 else {
-                    children = renderChildren(value);
-                    reactiveNode.update(children);
-                }
-            });
+                    const vNode = new _VNodeElement(domElement, node.type, node.props, parent);
+                    vNode.subscriptions = observeProps(domElement as HTMLElement, node.props);
+                    patchNode(domElement, vNode);
+                    appendVNodeChild(parent, vNode);
 
-            childNodes.push(reactiveNode);
+                    const children = renderJSX(node.props.children, vNode);
+                    domElement.append(...resolveReactiveNodes(children));
+                }
+
+                domNodes.push(domElement);
+            }
+            else if (node.type === For) {
+                const reactiveNode = new ReactiveNode();
+                const vNode = new _VNodeFor(reactiveNode, node.props, parent);
+
+                appendVNodeChild(parent, vNode);
+
+                domNodes.push(reactiveNode);
+            }
+            else if (node.type === Show) {
+                const reactiveNode = new ReactiveNode();
+                const vNode = new _VNodeShow(reactiveNode, node.props, parent);
+
+                appendVNodeChild(parent, vNode);
+
+                domNodes.push(reactiveNode);
+            }
+            else if (typeof node.type === 'function') {
+                const vNode = new _VNodeFunctionalComponent(node.type, node.props, parent);
+                const defineRef = (ref: object) => {
+                    vNode.ref = ref;
+                };
+                const onMount = (fn: () => MaybePromise<void>) => {
+                    vNode.onMountCallback = fn;
+                };
+                const onUnmount = (fn: () => MaybePromise<void>) => {
+                    vNode.onUnmountCallback = fn;
+                };
+
+                const jsxNode = vNode.value(vNode.props, { defineRef, onMount, onUnmount });
+
+                appendVNodeChild(parent, vNode);
+                renderJSX(jsxNode, vNode, domNodes);
+            }
+            else {
+                throw new Error('Invalid JSX node');
+            }
         }
         else {
-            childNodes.push(vNode);
+            throw new Error('Invalid JSX node');
         }
+    }
+
+    return domNodes;
+}
+
+function resolveRenderedVNodes(vNodes: VNode, childNodes: DOMNode[] = []) {
+    let vNode: VNode | null = vNodes;
+    while (vNode) {
+        if (vNode.type === 'text') {
+            childNodes.push(vNode.ref);
+        }
+        else if (vNode.type === 'observable') {
+            childNodes.push(vNode.ref);
+        }
+        else if (vNode.type === 'element') {
+            childNodes.push(vNode.ref);
+        }
+        else if (vNode.type === 'component' && vNode.firstChild) {
+            resolveRenderedVNodes(vNode.firstChild, childNodes);
+        }
+        else if (vNode.type === 'builtin') {
+            childNodes.push(vNode.ref);
+        }
+        vNode = vNode.next;
     }
     return childNodes;
 }
 
-const handledEvents = new Set<string>();
-const InputTwoWayProps = ['value', 'valueAsNumber', 'valueAsDate', 'checked', 'files'];
-const SelectTwoWayProps = ['value', 'selectedIndex'];
+interface RenderedItem {
+    index: Val<number>;
+    head: VNode | null;
+    tail: VNode | null;
+}
 
-function setProps(elem: HTMLElement, props: PropsType) {
-    const elemObj = elem as unknown as Record<string, unknown>;
-    let elemRef: WeakRef<Record<string, unknown>> | null = null;
+class _VNodeText implements VNodeText {
+    public readonly type: 'text';
+    public readonly value: string | number;
+    public readonly ref: Text;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
 
-    if ('style' in props) {
-        const value = props['style'];
-        props['style'] = undefined;
+    public constructor(ref: Text, value: string | number, parent: VNode | null) {
+        this.type = 'text';
+        this.value = value;
+        this.parent = parent;
+        this.ref = ref;
+    }
+}
 
-        if (isObject(value)) {
-            Object.assign(elem.style, value);
+class _VNodeFunctionalComponent implements VNodeFunctionalComponent {
+    public readonly type: 'component';
+    public readonly value: FunctionalComponent;
+    public readonly props: PropsType;
+    public ref: object | null = null;
+    public isMounted: boolean = false;
+    public mountedChildrenCount: number = 0;
+    public onMountCallback: (() => MaybePromise<void>) | null = null;
+    public onUnmountCallback: (() => MaybePromise<void>) | null = null;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
+
+    public constructor(value: FunctionalComponent, props: PropsType, parent: VNode | null) {
+        this.type = 'component';
+        this.value = value;
+        this.props = props;
+        this.parent = parent;
+    }
+
+    public onMount(): void {
+        if (this.props.ref instanceof ValImpl) {
+            this.props.ref.value = this.ref;
         }
-        else if (typeof value === 'string') {
-            elem.setAttribute('style', value);
+
+        if (this.onMountCallback) {
+            runAsync(this.onMountCallback);
+        }
+
+        this.isMounted = true;
+    }
+
+    public onUnmount(): void {
+        if (this.onUnmountCallback) {
+            runAsync(this.onUnmountCallback);
+        }
+
+        if (this.props.ref instanceof ValImpl) {
+            this.props.ref.value = null;
+        }
+
+        this.mountedChildrenCount = 0; // for when forcing an unmount
+        this.isMounted = false;
+    }
+}
+
+class _VNodeElement implements VNodeElement {
+    public readonly type: 'element';
+    public readonly value: string;
+    public readonly props: PropsType;
+    public readonly ref: Element;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
+
+    public subscriptions: Subscription[] | null = null;
+
+    public constructor(ref: Element, value: string, props: PropsType, parent: VNode | null) {
+        this.type = 'element';
+        this.value = value;
+        this.props = props;
+        this.parent = parent;
+        this.ref = ref;
+    }
+
+    public onMount(): void {
+        if (this.props.ref instanceof ValImpl) {
+            this.props.ref.value = this.ref;
+        }
+    }
+
+    public onUnmount(): void {
+        if (this.subscriptions) {
+            for (const subscription of this.subscriptions) {
+                subscription.unsubscribe();
+            }
+            this.subscriptions = null;
+        }
+
+        if (this.props.ref instanceof ValImpl) {
+            this.props.ref.value = null;
+        }
+    }
+}
+
+class _VNodeObservable implements VNodeObservable {
+    public readonly type: 'observable';
+    public readonly value: Observable<JSXNode>;
+    public readonly ref: ReactiveNode;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
+
+    private subscription: Subscription | null = null;
+    private _renderedChildren: DOMNode[] | null = null;
+
+    public constructor(ref: ReactiveNode, value: Observable<JSXNode>, parent: VNode | null) {
+        this.type = 'observable';
+        this.value = value;
+        this.parent = parent;
+        this.ref = ref;
+
+        this.render(value.value);
+        this.subscription = value.subscribe(this.render.bind(this));
+    }
+
+    public render(jsxNode: JSXNode): void {
+        if (
+            (typeof jsxNode === 'string' || typeof jsxNode === 'number')
+            && this._renderedChildren?.length === 1
+            && this._renderedChildren[0] instanceof Node
+            && this._renderedChildren[0].nodeType === Node.TEXT_NODE
+        ) {
+            // optimized update path for text nodes
+            this._renderedChildren[0].textContent = jsxNode.toString();
         }
         else {
-            throw new Error("Invalid value type for 'style' prop.");
+            this.firstChild = this.lastChild = null;
+            this._renderedChildren = renderJSX(jsxNode, this);
+            this.ref.update(this._renderedChildren);
         }
     }
-    else if ('dataset' in props) {
-        const value = props['dataset'];
-        props['dataset'] = undefined;
 
-        if (!isObject(value)) {
-            throw new Error('Dataset value must be an object');
+    public onUnmount(): void {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = null;
         }
-        Object.assign(elem.dataset, value);
     }
-    // handle class prop early so it doesn't overwrite class:* props
-    else if ('class' in props) {
-        const value = props['class'];
-        props['class'] = undefined;
+}
 
-        elem.className = value as string;
-    }
+class _VNodeFor<T> implements VNodeBuiltinComponent {
+    public readonly type: 'builtin';
+    public readonly value: FunctionalComponent;
+    public readonly props: PropsType;
+    public readonly ref: ReactiveNode;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
 
-    for (const key in props) {
-        const value = props[key];
-        if (value === undefined) {
-            continue;
+    private subscription: Subscription | null = null;
+    private readonly cache = new MultiEntryCache<RenderedItem>();
+    private readonly mapFn: (props: ForCallbackProps<T>) => JSXNode;
+
+    public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
+        this.type = 'builtin';
+        this.value = For as FunctionalComponent;
+        this.props = props;
+        this.parent = parent;
+        this.ref = ref;
+
+        const typedProps = props as unknown as ForProps<T>;
+        if (typeof typedProps.children !== 'function') {
+            throw new Error(
+                'The <For> component must have exactly one child — a function that maps each item.',
+            );
         }
+        this.mapFn = typedProps.children;
 
-        if (key.startsWith('class:')) {
-            const className = key.slice(6);
-            if (value instanceof Observable) {
-                value.subscribe((value: boolean) => {
-                    if (value) {
-                        elem.classList.add(className);
-                    }
-                    else {
-                        elem.classList.remove(className);
-                    }
-                });
-                if (value.value) {
-                    elem.classList.add(className);
-                }
-            }
-            else {
-                if (value) {
-                    elem.classList.add(className);
-                }
-            }
+        if (Array.isArray(typedProps.of)) {
+            this.render(typedProps.of);
         }
-        else if (key.startsWith('on:')) {
-            const event = key.slice(3);
-            elemObj[`@@${event}`] = value;
-
-            if (!handledEvents.has(event)) {
-                handledEvents.add(event);
-                document.addEventListener(event, globalEventHandler);
-            }
-        }
-        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-            if (value instanceof Observable) {
-                elemRef ??= new WeakRef(elemObj);
-                const unsubscribe = value.subscribe((value) => {
-                    const elem = elemRef!.deref();
-                    if (!elem) {
-                        unsubscribe.unsubscribe();
-                        return;
-                    }
-                    elem[key] = value;
-                });
-
-                // two way updates for input element
-                if (
-                    (elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
-                    || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))
-                ) {
-                    if (value instanceof Val) {
-                        elem.addEventListener('change', (e: Event) => {
-                            value.value = (e.target as HTMLInputElement)[key];
-                        });
-                    }
-                    else {
-                        elem.addEventListener('change', (e: Event) => {
-                            e.preventDefault();
-                            (e.target as unknown as Record<string, unknown>)[key] = value.value;
-                        });
-                    }
-                }
-
-                elemObj[key] = value.value;
-            }
-            else {
-                elemObj[key] = value;
-            }
+        else if (typedProps.of instanceof ObservableImpl) {
+            this.render(typedProps.of.value as T[]);
+            this.subscription = typedProps.of.subscribe(this.render.bind(this));
         }
         else {
-            if (key.includes(':')) {
-                elem.setAttributeNS(splitNamespace(key)[0], key, value as string);
+            throw new Error(
+                "The 'of' prop on <For> is required and must be an array or an observable array.",
+            );
+        }
+    }
+
+    public render(items: T[]) {
+        this.firstChild = this.lastChild = null;
+        const n = items.length;
+        const renderedItems: [unknown, RenderedItem][] = [];
+        for (let i = 0; i < n; i++) {
+            const value = items[i];
+            let item = this.cache.get(value);
+            if (item) {
+                item.index.value = i;
+                this.firstChild ??= item.head;
+                if (item.tail) {
+                    if (this.lastChild) {
+                        this.lastChild.next = item.head;
+                    }
+                    this.lastChild = item.tail;
+                }
             }
             else {
-                elem.setAttribute(key, value as string);
+                const index = val(i);
+                let head = this.lastChild;
+                renderJSX(this.mapFn({ item: value, index }), this);
+                let tail = this.lastChild;
+
+                if (head !== tail) {
+                    head = head ? head.next : this.firstChild;
+                }
+                else {
+                    head = tail = null;
+                }
+                item = { index, head, tail };
             }
+
+            renderedItems.push([value, item]);
+        }
+        if (this.lastChild) {
+            this.lastChild.next = null;
+        }
+
+        this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
+
+        this.cache.clear();
+        this.cache.addRange(renderedItems);
+    }
+
+    public onUnmount() {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = null;
         }
     }
 }
 
-function splitNamespace(tagNS: string) {
-    const [ns, tag] = tagNS.split(':', 2);
-    if (!hasKey(XMLNamespaces, ns)) {
-        throw new Error('Invalid namespace');
-    }
-    return [XMLNamespaces[ns], tag] as const;
-}
+class _VNodeShow implements VNodeBuiltinComponent {
+    public readonly type: 'builtin';
+    public readonly value: FunctionalComponent;
+    public readonly props: PropsType;
+    public readonly ref: ReactiveNode;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
 
-export function isReadonlyProp<T>(obj: T, key: keyof T): boolean {
-    let currentObj: unknown = obj;
-    while (currentObj !== null) {
-        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-        if (desc) {
-            return desc.writable === false || desc.set === undefined;
+    private subscription: Subscription | null = null;
+
+    public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
+        this.type = 'builtin';
+        this.value = Show as FunctionalComponent;
+        this.props = props;
+        this.parent = parent;
+        this.ref = ref;
+
+        const when = (props as unknown as ShowProps).when;
+        if (typeof when === 'boolean') {
+            this.render(when);
         }
-        currentObj = Object.getPrototypeOf(currentObj);
-    }
-    return true;
-}
-
-function globalEventHandler(evt: Event) {
-    const key = `@@${evt.type}` as const;
-
-    type NodeType = Node & { [key]?: EventListener } | null;
-
-    let node: NodeType = evt.target as NodeType;
-    while (node) {
-        const handler = node[key];
-        if (handler) {
-            return handler.call(node, evt);
+        else if (when instanceof ObservableImpl) {
+            this.render(when.value as boolean);
+            this.subscription = when.subscribe(this.render.bind(this));
         }
-        node = node.parentNode as NodeType;
+        else {
+            throw new Error(
+                "The 'when' prop on <Show> is required and must be a boolean or an observable boolean.",
+            );
+        }
+    }
+
+    public render(value: boolean) {
+        if (value) {
+            const childrenOrFn = this.props.children as ShowProps['children'];
+
+            this.firstChild = this.lastChild = null;
+            const children = renderJSX(
+                typeof childrenOrFn === 'function'
+                    ? childrenOrFn()
+                    : childrenOrFn,
+                this,
+            );
+            this.ref.update(children);
+        }
+        else {
+            this.firstChild = this.lastChild = null;
+            this.ref.update(null);
+        }
+    }
+
+    public onUnmount() {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = null;
+        }
     }
 }
 
@@ -299,7 +531,7 @@ export declare namespace JSX {
     /* jsx defs */
     type Fragment = typeof Fragment;
 
-    type Element = VNode;
+    type Element = JSXNode;
 
     type BaseIntrinsicElements =
         & {
@@ -309,7 +541,7 @@ export declare namespace JSX {
             [K in keyof SVGElementTagNameMap as `svg:${K}`]: PropsOf<SVGElementTagNameMap[K]>;
         };
 
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface IntrinsicElements extends BaseIntrinsicElements {
-        [Show]: ShowProps;
     }
 }

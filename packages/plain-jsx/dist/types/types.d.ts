@@ -1,18 +1,59 @@
-import type { MethodsOf, ReadonlyProps } from '@cleansimple/utils-js';
+import type { Action, MethodsOf, ReadonlyProps } from '@cleansimple/utils-js';
 import type { Properties as CSS } from 'csstype';
-import type { Observable } from './observable';
-import type { ReactiveNode } from './reactive';
-export type PropsType = Record<string, unknown>;
-export type DOMNode = Observable<VNode> | ChildNode | string | number | boolean | null | undefined;
-export type VNode = VNode[] | DOMNode;
-export type VNodeChildren = VNode | VNode[];
-export type FunctionalComponent = (...args: unknown[]) => VNode;
-export type IntermediateNode = ChildNode | ReactiveNode;
-export type IntermediateChildren = IntermediateNode | IntermediateNode[] | null;
-export interface Component {
-    id: number;
-    ref?: unknown;
+import type { Observable, Ref, Subscription } from './observable';
+import type { ReactiveNode } from './reactive-node';
+export type JSXNode = Observable<JSXNode> | JSXElement | string | number | boolean | null | undefined | JSXNode[];
+export interface JSXElement {
+    type: string | FunctionalComponent;
+    props: PropsType;
 }
+export interface VNodeBase<TValue> {
+    type: 'text' | 'element' | 'component' | 'builtin' | 'observable';
+    value: TValue;
+    parent: VNode | null;
+    firstChild: VNode | null;
+    lastChild: VNode | null;
+    next: VNode | null;
+}
+export interface VNodeText extends VNodeBase<string | number> {
+    type: 'text';
+    ref: Text;
+}
+export interface VNodeElement extends VNodeBase<string> {
+    type: 'element';
+    props: PropsType;
+    ref: Element;
+    subscriptions: Subscription[] | null;
+    onMount: Action;
+    onUnmount: Action;
+}
+export interface VNodeFunctionalComponent extends VNodeBase<FunctionalComponent> {
+    type: 'component';
+    props: PropsType;
+    ref: object | null;
+    isMounted: boolean;
+    mountedChildrenCount: number;
+    onMount: Action;
+    onUnmount: Action;
+}
+export interface VNodeBuiltinComponent extends VNodeBase<FunctionalComponent> {
+    type: 'builtin';
+    props: PropsType;
+    ref: ReactiveNode;
+    onUnmount: Action;
+}
+export interface VNodeObservable extends VNodeBase<Observable<JSXNode>> {
+    type: 'observable';
+    ref: ReactiveNode;
+    onUnmount: Action;
+}
+export type VNode = VNodeText | VNodeElement | VNodeFunctionalComponent | VNodeBuiltinComponent | VNodeObservable;
+export type DOMNode = ChildNode | ReactiveNode;
+export type FunctionalComponent = (...args: unknown[]) => JSXNode;
+export type PropsType = Record<string, unknown> & {
+    ref?: unknown;
+    children?: JSXNode;
+};
 type ClassProp = `class:${string}`;
 type Classes = Record<ClassProp, boolean | Observable<boolean>>;
 type CommonProps<T extends Element> = (T extends ElementCSSInlineStyle ? {
@@ -20,24 +61,27 @@ type CommonProps<T extends Element> = (T extends ElementCSSInlineStyle ? {
 } : object) & (T extends HTMLOrSVGElement ? {
     dataset?: DOMStringMap;
 } : object) & Classes & {
-    ref?: Observable<T | null>;
-    children?: VNodeChildren;
+    ref?: Ref<T>;
+    children?: JSXNode;
     class?: string;
 };
-type SettableProps<T extends Element> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers & {
-    className: never;
-    classList: never;
-})>;
 type TypedEvent<TElement extends Element, TEvent extends Event = Event> = Omit<TEvent, 'currentTarget'> & {
     currentTarget: TElement;
 };
 type DOMEvents<T extends Element> = {
     [K in keyof GlobalEventHandlersEventMap as `on:${K}`]?: (this: T, ev: TypedEvent<T, GlobalEventHandlersEventMap[K]>) => unknown;
 };
+type SettableProps<T extends Element> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers & {
+    className: never;
+    classList: never;
+})>;
 type AcceptsObservable<T> = (T extends infer U ? Observable<U> : never) | Observable<T>;
 type AsAcceptsObservable<T> = {
     [K in keyof T]: T[K] | AcceptsObservable<T[K]>;
 };
 export type DOMProps<T extends Element> = Partial<AsAcceptsObservable<SettableProps<T>>> & CommonProps<T> & DOMEvents<T>;
 export type SVGProps<T extends SVGElement> = DOMProps<T> & Record<string, unknown>;
+export type HasVNode<T extends Node> = T & {
+    __vNode: VNode;
+};
 export {};

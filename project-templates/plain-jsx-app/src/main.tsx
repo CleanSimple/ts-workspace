@@ -81,28 +81,19 @@ const App: FunctionalComponent = () => {
             </div>
             <div class='card'>
                 <div style={{ display: 'flex', flexFlow: 'column', gap: '0.5rem' }}>
+                    <>
+                        Fragment
+                    </>
                     <span>Dynamic Components:</span>
                     <Show when={showDynamicComponent}>
-                        <LifecycleComponent name='Cached'>
-                            Cached {createTimer()}
-                        </LifecycleComponent>
-                    </Show>
-                    <Show when={showDynamicComponent} cache={false}>
-                        <LifecycleComponent name='Fresh'>
-                            Fresh {createTimer()}
+                        <LifecycleComponent name='Component'>
+                            Component {createTimer()}
                         </LifecycleComponent>
                     </Show>
                     <Show when={showDynamicComponent}>
                         {() => (
-                            <LifecycleComponent name='Callback Cached'>
-                                Callback Cached {createTimer()}
-                            </LifecycleComponent>
-                        )}
-                    </Show>
-                    <Show when={showDynamicComponent} cache={false}>
-                        {() => (
-                            <LifecycleComponent name='Callback Fresh'>
-                                Callback Fresh {createTimer()}
+                            <LifecycleComponent name='Callback'>
+                                Callback {createTimer()}
                             </LifecycleComponent>
                         )}
                     </Show>
@@ -114,15 +105,20 @@ const App: FunctionalComponent = () => {
                         </>
                     ))}
                     <ParentComponent>
-                        <For of={items1}>
-                            {(item, index) => <span>{index}. Item: {item} {createTimer()}</span>}
-                        </For>
-                        <>
-                            <For of={items2}>
-                                {(item, index) => <span>{index}. Item: {item} {createTimer()}
-                                </span>}
+                        <ParentComponent>
+                            <For of={items1}>
+                                {({ item, index }) => (
+                                    <span>{index}. Item: {item} {createTimer()}</span>
+                                )}
                             </For>
-                        </>
+                            <>
+                                <For of={items2}>
+                                    {({ item, index }) => (
+                                        <span>{index}. Item: {item} {createTimer()}</span>
+                                    )}
+                                </For>
+                            </>
+                        </ParentComponent>
                     </ParentComponent>
                 </div>
                 <template shadowRootMode='open'>

@@ -14,7 +14,7 @@ interface DynamicChildrenRefType {
 
 const ParentComponent: FunctionalComponent<DynamicChildrenProps, DynamicChildrenRefType> = (
     { children },
-    { defineRef },
+    { defineRef, onMount, onUnmount },
 ) => {
     const content = val<(string | number)[]>(['Text']);
 
@@ -27,6 +27,14 @@ const ParentComponent: FunctionalComponent<DynamicChildrenProps, DynamicChildren
     }
 
     defineRef({ add, remove });
+
+    onMount(() => {
+        console.log('ParentComponent mounted');
+    });
+
+    onUnmount(() => {
+        console.log('ParentComponent unmounted');
+    });
 
     return (
         <>

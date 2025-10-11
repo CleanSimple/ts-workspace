@@ -1,64 +1,106 @@
-import { nextTick } from './scheduling.esm.js';
-import { _Sentinel, Sentinel } from './sentinel.esm.js';
-
-class Observable {
-    computed(compute) {
-        return new ComputedSingle(compute, this);
+/* helpers */
+function val(initialValue) {
+    return new ValImpl(initialValue);
+}
+function computed(observables, compute) {
+    return new Computed(observables, compute);
+}
+function ref() {
+    return new ValImpl(null);
+}
+class NotificationScheduler {
+    static _notificationSources = [];
+    static _scheduled = false;
+    static schedule(notificationSource) {
+        this._notificationSources.push(notificationSource);
+        if (!this._scheduled) {
+            this._scheduled = true;
+            queueMicrotask(this.flush);
+        }
+    }
+    static flush() {
+        const n = NotificationScheduler._notificationSources.length;
+        for (let i = 0; i < n; ++i) {
+            NotificationScheduler._notificationSources[i].notify();
+        }
+        NotificationScheduler._notificationSources = [];
+        NotificationScheduler._scheduled = false;
     }
 }
-/** internal use */
-class ObservableImpl extends Observable {
-    observers = [];
-    immediateObservers = [];
-    hasDeferredNotifications = false;
-    notifyObserversCallback;
-    constructor() {
-        super();
-        this.notifyObserversCallback = this.notifyObservers.bind(this);
+class SubscriptionImpl {
+    id;
+    cb;
+    instance;
+    subscriptions;
+    constructor(id, cb, instance, subscriptions) {
+        this.id = id;
+        this.cb = cb;
+        this.instance = instance;
+        this.subscriptions = subscriptions;
+        this.subscriptions.set(id, this);
     }
-    onUpdated() {
-        if (this.immediateObservers.length) {
-            const value = this.value;
-            for (const observer of this.immediateObservers) {
-                observer(value);
+    unsubscribe() {
+        this.subscriptions.delete(this.id);
+    }
+}
+/**
+ * Base class for observables
+ */
+class ObservableImpl {
+    subscriptions = new Map();
+    dependents = [];
+    _nextSubscriptionId = 0;
+    _prevValue = null;
+    _pendingNotify = false;
+    registerDependant(dependant) {
+        this.dependents.push(new WeakRef(dependant));
+    }
+    notifyDependents() {
+        const n = this.dependents.length;
+        let write = 0;
+        for (let i = 0; i < n; ++i) {
+            const dependant = this.dependents[i].deref();
+            if (dependant) {
+                dependant.onDependencyUpdated();
+                this.dependents[write++] = this.dependents[i];
             }
         }
-        if (this.observers.length) {
-            if (this.hasDeferredNotifications) {
-                return;
-            }
-            this.hasDeferredNotifications = true;
-            nextTick(this.notifyObserversCallback);
-        }
+        this.dependents.length = write;
     }
-    notifyObservers() {
-        this.hasDeferredNotifications = false;
+    queueNotify() {
+        if (this._pendingNotify) {
+            return;
+        }
+        this._pendingNotify = true;
+        this._prevValue = this.value;
+        NotificationScheduler.schedule(this);
+    }
+    notify() {
+        if (!this._pendingNotify) {
+            return;
+        }
+        const prevValue = this._prevValue;
         const value = this.value;
-        for (const observer of this.observers) {
-            observer(value);
+        this._pendingNotify = false;
+        this._prevValue = null;
+        if (value === prevValue) {
+            return;
+        }
+        for (const subscription of this.subscriptions.values()) {
+            subscription.cb.call(subscription.instance, value);
         }
     }
-    subscribe(observer, immediate = true) {
-        const observers = immediate ? this.immediateObservers : this.observers;
-        if (!observers.includes(observer)) {
-            observers.push(observer);
-        }
-        return {
-            unsubscribe: this.unsubscribe.bind(this, observer, immediate),
-        };
+    subscribe(observer, instance) {
+        return new SubscriptionImpl(++this._nextSubscriptionId, observer, instance ?? null, this.subscriptions);
     }
-    unsubscribe(observer, immediate) {
-        const observers = immediate ? this.immediateObservers : this.observers;
-        const index = observers.indexOf(observer);
-        if (index > -1) {
-            observers.splice(index, 1);
-        }
+    computed(compute) {
+        return new ComputedSingle(compute, this);
     }
 }
 /**
  * Simple observable value implementation
  */
-class Val extends ObservableImpl {
+class ValImpl extends ObservableImpl {
     _value;
     constructor(initialValue) {
         super();
@@ -68,66 +110,64 @@ class Val extends ObservableImpl {
         return this._value;
     }
     set value(newValue) {
-        if (this._value === newValue) {
-            return;
-        }
+        this.queueNotify();
         this._value = newValue;
-        this.onUpdated();
+        this.notifyDependents();
     }
 }
-/** internal use */
-class ComputedSingle extends Observable {
-    observable;
+class ComputedSingle extends ObservableImpl {
     compute;
+    observable;
     _value;
+    _shouldReCompute;
     constructor(compute, observable) {
         super();
         this.compute = compute;
         this.observable = observable;
-        this._value = compute(observable.value);
+        this._value = this.compute(observable.value);
+        this._shouldReCompute = false;
+        observable.registerDependant(this);
+    }
+    onDependencyUpdated() {
+        this.queueNotify();
+        this._shouldReCompute = true;
+        this.notifyDependents();
     }
     get value() {
+        if (this._shouldReCompute) {
+            this._shouldReCompute = false;
+            this._value = this.compute(this.observable.value);
+        }
         return this._value;
     }
-    subscribe(observer, immediate) {
-        return this.observable.subscribe((value) => {
-            this._value = this.compute(value);
-            observer(this._value);
-        }, immediate);
-    }
 }
-/** internal use */
 class Computed extends ObservableImpl {
-    observables;
     compute;
+    observables;
     _value;
+    _shouldReCompute;
     constructor(observables, compute) {
         super();
         this.compute = compute;
         this.observables = observables;
-        this._value = _Sentinel;
-        for (const observable of observables) {
-            observable.subscribe(() => {
-                this._value = _Sentinel;
-                this.onUpdated();
-            }, true);
+        this._value = this.compute(...observables.map(observable => observable.value));
+        this._shouldReCompute = false;
+        for (let i = 0; i < observables.length; ++i) {
+            observables[i].registerDependant(this);
         }
     }
+    onDependencyUpdated() {
+        this.queueNotify();
+        this._shouldReCompute = true;
+        this.notifyDependents();
+    }
     get value() {
-        if (this._value instanceof Sentinel) {
+        if (this._shouldReCompute) {
+            this._shouldReCompute = false;
             this._value = this.compute(...this.observables.map(observable => observable.value));
         }
         return this._value;
     }
 }
-function val(initialValue) {
-    return new Val(initialValue);
-}
-function computed(observables, compute) {
-    return new Computed(observables, compute);
-}
-function ref() {
-    return new Val(null);
-}
 
-export { Observable, Val, computed, ref, val };
+export { ObservableImpl, ValImpl, computed, ref, val };
