@@ -23,5 +23,5 @@ export interface ForProps<T> extends PropsType {
     of: Observable<T[]>;
     children: (item: T, index: Observable<number>) => VNode;
 }
-export declare function For<T>(props: ForProps<T>): VNode;
+export declare function For<T>(_props: ForProps<T>): VNode;
 export declare const renderFor: CustomRenderFn;

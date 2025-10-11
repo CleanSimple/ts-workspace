@@ -155,6 +155,108 @@ var PlainJSX = (function (exports) {
         return new Val(null);
     }
 
+    const _Fragment = document.createDocumentFragment();
+    function patchChildren(parent, current, target) {
+        const newIndexMap = new Map(target.map((node, index) => [node, index]));
+        const newIndexToOldIndexMap = new Int32Array(target.length).fill(-1);
+        const nodeAfterEnd = current[current.length - 1].nextSibling; // `current` should never be empty, so this is safe
+        let maxNewIndexSoFar = -1;
+        let moved = false;
+        const toRemove = new Array();
+        for (let i = 0; i < current.length; ++i) {
+            const oldNode = current[i];
+            const newIndex = newIndexMap.get(oldNode);
+            if (newIndex === undefined) {
+                toRemove.push(oldNode);
+            }
+            else {
+                newIndexToOldIndexMap[newIndex] = i;
+                if (newIndex < maxNewIndexSoFar)
+                    moved = true;
+                else
+                    maxNewIndexSoFar = newIndex;
+            }
+        }
+        // remove old nodes
+        _Fragment.append(...toRemove);
+        _Fragment.textContent = null;
+        // compute longest increasing subsequence
+        const lis = moved ? getLIS(newIndexToOldIndexMap) : [];
+        const ops = [];
+        let currentOp = null;
+        let j = lis.length - 1;
+        for (let i = target.length - 1; i >= 0; --i) {
+            const newNode = target[i];
+            const nextPos = target.at(i + 1) ?? nodeAfterEnd;
+            if (newIndexToOldIndexMap[i] === -1) {
+                if (currentOp?.type === 'insert') {
+                    currentOp.nodes.unshift(newNode);
+                }
+                else {
+                    currentOp = { type: 'insert', pos: nextPos, nodes: [newNode] };
+                    ops.push(currentOp);
+                }
+                continue;
+            }
+            else if (moved) {
+                if (j < 0 || i !== lis[j]) {
+                    if (currentOp?.type === 'insert') {
+                        currentOp.nodes.unshift(newNode);
+                    }
+                    else {
+                        currentOp = { type: 'insert', pos: nextPos, nodes: [newNode] };
+                        ops.push(currentOp);
+                    }
+                    continue;
+                }
+                j--;
+            }
+            currentOp = null;
+        }
+        for (const op of ops) {
+            if (op.type === 'insert' || op.type === 'move') {
+                if (op.pos) {
+                    _Fragment.append(...op.nodes);
+                    parent.insertBefore(_Fragment, op.pos);
+                }
+                else {
+                    parent.append(...op.nodes);
+                }
+            }
+        }
+    }
+    function getLIS(arr) {
+        const n = arr.length;
+        const predecessors = new Int32Array(n);
+        const tails = [];
+        for (let i = 0; i < n; i++) {
+            const num = arr[i];
+            // Binary search in tails
+            let lo = 0, hi = tails.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (arr[tails[mid]] < num)
+                    lo = mid + 1;
+                else
+                    hi = mid;
+            }
+            // lo is the position to insert
+            predecessors[i] = lo > 0 ? tails[lo - 1] : -1;
+            if (lo === tails.length)
+                tails.push(i);
+            else
+                tails[lo] = i;
+        }
+        // Reconstruct LIS indices
+        const lis = [];
+        let k = tails[tails.length - 1];
+        for (let i = tails.length - 1; i >= 0; --i) {
+            lis[i] = k;
+            k = predecessors[k];
+        }
+        return lis;
+    }
+
     class ReactiveNode {
         placeholder = document.createComment('');
         _children = [this.placeholder];
@@ -162,70 +264,17 @@ var PlainJSX = (function (exports) {
             return this._children;
         }
         update(rNode) {
-            const children = resolveReactiveNodes(this._children);
-            if (rNode === null || rNode.length === 0) {
-                // optimized clear path
-                if (this._children.length === 1 && this._children[0] === this.placeholder) {
+            if (rNode === null || rNode.length === 0) { // clearing
+                if (this._children[0] === this.placeholder) {
                     return; // we are already cleared
                 }
-                const first = children.values().next().value;
-                const parent = first?.parentNode;
-                if (parent) {
-                    parent.insertBefore(this.placeholder, first);
-                    const fragment = document.createDocumentFragment();
-                    fragment.append(...children);
-                }
-                this._children = [this.placeholder];
-                return;
+                rNode = [this.placeholder];
             }
-            const newChildren = resolveReactiveNodes(rNode);
-            const newChildrenSet = new Set(newChildren);
-            const first = children.values().next().value;
-            const parent = first?.parentNode;
+            const children = resolveReactiveNodes(this._children);
+            const parent = children[0].parentNode;
             if (parent) {
-                const domChildren = parent.childNodes;
-                const currentChildrenSet = new Set(children);
-                if (currentChildrenSet.size === domChildren.length
-                    && newChildrenSet.isDisjointFrom(currentChildrenSet)) {
-                    // optimized replace path
-                    parent.replaceChildren(...newChildren);
-                }
-                else {
-                    const fragment = document.createDocumentFragment(); // used in bulk updates
-                    const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
-                    const replacedSet = new Set();
-                    const start = Array.prototype.indexOf.call(domChildren, first);
-                    for (let i = 0; i < replaceCount; ++i) {
-                        const child = domChildren[start + i];
-                        const newChild = newChildren[i];
-                        if (!child) {
-                            parent.append(...newChildren.slice(i));
-                            break;
-                        }
-                        else if (!currentChildrenSet.has(child)) {
-                            fragment.append(...newChildren.slice(i));
-                            parent.insertBefore(fragment, child);
-                            break;
-                        }
-                        else if (child !== newChild) {
-                            if (!replacedSet.has(newChild)) {
-                                parent.replaceChild(newChild, child);
-                                replacedSet.add(child);
-                            }
-                            else {
-                                parent.insertBefore(newChild, child);
-                            }
-                        }
-                    }
-                    if (currentChildrenSet.size > newChildren.length) {
-                        // appending the excess children to the fragment will move them from their current parent to the fragment effectively removing them.
-                        fragment.append(...currentChildrenSet.difference(newChildrenSet));
-                    }
-                    else if (currentChildrenSet.size < newChildren.length) {
-                        fragment.append(...newChildren.slice(replaceCount));
-                        parent.insertBefore(fragment, newChildren[replaceCount - 1].nextSibling);
-                    }
-                }
+                const newChildren = resolveReactiveNodes(rNode);
+                patchChildren(parent, children, newChildren);
             }
             this._children = rNode;
         }
@@ -234,8 +283,7 @@ var PlainJSX = (function (exports) {
         return children.flatMap((vNode) => vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode);
     }
     const Show = 'Show';
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    function For(props) {
+    function For(_props) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 

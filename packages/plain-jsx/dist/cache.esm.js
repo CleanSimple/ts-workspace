@@ -1,7 +1,12 @@
 class MultiEntryCache {
     map = new Map();
     readIndex = new Map();
-    constructor(entries = []) {
+    constructor(entries = null) {
+        if (entries) {
+            this.addRange(entries);
+        }
+    }
+    addRange(entries) {
         for (const [key, value] of entries) {
             this.add(key, value);
         }

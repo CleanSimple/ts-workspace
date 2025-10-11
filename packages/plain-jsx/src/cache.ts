@@ -2,7 +2,13 @@ export class MultiEntryCache<T> {
     private readonly map = new Map<unknown, T[]>();
     private readonly readIndex = new Map<unknown, number>();
 
-    public constructor(entries: [unknown, T][] = []) {
+    public constructor(entries: [unknown, T][] | null = null) {
+        if (entries) {
+            this.addRange(entries);
+        }
+    }
+
+    public addRange(entries: [unknown, T][]) {
         for (const [key, value] of entries) {
             this.add(key, value);
         }

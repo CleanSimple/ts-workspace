@@ -1,4 +1,5 @@
 import { MultiEntryCache } from './cache';
+import { patchChildren } from './domPatch';
 import { Observable, type Val, val } from './observable';
 import type {
     IntermediateChildren,
@@ -17,79 +18,19 @@ export class ReactiveNode {
     }
 
     public update(rNode: IntermediateNode[] | null) {
-        const children = resolveReactiveNodes(this._children);
-
-        if (rNode === null || rNode.length === 0) {
-            // optimized clear path
-            if (this._children.length === 1 && this._children[0] === this.placeholder) {
+        if (rNode === null || rNode.length === 0) { // clearing
+            if (this._children[0] === this.placeholder) {
                 return; // we are already cleared
             }
 
-            const first = children.values().next().value;
-            const parent = first?.parentNode;
-            if (parent) {
-                parent.insertBefore(this.placeholder, first);
-                const fragment = document.createDocumentFragment();
-                fragment.append(...children);
-            }
-            this._children = [this.placeholder];
-            return;
+            rNode = [this.placeholder];
         }
 
-        const newChildren = resolveReactiveNodes(rNode);
-        const newChildrenSet = new Set(newChildren);
-
-        const first = children.values().next().value;
-        const parent = first?.parentNode;
+        const children = resolveReactiveNodes(this._children);
+        const parent = children[0].parentNode;
         if (parent) {
-            const domChildren = parent.childNodes;
-            const currentChildrenSet = new Set(children);
-
-            if (
-                currentChildrenSet.size === domChildren.length
-                && newChildrenSet.isDisjointFrom(currentChildrenSet)
-            ) {
-                // optimized replace path
-                parent.replaceChildren(...newChildren);
-            }
-            else {
-                const fragment = document.createDocumentFragment(); // used in bulk updates
-                const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
-                const replacedSet = new Set<ChildNode>();
-
-                const start = Array.prototype.indexOf.call(domChildren, first);
-                for (let i = 0; i < replaceCount; ++i) {
-                    const child = domChildren[start + i];
-                    const newChild = newChildren[i];
-                    if (!child) {
-                        parent.append(...newChildren.slice(i));
-                        break;
-                    }
-                    else if (!currentChildrenSet.has(child)) {
-                        fragment.append(...newChildren.slice(i));
-                        parent.insertBefore(fragment, child);
-                        break;
-                    }
-                    else if (child !== newChild) {
-                        if (!replacedSet.has(newChild)) {
-                            parent.replaceChild(newChild, child);
-                            replacedSet.add(child);
-                        }
-                        else {
-                            parent.insertBefore(newChild, child);
-                        }
-                    }
-                }
-
-                if (currentChildrenSet.size > newChildren.length) {
-                    // appending the excess children to the fragment will move them from their current parent to the fragment effectively removing them.
-                    fragment.append(...currentChildrenSet.difference(newChildrenSet));
-                }
-                else if (currentChildrenSet.size < newChildren.length) {
-                    fragment.append(...newChildren.slice(replaceCount));
-                    parent.insertBefore(fragment, newChildren[replaceCount - 1].nextSibling);
-                }
-            }
+            const newChildren = resolveReactiveNodes(rNode);
+            patchChildren(parent, children, newChildren);
         }
 
         this._children = rNode;
@@ -162,8 +103,7 @@ export interface ForProps<T> extends PropsType {
     children: (item: T, index: Observable<number>) => VNode;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function For<T>(props: ForProps<T>): VNode {
+export function For<T>(_props: ForProps<T>): VNode {
     throw new Error(
         'This component cannot be called directly — it must be used through the render function.',
     );
@@ -185,18 +125,23 @@ export const renderFor: CustomRenderFn = (
     }
     const mapFn: ForProps<unknown>['children'] = children;
 
-    type CachedItem = [Val<number>, IntermediateNode[]];
+    interface CachedItem {
+        index: Val<number>;
+        children: IntermediateNode[];
+    }
 
-    let cache = new MultiEntryCache<CachedItem>();
+    const cache = new MultiEntryCache<CachedItem>();
     const render = (value: unknown, index: number): [unknown, CachedItem] => {
         let item = cache.get(value);
-        if (!item) {
-            const indexObservable = val(index);
-            item = [indexObservable, renderChildren(mapFn(value, indexObservable))];
-            cache.add(value, item);
+        if (item) {
+            item.index.value = index;
         }
         else {
-            item[0].value = index;
+            const indexObservable = val(index);
+            item = {
+                index: indexObservable,
+                children: renderChildren(mapFn(value, indexObservable)),
+            };
         }
         return [value, item];
     };
@@ -204,13 +149,17 @@ export const renderFor: CustomRenderFn = (
     const reactiveNode = new ReactiveNode();
 
     const childNodes = of.value.map(render);
-    cache = new MultiEntryCache(childNodes);
-    reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
+    reactiveNode.update(childNodes.flatMap(([, item]) => item.children));
+
+    cache.clear();
+    cache.addRange(childNodes);
 
     of.subscribe((items) => {
         const childNodes = items.map(render);
-        cache = new MultiEntryCache(childNodes);
-        reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
+        reactiveNode.update(childNodes.flatMap(([, item]) => item.children));
+
+        cache.clear();
+        cache.addRange(childNodes);
     });
 
     return reactiveNode;
