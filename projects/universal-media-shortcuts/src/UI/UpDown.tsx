@@ -4,16 +4,18 @@ import type { JSX } from '@cleansimple/plain-jsx/jsx-runtime';
 
 interface UpDownProps extends JSX.PropsOf<HTMLDivElement> {
     value?: Observable<number> | number;
+    minValue?: number;
+    maxValue?: number;
 }
 
-export function UpDown({ value = 1, ...props }: UpDownProps) {
+export function UpDown({ value = 1, minValue = 0, maxValue = 99, ...props }: UpDownProps) {
     const inputRef = ref<HTMLInputElement>();
 
     function increment() {
         const { value: input } = inputRef;
         if (!input) throw new Error();
 
-        const value = Math.min(99, input.valueAsNumber + 1);
+        const value = Math.min(maxValue, input.valueAsNumber + 1);
         if (value != input.valueAsNumber) {
             input.valueAsNumber = value;
             input.dispatchEvent(new Event('change', { bubbles: true }));
@@ -23,7 +25,7 @@ export function UpDown({ value = 1, ...props }: UpDownProps) {
         const { value: input } = inputRef;
         if (!input) throw new Error();
 
-        const value = Math.max(0, input.valueAsNumber - 1);
+        const value = Math.max(minValue, input.valueAsNumber - 1);
         if (value != input.valueAsNumber) {
             input.valueAsNumber = value;
             input.dispatchEvent(new Event('change', { bubbles: true }));

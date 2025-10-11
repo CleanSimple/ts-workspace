@@ -1,6 +1,6 @@
 import './style.css';
 import viteLogo from '/vite.svg';
-import { For, type FunctionalComponent, render, Show, val, With } from '@cleansimple/plain-jsx';
+import { For, type FunctionalComponent, render, Show, val } from '@cleansimple/plain-jsx';
 import { Counter, type CounterRefType } from './components/Counter';
 import { Fragments } from './components/Fragments';
 import { Input } from './components/Input';
@@ -106,15 +106,13 @@ const App: FunctionalComponent = () => {
                             </LifecycleComponent>
                         )}
                     </Show>
-                    <With value={switchValue}>
-                        {(switchValue) => (
-                            <>
-                                {switchValue % 3 === 0 && 'yay!'}
-                                {switchValue % 3 === 1 && 'wow!'}
-                                {switchValue % 3 === 2 && 'lol!'}
-                            </>
-                        )}
-                    </With>
+                    {switchValue.computed((switchValue) => (
+                        <>
+                            {switchValue % 3 === 0 && 'yay!'}
+                            {switchValue % 3 === 1 && 'wow!'}
+                            {switchValue % 3 === 2 && 'lol!'}
+                        </>
+                    ))}
                     <ParentComponent>
                         <For of={items1}>
                             {(item, index) => <span>{index}. Item: {item} {createTimer()}</span>}

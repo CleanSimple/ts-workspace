@@ -1,12 +1,19 @@
-export type Handler = () => void;
+import type { PlayerWrapper } from './player-wrapper';
 
-export interface HotkeyRule {
+export interface VideoContext {
+    playerWrapper: PlayerWrapper;
+}
+
+export type HotkeyHandler = (context: VideoContext) => void;
+
+export interface Hotkey {
     key?: string;
     code?: string;
     shiftKey?: boolean;
     ctrlKey?: boolean;
     altKey?: boolean;
-    handler: Handler | null;
+    when?: 'default' | 'playing' | 'paused' | 'skipping';
+    handler: HotkeyHandler | null;
     noDefault: boolean;
     noOtherHandlers: boolean;
 }

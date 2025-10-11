@@ -1,43 +1,30 @@
 import { type FunctionalComponent, ref, val } from '@cleansimple/plain-jsx';
 import type { Action } from '@cleansimple/utils-js';
-import type { HotkeyRule } from '../types';
 import { UpDown } from './UpDown';
 
-interface SkipDlgRefType {
-    close: () => void;
-    show: () => void;
+export interface SkipDlg {
+    cancel: () => void;
+    accept: () => void;
 }
 
 interface SkipDlgProps {
-    targetVideo: HTMLVideoElement;
-    enterRule: HotkeyRule;
-    escRule: HotkeyRule;
-    onClosed: Action;
+    skipMins?: number;
+    skipSecs?: number;
+    onAccept?: (skipMins: number, skipSecs: number) => void;
+    onClosed?: Action;
 }
 
-export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlgRefType> = (
-    { targetVideo, enterRule, escRule, onClosed },
+export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlg> = (
+    { skipMins: initialSkipMins = 0, skipSecs: initialSkipSecs = 30, onAccept, onClosed },
     { defineRef },
 ) => {
     const container = ref<HTMLDivElement>();
-    const skipMins = val(GM_getValue('MinsValue', 1) as number);
-    const skipSecs = val(GM_getValue('SecsValue', '0') as string);
-
-    const wasPlaying = !targetVideo.paused;
+    const skipMins = val(initialSkipMins);
+    const skipSecs = val(initialSkipSecs);
 
     function close() {
         container.value?.remove();
-        if (wasPlaying) {
-            void targetVideo.play();
-        }
-        onClosed();
-    }
-
-    function show() {
-        targetVideo.pause();
-
-        if (!container.value) throw new Error();
-        container.value.style.opacity = '1';
+        onClosed?.();
     }
 
     function handleCancel() {
@@ -45,19 +32,12 @@ export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlgRefType> = (
     }
 
     function handleOk() {
-        GM_setValue('MinsValue', skipMins.value);
-        GM_setValue('SecsValue', skipSecs.value);
-
-        targetVideo.currentTime += (skipMins.value * 60) + parseInt(skipSecs.value);
+        onAccept?.(skipMins.value, skipSecs.value);
         close();
     }
 
-    defineRef({ close, show });
+    defineRef({ cancel: handleCancel, accept: handleOk });
 
-    enterRule.handler = handleOk;
-    escRule.handler = handleCancel;
-
-    const secsOptions = [0, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map(String);
     return (
         <div
             ref={container}
@@ -75,18 +55,7 @@ export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlgRefType> = (
                         <UpDown value={skipMins} style={{ marginLeft: '5px' }} />
 
                         <label style={{ marginLeft: '5px' }}>Secs:</label>
-                        <div
-                            class='select-container'
-                            style={{ marginLeft: '5px', alignSelf: 'stretch' }}
-                        >
-                            <select value={skipSecs}>
-                                {secsOptions.map((secs) => (
-                                    <option selected={secs == skipSecs.value} value={secs}>
-                                        {secs.padStart(2, '0')}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        <UpDown value={skipMins} maxValue={59} style={{ marginLeft: '5px' }} />
                     </div>
                     <div class='actions-container' style={{ marginTop: '5px' }}>
                         <button on:click={handleCancel}>Cancel</button>

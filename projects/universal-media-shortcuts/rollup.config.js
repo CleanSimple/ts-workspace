@@ -2,7 +2,7 @@ import baseConfig from '@cleansimple/rollup-config/userscript';
 
 export default {
     ...baseConfig,
-    input: 'src/main.tsx',
+    input: 'src/main.ts',
     output: [
         {
             name: 'UMS',
