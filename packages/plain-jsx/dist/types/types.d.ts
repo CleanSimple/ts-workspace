@@ -24,7 +24,6 @@ export interface VNodeElement extends VNodeBase<string> {
     props: PropsType;
     ref: Element;
     subscriptions: Subscription[] | null;
-    onMount: Action;
     onUnmount: Action;
 }
 export interface VNodeFunctionalComponent extends VNodeBase<FunctionalComponent> {

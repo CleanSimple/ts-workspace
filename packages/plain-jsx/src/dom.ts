@@ -3,10 +3,10 @@ import { mountNodes, unmountNodes } from './lifecycle-events';
 import { getLIS } from './lis';
 import { ObservableImpl, type Subscription, ValImpl } from './observable';
 import type { HasVNode, PropsType, VNode } from './types';
-import { splitNamespace } from './utils';
+import { isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();
-const _HandledEvents = new Set<string>();
+const _HandledEvents = new Map<string, symbol>();
 
 const InputTwoWayProps = {
     value: null,
@@ -124,7 +124,7 @@ export function setProps(elem: HTMLElement, props: PropsType) {
 
         const value = props[key];
 
-        if ('style' in props) {
+        if (key === 'style') {
             if (isObject(value)) {
                 Object.assign(elem.style, value);
             }
@@ -135,7 +135,7 @@ export function setProps(elem: HTMLElement, props: PropsType) {
                 throw new Error("Invalid value type for 'style' prop.");
             }
         }
-        else if ('dataset' in props) {
+        else if (key === 'dataset') {
             if (!isObject(value)) {
                 throw new Error('Dataset value must be an object');
             }
@@ -150,14 +150,15 @@ export function setProps(elem: HTMLElement, props: PropsType) {
         }
         else if (key.startsWith('on:')) {
             const event = key.slice(3);
-            (elem as unknown as Record<string, unknown>)[`@@${event}`] = value;
-
-            if (!_HandledEvents.has(event)) {
-                _HandledEvents.add(event);
+            let eventKey = _HandledEvents.get(event);
+            if (!eventKey) {
+                eventKey = Symbol(event);
+                _HandledEvents.set(event, eventKey);
                 document.addEventListener(event, globalEventHandler);
             }
+            (elem as unknown as Record<symbol, unknown>)[eventKey] = value;
         }
-        else if (hasKey(elem, key)) {
+        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
             (elem as unknown as Record<string, unknown>)[key] = value instanceof ObservableImpl
                 ? value.value
                 : value;
@@ -179,7 +180,7 @@ export function observeProps(
 ): Subscription[] | null {
     const subscriptions: Subscription[] = [];
     for (const key in props) {
-        if (key === 'ref' || key === 'children') {
+        if (key === 'children') {
             continue;
         }
 
@@ -188,6 +189,16 @@ export function observeProps(
             continue;
         }
 
+        if (key === 'ref') {
+            if (value instanceof ValImpl) {
+                value.value = elem;
+                subscriptions.push({
+                    unsubscribe: () => {
+                        value.value = null;
+                    },
+                });
+            }
+        }
         if (key.startsWith('class:')) {
             const className = key.slice(6);
             const setValue = (value: boolean) => {
@@ -240,7 +251,7 @@ export function observeProps(
 }
 
 function globalEventHandler(evt: Event) {
-    const key = `@@${evt.type}` as const;
+    const key = _HandledEvents.get(evt.type)!;
 
     type NodeType = Node & { [key]?: EventListener } | null;
 

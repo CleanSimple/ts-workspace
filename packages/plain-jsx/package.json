@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/plain-jsx",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "exports": {

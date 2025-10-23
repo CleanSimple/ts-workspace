@@ -166,7 +166,6 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         // mount self
         if (vNode.type === 'element') {
-            vNode.onMount();
             if (parentComponent) {
                 parentComponent.mountedChildrenCount++;
             }
@@ -475,9 +474,20 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         return [XMLNamespaces[ns], tag];
     }
+    function isReadonlyProp(obj, key) {
+        let currentObj = obj;
+        while (currentObj !== null) {
+            const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+            if (desc) {
+                return desc.writable === false || desc.set === undefined;
+            }
+            currentObj = Object.getPrototypeOf(currentObj);
+        }
+        return true;
+    }
 
     const _Fragment = document.createDocumentFragment();
-    const _HandledEvents = new Set();
+    const _HandledEvents = new Map();
     const InputTwoWayProps = {
         value: null,
         valueAsNumber: null,
@@ -581,7 +591,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 continue;
             }
             const value = props[key];
-            if ('style' in props) {
+            if (key === 'style') {
                 if (utilsJs.isObject(value)) {
                     Object.assign(elem.style, value);
                 }
@@ -592,7 +602,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     throw new Error("Invalid value type for 'style' prop.");
                 }
             }
-            else if ('dataset' in props) {
+            else if (key === 'dataset') {
                 if (!utilsJs.isObject(value)) {
                     throw new Error('Dataset value must be an object');
                 }
@@ -607,13 +617,15 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             else if (key.startsWith('on:')) {
                 const event = key.slice(3);
-                elem[`@@${event}`] = value;
-                if (!_HandledEvents.has(event)) {
-                    _HandledEvents.add(event);
+                let eventKey = _HandledEvents.get(event);
+                if (!eventKey) {
+                    eventKey = Symbol(event);
+                    _HandledEvents.set(event, eventKey);
                     document.addEventListener(event, globalEventHandler);
                 }
+                elem[eventKey] = value;
             }
-            else if (utilsJs.hasKey(elem, key)) {
+            else if (utilsJs.hasKey(elem, key) && !isReadonlyProp(elem, key)) {
                 elem[key] = value instanceof ObservableImpl
                     ? value.value
                     : value;
@@ -631,12 +643,22 @@ var PlainJSX = (function (exports, utilsJs) {
     function observeProps(elem, props) {
         const subscriptions = [];
         for (const key in props) {
-            if (key === 'ref' || key === 'children') {
+            if (key === 'children') {
                 continue;
             }
             const value = props[key];
             if (value instanceof ObservableImpl === false) {
                 continue;
+            }
+            if (key === 'ref') {
+                if (value instanceof ValImpl) {
+                    value.value = elem;
+                    subscriptions.push({
+                        unsubscribe: () => {
+                            value.value = null;
+                        },
+                    });
+                }
             }
             if (key.startsWith('class:')) {
                 const className = key.slice(6);
@@ -683,7 +705,7 @@ var PlainJSX = (function (exports, utilsJs) {
         return subscriptions.length === 0 ? null : subscriptions;
     }
     function globalEventHandler(evt) {
-        const key = `@@${evt.type}`;
+        const key = _HandledEvents.get(evt.type);
         let node = evt.target;
         while (node) {
             const handler = node[key];
@@ -980,20 +1002,12 @@ var PlainJSX = (function (exports, utilsJs) {
             this.parent = parent;
             this.ref = ref;
         }
-        onMount() {
-            if (this.props.ref instanceof ValImpl) {
-                this.props.ref.value = this.ref;
-            }
-        }
         onUnmount() {
             if (this.subscriptions) {
                 for (const subscription of this.subscriptions) {
                     subscription.unsubscribe();
                 }
                 this.subscriptions = null;
-            }
-            if (this.props.ref instanceof ValImpl) {
-                this.props.ref.value = null;
             }
         }
     }

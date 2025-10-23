@@ -2,10 +2,10 @@ import { isObject, hasKey } from '@cleansimple/utils-js';
 import { unmountNodes, mountNodes } from './lifecycle-events.esm.js';
 import { getLIS } from './lis.esm.js';
 import { ObservableImpl, ValImpl } from './observable.esm.js';
-import { splitNamespace } from './utils.esm.js';
+import { isReadonlyProp, splitNamespace } from './utils.esm.js';
 
 const _Fragment = document.createDocumentFragment();
-const _HandledEvents = new Set();
+const _HandledEvents = new Map();
 const InputTwoWayProps = {
     value: null,
     valueAsNumber: null,
@@ -109,7 +109,7 @@ function setProps(elem, props) {
             continue;
         }
         const value = props[key];
-        if ('style' in props) {
+        if (key === 'style') {
             if (isObject(value)) {
                 Object.assign(elem.style, value);
             }
@@ -120,7 +120,7 @@ function setProps(elem, props) {
                 throw new Error("Invalid value type for 'style' prop.");
             }
         }
-        else if ('dataset' in props) {
+        else if (key === 'dataset') {
             if (!isObject(value)) {
                 throw new Error('Dataset value must be an object');
             }
@@ -135,13 +135,15 @@ function setProps(elem, props) {
         }
         else if (key.startsWith('on:')) {
             const event = key.slice(3);
-            elem[`@@${event}`] = value;
-            if (!_HandledEvents.has(event)) {
-                _HandledEvents.add(event);
+            let eventKey = _HandledEvents.get(event);
+            if (!eventKey) {
+                eventKey = Symbol(event);
+                _HandledEvents.set(event, eventKey);
                 document.addEventListener(event, globalEventHandler);
             }
+            elem[eventKey] = value;
         }
-        else if (hasKey(elem, key)) {
+        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
             elem[key] = value instanceof ObservableImpl
                 ? value.value
                 : value;
@@ -159,12 +161,22 @@ function setProps(elem, props) {
 function observeProps(elem, props) {
     const subscriptions = [];
     for (const key in props) {
-        if (key === 'ref' || key === 'children') {
+        if (key === 'children') {
             continue;
         }
         const value = props[key];
         if (value instanceof ObservableImpl === false) {
             continue;
+        }
+        if (key === 'ref') {
+            if (value instanceof ValImpl) {
+                value.value = elem;
+                subscriptions.push({
+                    unsubscribe: () => {
+                        value.value = null;
+                    },
+                });
+            }
         }
         if (key.startsWith('class:')) {
             const className = key.slice(6);
@@ -211,7 +223,7 @@ function observeProps(elem, props) {
     return subscriptions.length === 0 ? null : subscriptions;
 }
 function globalEventHandler(evt) {
-    const key = `@@${evt.type}`;
+    const key = _HandledEvents.get(evt.type);
     let node = evt.target;
     while (node) {
         const handler = node[key];

@@ -298,22 +298,12 @@ class _VNodeElement implements VNodeElement {
         this.ref = ref;
     }
 
-    public onMount(): void {
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = this.ref;
-        }
-    }
-
     public onUnmount(): void {
         if (this.subscriptions) {
             for (const subscription of this.subscriptions) {
                 subscription.unsubscribe();
             }
             this.subscriptions = null;
-        }
-
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = null;
         }
     }
 }

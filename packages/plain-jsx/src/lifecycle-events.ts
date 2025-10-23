@@ -122,7 +122,6 @@ function mountVNode(vNode: VNode, parentComponent: VNodeFunctionalComponent | nu
 
     // mount self
     if (vNode.type === 'element') {
-        vNode.onMount();
         if (parentComponent) {
             parentComponent.mountedChildrenCount++;
         }

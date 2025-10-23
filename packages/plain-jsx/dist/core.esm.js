@@ -3,7 +3,7 @@ import { For } from './components/For.esm.js';
 import { Show } from './components/Show.esm.js';
 import { patchNode, setProps, observeProps } from './dom.esm.js';
 import { mountNodes } from './lifecycle-events.esm.js';
-import { ObservableImpl, ValImpl, val } from './observable.esm.js';
+import { ObservableImpl, val, ValImpl } from './observable.esm.js';
 import { resolveReactiveNodes, ReactiveNode } from './reactive-node.esm.js';
 import { runAsync } from './scheduling.esm.js';
 import { splitNamespace } from './utils.esm.js';
@@ -229,20 +229,12 @@ class _VNodeElement {
         this.parent = parent;
         this.ref = ref;
     }
-    onMount() {
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = this.ref;
-        }
-    }
     onUnmount() {
         if (this.subscriptions) {
             for (const subscription of this.subscriptions) {
                 subscription.unsubscribe();
             }
             this.subscriptions = null;
-        }
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = null;
         }
     }
 }

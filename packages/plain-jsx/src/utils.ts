@@ -12,3 +12,15 @@ export function splitNamespace(tagNS: string) {
     }
     return [XMLNamespaces[ns], tag] as const;
 }
+
+export function isReadonlyProp<T>(obj: T, key: keyof T): boolean {
+    let currentObj: unknown = obj;
+    while (currentObj !== null) {
+        const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+        if (desc) {
+            return desc.writable === false || desc.set === undefined;
+        }
+        currentObj = Object.getPrototypeOf(currentObj);
+    }
+    return true;
+}
