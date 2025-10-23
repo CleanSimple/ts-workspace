@@ -38,7 +38,6 @@ export default defineConfig([
             '@typescript-eslint/no-inferrable-types': 'off',
             '@typescript-eslint/prefer-regexp-exec': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-            "@typescript-eslint/unbound-method": ["warn", { "ignoreStatic": true }]
         },
     },
 ]);
