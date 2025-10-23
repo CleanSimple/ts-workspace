@@ -6,11 +6,11 @@
     "exports": {
         "import": {
             "types": "./dist/types/index.d.ts",
-            "import": "./dist/bundle/index.esm.js"
+            "import": "./dist/index.esm.js"
         }
     },
     "scripts": {
-        "build": "yarn clean ./dist && yarn rollup -c",
+        "build": "yarn clean ./dist && yarn rollup -c && yarn jsdocify",
         "dev": "yarn rollup -c -w",
         "lint": "yarn eslint ./src",
         "fmt": "yarn dprint fmt ./src/*",

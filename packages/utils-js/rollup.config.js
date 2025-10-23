@@ -6,12 +6,12 @@ export default {
     output: [
         {
             format: 'esm',
-            file: './dist/bundle/index.esm.js',
+            file: './dist/index.esm.js',
         },
         {
             name: 'Utils',
             format: 'iife',
-            file: './dist/bundle/index.iife.js',
+            file: './dist/index.iife.js',
         },
     ],
 };
