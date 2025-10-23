@@ -1,4 +1,4 @@
-import { type FunctionalComponent, ref, val } from '@cleansimple/plain-jsx';
+import { type FunctionalComponent, val } from '@cleansimple/plain-jsx';
 import type { Action } from '@cleansimple/utils-js';
 import { UpDown } from './UpDown';
 
@@ -18,12 +18,10 @@ export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlg> = (
     { skipMins: initialSkipMins = 0, skipSecs: initialSkipSecs = 30, onAccept, onClosed },
     { defineRef },
 ) => {
-    const container = ref<HTMLDivElement>();
     const skipMins = val(initialSkipMins);
     const skipSecs = val(initialSkipSecs);
 
     function close() {
-        container.value?.remove();
         onClosed?.();
     }
 
@@ -39,11 +37,7 @@ export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlg> = (
     defineRef({ cancel: handleCancel, accept: handleOk });
 
     return (
-        <div
-            ref={container}
-            class='skip-dlg-container'
-            style={{ opacity: 1 }}
-        >
+        <div class='skip-dlg-container'>
             <div class='backdrop'></div>
             <div class='skip-dlg'>
                 <div class='title'>
@@ -55,7 +49,7 @@ export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlg> = (
                         <UpDown value={skipMins} style={{ marginLeft: '5px' }} />
 
                         <label style={{ marginLeft: '5px' }}>Secs:</label>
-                        <UpDown value={skipMins} maxValue={59} style={{ marginLeft: '5px' }} />
+                        <UpDown value={skipSecs} maxValue={59} style={{ marginLeft: '5px' }} />
                     </div>
                     <div class='actions-container' style={{ marginTop: '5px' }}>
                         <button on:click={handleCancel}>Cancel</button>

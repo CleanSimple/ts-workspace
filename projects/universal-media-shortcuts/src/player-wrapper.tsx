@@ -1,4 +1,4 @@
-import { ref, render } from '@cleansimple/plain-jsx';
+import { type JSX, ref, render, val } from '@cleansimple/plain-jsx';
 import { PlayersSelector } from './players';
 import { SkipDlg } from './UI/SkipDlg';
 
@@ -15,10 +15,13 @@ export class PlayerWrapper {
     private readonly playerElement: HTMLElement;
     private readonly videoElement: HTMLVideoElement;
     private readonly skipDlgRef = ref<typeof SkipDlg>();
+    private readonly skipDlgRoot = val<JSX.Element | null>(null);
 
     private constructor(playerElement: HTMLElement, videoElement: HTMLVideoElement) {
         this.playerElement = playerElement;
         this.videoElement = videoElement;
+
+        render(this.playerElement, this.skipDlgRoot);
     }
 
     public get status() {
@@ -85,17 +88,17 @@ export class PlayerWrapper {
             if (wasPlaying) {
                 void this.videoElement.play();
             }
+            this.skipDlgRoot.value = null;
         };
 
-        render(
-            this.playerElement,
+        this.skipDlgRoot.value = (
             <SkipDlg
                 ref={this.skipDlgRef}
                 skipMins={skipMins}
                 skipSecs={skipSecs}
                 onAccept={handleAccept}
                 onClosed={handleClosed}
-            />,
+            />
         );
     }
 

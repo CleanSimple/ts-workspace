@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Universal Media Shortcuts
 // @description  Adds custom shortcuts to video players
-// @version      0.24.0
+// @version      0.25.0
 // @author       Nour Nasser
 // @namespace    https://github.com/Nourz1234
 // @match        *://*/*
@@ -333,141 +333,15 @@
 }
 `;
 
-    const XMLNamespaces = {
-        'svg': 'http://www.w3.org/2000/svg',
-        'xhtml': 'http://www.w3.org/1999/xhtml',
-    };
-
-    let callbacks = new Array();
-    let queued = false;
-    function runNextTickCallbacks() {
-        queued = false;
-        for (const callback of callbacks) {
-            void callback();
-        }
-        callbacks = [];
-    }
-    function nextTick(callback) {
-        callbacks.push(callback);
-        if (queued) {
-            return;
-        }
-        queued = true;
-        queueMicrotask(runNextTickCallbacks);
-    }
-
-    class Sentinel {
-        static Instance = new Sentinel();
-        // eslint-disable-next-line @typescript-eslint/no-empty-function
-        constructor() { }
-    }
-
-    class Observable {
-        computed(compute) {
-            return new ComputedSingle(compute, this);
-        }
-    }
-    /** internal use */
-    class ObservableImpl extends Observable {
-        observers = [];
-        immediateObservers = [];
-        hasDeferredNotifications = false;
-        notifyObserversCallback;
-        constructor() {
-            super();
-            this.notifyObserversCallback = this.notifyObservers.bind(this);
-        }
-        onUpdated() {
-            if (this.immediateObservers.length) {
-                const value = this.value;
-                for (const observer of this.immediateObservers) {
-                    observer(value);
-                }
-            }
-            if (this.observers.length) {
-                if (this.hasDeferredNotifications) {
-                    return;
-                }
-                this.hasDeferredNotifications = true;
-                nextTick(this.notifyObserversCallback);
-            }
-        }
-        notifyObservers() {
-            this.hasDeferredNotifications = false;
-            const value = this.value;
-            for (const observer of this.observers) {
-                observer(value);
-            }
-        }
-        subscribe(observer, immediate = true) {
-            const observers = immediate ? this.immediateObservers : this.observers;
-            if (!observers.includes(observer)) {
-                observers.push(observer);
-            }
-            return {
-                unsubscribe: this.unsubscribe.bind(this, observer, immediate),
-            };
-        }
-        unsubscribe(observer, immediate) {
-            const observers = immediate ? this.immediateObservers : this.observers;
-            const index = observers.indexOf(observer);
-            if (index > -1) {
-                observers.splice(index, 1);
-            }
-        }
-    }
-    /**
-     * Simple observable value implementation
-     */
-    class Val extends ObservableImpl {
-        _value;
-        constructor(initialValue) {
-            super();
-            this._value = initialValue;
-        }
-        get value() {
-            return this._value;
-        }
-        set value(newValue) {
-            if (this._value === newValue) {
-                return;
-            }
-            this._value = newValue;
-            this.onUpdated();
-        }
-    }
-    /** internal use */
-    class ComputedSingle extends Observable {
-        observable;
-        compute;
-        _value;
-        constructor(compute, observable) {
-            super();
-            this.compute = compute;
-            this.observable = observable;
-            this._value = compute(observable.value);
-        }
-        get value() {
-            return this._value;
-        }
-        subscribe(observer, immediate) {
-            return this.observable.subscribe((value) => {
-                this._value = this.compute(value);
-                observer(this._value);
-            }, immediate);
-        }
-    }
-    function val(initialValue) {
-        return new Val(initialValue);
-    }
-    function ref() {
-        return new Val(null);
-    }
-
     class MultiEntryCache {
         map = new Map();
         readIndex = new Map();
-        constructor(entries = []) {
+        constructor(entries = null) {
+            if (entries) {
+                this.addRange(entries);
+            }
+        }
+        addRange(entries) {
             for (const [key, value] of entries) {
                 this.add(key, value);
             }
@@ -503,343 +377,397 @@
         }
     }
 
-    class ReactiveNode {
-        placeholder = document.createComment('');
-        _children = [this.placeholder];
-        get children() {
-            return this._children;
-        }
-        update(rNode) {
-            const children = resolveReactiveNodes(this._children);
-            if (rNode === null || rNode.length === 0) {
-                // optimized clear path
-                if (this._children.length === 1 && this._children[0] === this.placeholder) {
-                    return; // we are already cleared
-                }
-                const first = children.values().next().value;
-                const parent = first?.parentNode;
-                if (parent) {
-                    parent.insertBefore(this.placeholder, first);
-                    const fragment = document.createDocumentFragment();
-                    fragment.append(...children);
-                }
-                this._children = [this.placeholder];
-                return;
-            }
-            const newChildren = resolveReactiveNodes(rNode);
-            const newChildrenSet = new Set(newChildren);
-            const first = children.values().next().value;
-            const parent = first?.parentNode;
-            if (parent) {
-                const domChildren = parent.childNodes;
-                const currentChildrenSet = new Set(children);
-                if (currentChildrenSet.size === domChildren.length
-                    && newChildrenSet.isDisjointFrom(currentChildrenSet)) {
-                    // optimized replace path
-                    parent.replaceChildren(...newChildren);
-                }
-                else {
-                    const fragment = document.createDocumentFragment(); // used in bulk updates
-                    const replaceCount = Math.min(currentChildrenSet.size, newChildren.length);
-                    const replacedSet = new Set();
-                    const start = Array.prototype.indexOf.call(domChildren, first);
-                    for (let i = 0; i < replaceCount; ++i) {
-                        const child = domChildren[start + i];
-                        const newChild = newChildren[i];
-                        if (!child) {
-                            parent.append(...newChildren.slice(i));
-                            break;
-                        }
-                        else if (!currentChildrenSet.has(child)) {
-                            fragment.append(...newChildren.slice(i));
-                            parent.insertBefore(fragment, child);
-                            break;
-                        }
-                        else if (child !== newChild) {
-                            if (!replacedSet.has(newChild)) {
-                                parent.replaceChild(newChild, child);
-                                replacedSet.add(child);
-                            }
-                            else {
-                                parent.insertBefore(newChild, child);
-                            }
-                        }
-                    }
-                    if (currentChildrenSet.size > newChildren.length) {
-                        // appending the excess children to the fragment will move them from their current parent to the fragment effectively removing them.
-                        fragment.append(...currentChildrenSet.difference(newChildrenSet));
-                    }
-                    else if (currentChildrenSet.size < newChildren.length) {
-                        fragment.append(...newChildren.slice(replaceCount));
-                        parent.insertBefore(fragment, newChildren[replaceCount - 1].nextSibling);
-                    }
-                }
-            }
-            this._children = rNode;
-        }
+    function For(_props) {
+        throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
-    function resolveReactiveNodes(children) {
-        return children.flatMap((vNode) => vNode instanceof ReactiveNode ? resolveReactiveNodes(vNode.children) : vNode);
+
+    function Show(_props) {
+        throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
-    const Show = 'Show';
-    const renderShow = (props, children, renderChildren) => {
-        const { when, cache } = props;
-        const childrenOrFn = children;
-        const getChildren = typeof childrenOrFn === 'function' ? childrenOrFn : () => childrenOrFn;
-        let childNodes = null;
-        const render = cache === false
-            ? () => renderChildren(getChildren())
-            : () => childNodes ??= renderChildren(getChildren());
-        const reactiveNode = new ReactiveNode();
-        if (when instanceof Observable) {
-            if (when.value) {
-                reactiveNode.update(render());
+
+    /**
+     * The mounting and unmounting process is a bit complex and needs this bit of documentation
+     *
+     * We have 3 main groups of VNodes that represent:
+     * 1. DOM Nodes ('text', 'element')
+     * 2. Functional Components ('component')
+     * 3. Reactive Nodes ('builtin', 'observable')
+     *
+     * Each of these 3 groups has a different mounting and unmounting logic.
+     *
+     * When is a VNode considered mounted?
+     *  DOM Nodes: When they are a descendant of a connected DOM Node
+     *  Functional Components: When they contain at least one DOM Node that is mounted
+     *  Reactive Nodes: When they are a descendant of a connected DOM Node
+     *
+     *  Note: 'connected' here means the node is connected to the active DOM which is not the same as 'mounted'.
+     *
+     * Mounting logic:
+     *  DOM Nodes: The call to mount will always mount the DOM Node and signal the closest functional component to be mounted.
+     *  Functional Components: The call to mount does nothing, instead the functional component relies on mount signals from its children.
+     *      Each child will give a mount signal and those are counted, when the count is greater than 0 the functional component gets mounted.
+     *      Functional components will also signal parent functional components to be mounted.
+     *  Reactive Nodes: The call to mount will always mount the reactive node but no signals are sent.
+     *
+     *  This can present an interesting situation where a functional component is not mounted, but it has reactive nodes that are mounted.
+     *  Because a functional component is mounted when it has at least one DOM Node that is mounted, and a reactive node is mounted when it is a descendant of a connected DOM Node.
+     *  If a mounted but empty reactive node is the only direct child of a functional component, then the functional component will not be mounted.
+     *  This is a bit confusing, but it is valid.
+     *
+     * Unmounting logic:
+     *  DOM Nodes: The call to unmount will always unmount the DOM Node and signal the closest functional component to be unmounted.
+     *  Functional Components: The call to unmount does nothing, instead the functional component relies on unmount signals from its children.
+     *      Each child will give an unmount signal that will decrements the count of mounted children, when the count is 0 the functional component gets unmounted.
+     *      Functional components will also signal parent functional components to be unmounted.
+     *  Reactive Nodes: The call to unmount will always unmount the reactive node but no signals are sent.
+     */
+    function mountNodes(nodes) {
+        const customNodes = nodes;
+        const n = customNodes.length;
+        // handle reactive node placeholders
+        if (n === 1 && customNodes[0] instanceof Comment) {
+            return;
+        }
+        // this always gets called on children of the same parent, so it's safe to use the parent of the first node
+        const parent = findParentComponent(customNodes[0].__vNode);
+        if (parent) {
+            for (let i = 0; i < n; i++) {
+                mountVNode(customNodes[i].__vNode);
+                parent.mountedChildrenCount++;
             }
-            when.subscribe((value) => {
-                reactiveNode.update(value ? render() : null);
+            // we want to defer parent mount/unmount until all children have settled
+            // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
+            queueMicrotask(() => {
+                if (parent.mountedChildrenCount > 0 && !parent.isMounted) {
+                    parent.onMount();
+                    signalParentComponent(parent, 'mount');
+                }
             });
         }
         else {
-            if (when) {
-                reactiveNode.update(render());
+            for (let i = 0; i < n; i++) {
+                mountVNode(customNodes[i].__vNode);
             }
         }
-        return reactiveNode;
-    };
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    function For(props) {
-        throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
-    const renderFor = (props, children, renderChildren) => {
-        const { of } = props;
-        if (of instanceof Observable === false) {
-            throw new Error("The 'of' prop on <For> is required and must be an Observable.");
+    function unmountNodes(nodes) {
+        const customNodes = nodes;
+        const n = customNodes.length;
+        // handle reactive node placeholders
+        if (n === 1 && customNodes[0] instanceof Comment) {
+            return;
         }
-        if (typeof children !== 'function') {
-            throw new Error('The <For> component must have exactly one child — a function that maps each item.');
-        }
-        const mapFn = children;
-        let cache = new MultiEntryCache();
-        const render = (value, index) => {
-            let item = cache.get(value);
-            if (!item) {
-                const indexObservable = val(index);
-                item = [indexObservable, renderChildren(mapFn(value, indexObservable))];
-                cache.add(value, item);
+        // this always gets called on children of the same parent, so it's safe to use the parent of the first node
+        const parent = findParentComponent(customNodes[0].__vNode);
+        if (parent) {
+            for (let i = 0; i < n; i++) {
+                unmountVNode(customNodes[i].__vNode);
+                parent.mountedChildrenCount--;
             }
-            else {
-                item[0].value = index;
-            }
-            return [value, item];
-        };
-        const reactiveNode = new ReactiveNode();
-        const childNodes = of.value.map(render);
-        cache = new MultiEntryCache(childNodes);
-        reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
-        of.subscribe((items) => {
-            const childNodes = items.map(render);
-            cache = new MultiEntryCache(childNodes);
-            reactiveNode.update(childNodes.flatMap(([, item]) => item[1]));
-        });
-        return reactiveNode;
-    };
-
-    const Fragment = 'Fragment';
-    /* built-in components that have special handling */
-    const BuiltinComponents = new Map([
-        [Show, renderShow],
-        [For, renderFor],
-    ]);
-    function jsx(type, props) {
-        const { children } = props;
-        props.children = undefined;
-        return renderVNode(type, props, children);
-    }
-    // export let initialRenderDone = false;
-    function render(root, vNode) {
-        root.append(...resolveReactiveNodes(renderChildren(vNode)));
-        // initialRenderDone = true;
-    }
-    function renderVNode(type, props, children) {
-        const renderBuiltin = BuiltinComponents.get(type);
-        if (renderBuiltin) {
-            return renderBuiltin(props, children, renderChildren);
-        }
-        /* general handling */
-        if (typeof type === 'function') {
-            let componentRef = null;
-            const defineRef = (ref) => {
-                componentRef = ref;
-            };
-            const vNode = type({ ...props, children }, { defineRef });
-            if (props['ref'] instanceof Val) {
-                props['ref'].value = componentRef;
-            }
-            componentRef = null;
-            return renderChildren(vNode);
-        }
-        else if (type === Fragment) {
-            return renderChildren(children);
+            // we want to defer parent mount/unmount until all children have settled
+            // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
+            queueMicrotask(() => {
+                if (parent.mountedChildrenCount === 0 && parent.isMounted) {
+                    parent.onUnmount();
+                    signalParentComponent(parent, 'unmount');
+                }
+            });
         }
         else {
-            const hasNS = type.includes(':');
-            const domElement = hasNS
-                ? document.createElementNS(...splitNamespace(type))
-                : document.createElement(type);
-            // handle ref prop
-            if (props['ref'] instanceof Val) {
-                props['ref'].value = domElement;
-                props['ref'] = undefined;
+            for (let i = 0; i < n; i++) {
+                unmountVNode(customNodes[i].__vNode);
             }
-            setProps(domElement, props);
-            domElement.append(...resolveReactiveNodes(renderChildren(children)));
-            return domElement;
         }
     }
-    function renderChildren(children) {
-        const normalizedChildren = Array.isArray(children)
-            ? children.flat(10)
-            : [children];
-        const childNodes = [];
-        for (const vNode of normalizedChildren) {
-            if (vNode == null || typeof vNode === 'boolean') {
-                continue;
-            }
-            else if (typeof vNode === 'string' || typeof vNode === 'number') {
-                childNodes.push(document.createTextNode(String(vNode)));
-            }
-            else if (vNode instanceof Observable) {
-                const reactiveNode = new ReactiveNode();
-                let children = renderChildren(vNode.value);
-                reactiveNode.update(children);
-                vNode.subscribe((value) => {
-                    if ((typeof value === 'string' || typeof value === 'number')
-                        && children instanceof Node && children.nodeType === Node.TEXT_NODE) {
-                        // optimized update path for text nodes
-                        children.textContent = value.toString();
-                    }
-                    else {
-                        children = renderChildren(value);
-                        reactiveNode.update(children);
-                    }
-                });
-                childNodes.push(reactiveNode);
-            }
-            else {
-                childNodes.push(vNode);
+    function mountVNode(vNode, parentComponent = null) {
+        let nextParentComponent;
+        if (vNode.type === 'component') {
+            nextParentComponent = vNode;
+        }
+        else if (vNode.type === 'element') {
+            nextParentComponent = null;
+        }
+        else {
+            nextParentComponent = parentComponent;
+        }
+        // mount children
+        let child = vNode.firstChild;
+        while (child) {
+            mountVNode(child, nextParentComponent);
+            child = child.next;
+        }
+        // mount self
+        if (vNode.type === 'element') {
+            if (parentComponent) {
+                parentComponent.mountedChildrenCount++;
             }
         }
-        return childNodes;
-    }
-    const handledEvents = new Set();
-    const InputTwoWayProps = ['value', 'valueAsNumber', 'valueAsDate', 'checked', 'files'];
-    const SelectTwoWayProps = ['value', 'selectedIndex'];
-    function setProps(elem, props) {
-        const elemObj = elem;
-        let elemRef = null;
-        if ('style' in props) {
-            const value = props['style'];
-            props['style'] = undefined;
-            if (isObject(value)) {
-                Object.assign(elem.style, value);
-            }
-            else if (typeof value === 'string') {
-                elem.setAttribute('style', value);
-            }
-            else {
-                throw new Error("Invalid value type for 'style' prop.");
+        else if (vNode.type === 'text') {
+            if (parentComponent) {
+                parentComponent.mountedChildrenCount++;
             }
         }
-        else if ('dataset' in props) {
-            const value = props['dataset'];
-            props['dataset'] = undefined;
-            if (!isObject(value)) {
-                throw new Error('Dataset value must be an object');
-            }
-            Object.assign(elem.dataset, value);
-        }
-        // handle class prop early so it doesn't overwrite class:* props
-        else if ('class' in props) {
-            const value = props['class'];
-            props['class'] = undefined;
-            elem.className = value;
-        }
-        for (const key in props) {
-            const value = props[key];
-            if (value === undefined) {
-                continue;
-            }
-            if (key.startsWith('class:')) {
-                const className = key.slice(6);
-                if (value instanceof Observable) {
-                    value.subscribe((value) => {
-                        if (value) {
-                            elem.classList.add(className);
-                        }
-                        else {
-                            elem.classList.remove(className);
-                        }
-                    });
-                    if (value.value) {
-                        elem.classList.add(className);
-                    }
-                }
-                else {
-                    if (value) {
-                        elem.classList.add(className);
-                    }
-                }
-            }
-            else if (key.startsWith('on:')) {
-                const event = key.slice(3);
-                elemObj[`@@${event}`] = value;
-                if (!handledEvents.has(event)) {
-                    handledEvents.add(event);
-                    document.addEventListener(event, globalEventHandler);
-                }
-            }
-            else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-                if (value instanceof Observable) {
-                    elemRef ??= new WeakRef(elemObj);
-                    const unsubscribe = value.subscribe((value) => {
-                        const elem = elemRef.deref();
-                        if (!elem) {
-                            unsubscribe.unsubscribe();
-                            return;
-                        }
-                        elem[key] = value;
-                    });
-                    // two way updates for input element
-                    if ((elem instanceof HTMLInputElement && InputTwoWayProps.includes(key))
-                        || (elem instanceof HTMLSelectElement && SelectTwoWayProps.includes(key))) {
-                        if (value instanceof Val) {
-                            elem.addEventListener('change', (e) => {
-                                value.value = e.target[key];
-                            });
-                        }
-                        else {
-                            elem.addEventListener('change', (e) => {
-                                e.preventDefault();
-                                e.target[key] = value.value;
-                            });
-                        }
-                    }
-                    elemObj[key] = value.value;
-                }
-                else {
-                    elemObj[key] = value;
-                }
-            }
-            else {
-                if (key.includes(':')) {
-                    elem.setAttributeNS(splitNamespace(key)[0], key, value);
-                }
-                else {
-                    elem.setAttribute(key, value);
+        // else if (vNode.type === 'builtin') {
+        //     vNode.onMount();
+        // }
+        // else if (vNode.type === 'observable') {
+        //     vNode.onMount();
+        // }
+        else if (vNode.type === 'component') {
+            if (vNode.mountedChildrenCount > 0 && !vNode.isMounted) {
+                vNode.onMount();
+                if (parentComponent) {
+                    parentComponent.mountedChildrenCount++;
                 }
             }
         }
     }
+    function unmountVNode(vNode) {
+        // unmount children
+        let child = vNode.firstChild;
+        while (child) {
+            unmountVNode(child);
+            child = child.next;
+        }
+        // unmount self
+        if (vNode.type === 'element') {
+            vNode.onUnmount();
+        }
+        // else if (vNode.type === 'text') {
+        // }
+        else if (vNode.type === 'builtin') {
+            vNode.onUnmount();
+        }
+        else if (vNode.type === 'observable') {
+            vNode.onUnmount();
+        }
+        else if (vNode.type === 'component') {
+            vNode.onUnmount();
+        }
+    }
+    function signalParentComponent(vNode, signal) {
+        let parent = vNode.parent;
+        while (parent) {
+            if (parent.type === 'component') {
+                break;
+            }
+            else if (parent.type === 'element') {
+                return;
+            }
+            parent = parent.parent;
+        }
+        if (!parent)
+            return;
+        if (signal === 'mount') {
+            parent.mountedChildrenCount++;
+            queueMicrotask(() => {
+                if (parent.mountedChildrenCount > 0 && !parent.isMounted) {
+                    parent.onMount();
+                    signalParentComponent(parent, 'mount');
+                }
+            });
+        }
+        else if (signal === 'unmount') {
+            parent.mountedChildrenCount--;
+            queueMicrotask(() => {
+                if (parent.mountedChildrenCount === 0 && parent.isMounted) {
+                    parent.onUnmount();
+                    signalParentComponent(parent, 'unmount');
+                }
+            });
+        }
+    }
+    function findParentComponent(vNode) {
+        let parent = vNode.parent;
+        while (parent) {
+            if (parent.type === 'component') {
+                return parent;
+            }
+            else if (parent.type === 'element') {
+                return null;
+            }
+            parent = parent.parent;
+        }
+        return null;
+    }
+
+    function getLIS(arr) {
+        const n = arr.length;
+        const predecessors = new Int32Array(n);
+        const tails = [];
+        for (let i = 0; i < n; i++) {
+            const num = arr[i];
+            // Binary search in tails
+            let lo = 0, hi = tails.length;
+            while (lo < hi) {
+                const mid = (lo + hi) >> 1;
+                if (arr[tails[mid]] < num)
+                    lo = mid + 1;
+                else
+                    hi = mid;
+            }
+            // lo is the position to insert
+            predecessors[i] = lo > 0 ? tails[lo - 1] : -1;
+            if (lo === tails.length)
+                tails.push(i);
+            else
+                tails[lo] = i;
+        }
+        // Reconstruct LIS indices
+        const lis = [];
+        let k = tails[tails.length - 1];
+        for (let i = tails.length - 1; i >= 0; --i) {
+            lis[i] = k;
+            k = predecessors[k];
+        }
+        return lis;
+    }
+
+    /* helpers */
+    function val(initialValue) {
+        return new ValImpl(initialValue);
+    }
+    function ref() {
+        return new ValImpl(null);
+    }
+    class NotificationScheduler {
+        static _notificationSources = [];
+        static _scheduled = false;
+        static schedule(notificationSource) {
+            this._notificationSources.push(notificationSource);
+            if (!this._scheduled) {
+                this._scheduled = true;
+                queueMicrotask(this.flush);
+            }
+        }
+        static flush() {
+            const n = NotificationScheduler._notificationSources.length;
+            for (let i = 0; i < n; ++i) {
+                NotificationScheduler._notificationSources[i].notify();
+            }
+            NotificationScheduler._notificationSources = [];
+            NotificationScheduler._scheduled = false;
+        }
+    }
+    class SubscriptionImpl {
+        id;
+        cb;
+        instance;
+        subscriptions;
+        constructor(id, cb, instance, subscriptions) {
+            this.id = id;
+            this.cb = cb;
+            this.instance = instance;
+            this.subscriptions = subscriptions;
+            this.subscriptions.set(id, this);
+        }
+        unsubscribe() {
+            this.subscriptions.delete(this.id);
+        }
+    }
+    /**
+     * Base class for observables
+     */
+    class ObservableImpl {
+        subscriptions = new Map();
+        dependents = [];
+        _nextSubscriptionId = 0;
+        _prevValue = null;
+        _pendingNotify = false;
+        registerDependant(dependant) {
+            this.dependents.push(new WeakRef(dependant));
+        }
+        notifyDependents() {
+            const n = this.dependents.length;
+            let write = 0;
+            for (let i = 0; i < n; ++i) {
+                const dependant = this.dependents[i].deref();
+                if (dependant) {
+                    dependant.onDependencyUpdated();
+                    this.dependents[write++] = this.dependents[i];
+                }
+            }
+            this.dependents.length = write;
+        }
+        queueNotify() {
+            if (this._pendingNotify) {
+                return;
+            }
+            this._pendingNotify = true;
+            this._prevValue = this.value;
+            NotificationScheduler.schedule(this);
+        }
+        notify() {
+            if (!this._pendingNotify) {
+                return;
+            }
+            const prevValue = this._prevValue;
+            const value = this.value;
+            this._pendingNotify = false;
+            this._prevValue = null;
+            if (value === prevValue) {
+                return;
+            }
+            for (const subscription of this.subscriptions.values()) {
+                subscription.cb.call(subscription.instance, value);
+            }
+        }
+        subscribe(observer, instance) {
+            return new SubscriptionImpl(++this._nextSubscriptionId, observer, instance ?? null, this.subscriptions);
+        }
+        computed(compute) {
+            return new ComputedSingle(compute, this);
+        }
+    }
+    /**
+     * Simple observable value implementation
+     */
+    class ValImpl extends ObservableImpl {
+        _value;
+        constructor(initialValue) {
+            super();
+            this._value = initialValue;
+        }
+        get value() {
+            return this._value;
+        }
+        set value(newValue) {
+            this.queueNotify();
+            this._value = newValue;
+            this.notifyDependents();
+        }
+    }
+    class ComputedSingle extends ObservableImpl {
+        compute;
+        observable;
+        _value;
+        _shouldReCompute;
+        constructor(compute, observable) {
+            super();
+            this.compute = compute;
+            this.observable = observable;
+            this._value = this.compute(observable.value);
+            this._shouldReCompute = false;
+            observable.registerDependant(this);
+        }
+        onDependencyUpdated() {
+            this.queueNotify();
+            this._shouldReCompute = true;
+            this.notifyDependents();
+        }
+        get value() {
+            if (this._shouldReCompute) {
+                this._shouldReCompute = false;
+                this._value = this.compute(this.observable.value);
+            }
+            return this._value;
+        }
+    }
+
+    const XMLNamespaces = {
+        'svg': 'http://www.w3.org/2000/svg',
+        'xhtml': 'http://www.w3.org/1999/xhtml',
+    };
     function splitNamespace(tagNS) {
         const [ns, tag] = tagNS.split(':', 2);
         if (!hasKey(XMLNamespaces, ns)) {
@@ -858,8 +786,227 @@
         }
         return true;
     }
+
+    const _Fragment = document.createDocumentFragment();
+    const _HandledEvents = new Map();
+    const InputTwoWayProps = {
+        value: null,
+        valueAsNumber: null,
+        valueAsDate: null,
+        checked: null,
+        files: null,
+    };
+    const SelectTwoWayProps = {
+        value: null,
+        selectedIndex: null,
+    };
+    function reconcileChildren(parent, current, target) {
+        const newIndexMap = new Map();
+        const nTarget = target.length;
+        const nCurrent = current.length;
+        for (let i = 0; i < nTarget; ++i) {
+            newIndexMap.set(target[i], i);
+        }
+        const newIndexToOldIndexMap = new Int32Array(nTarget).fill(-1);
+        const nodeAfterEnd = current[nCurrent - 1].nextSibling; // `current` should never be empty, so this is safe
+        let maxNewIndexSoFar = -1;
+        let moved = false;
+        const toRemove = new Array();
+        for (let i = 0; i < nCurrent; ++i) {
+            const oldNode = current[i];
+            const newIndex = newIndexMap.get(oldNode);
+            if (newIndex === undefined) {
+                toRemove.push(oldNode);
+            }
+            else {
+                newIndexToOldIndexMap[newIndex] = i;
+                if (newIndex < maxNewIndexSoFar)
+                    moved = true;
+                else
+                    maxNewIndexSoFar = newIndex;
+            }
+        }
+        // remove old nodes
+        if (toRemove.length) {
+            unmountNodes(toRemove);
+            _Fragment.append(...toRemove);
+            _Fragment.textContent = null;
+        }
+        // compute longest increasing subsequence
+        const lis = moved ? getLIS(newIndexToOldIndexMap) : [];
+        const ops = [];
+        let currentOp = null;
+        let j = lis.length - 1;
+        for (let i = nTarget - 1; i >= 0; --i) {
+            const newNode = target[i];
+            const nextPos = target.at(i + 1) ?? nodeAfterEnd;
+            if (newIndexToOldIndexMap[i] === -1) {
+                if (currentOp?.type === 'insert') {
+                    currentOp.nodes.push(newNode);
+                }
+                else {
+                    currentOp = { type: 'insert', pos: nextPos, nodes: [newNode] };
+                    ops.push(currentOp);
+                }
+                continue;
+            }
+            else if (moved) {
+                if (j < 0 || i !== lis[j]) {
+                    if (currentOp?.type === 'move') {
+                        currentOp.nodes.push(newNode);
+                    }
+                    else {
+                        currentOp = { type: 'move', pos: nextPos, nodes: [newNode] };
+                        ops.push(currentOp);
+                    }
+                    continue;
+                }
+                j--;
+            }
+            currentOp = null;
+        }
+        for (const op of ops) {
+            // both operations are handled the same way
+            if (op.pos) {
+                _Fragment.append(...op.nodes.reverse());
+                parent.insertBefore(_Fragment, op.pos);
+            }
+            else {
+                parent.append(...op.nodes.reverse());
+            }
+            if (op.type === 'insert') {
+                mountNodes(op.nodes);
+            }
+        }
+    }
+    function patchNode(node, vNode) {
+        node.__vNode = vNode;
+    }
+    function setProps(elem, props) {
+        // handle class prop early so it doesn't overwrite class:* props
+        if ('class' in props) {
+            elem.className = props['class'];
+        }
+        for (const key in props) {
+            if (key === 'ref' || key === 'class' || key === 'children') {
+                continue;
+            }
+            const value = props[key];
+            if (key === 'style') {
+                if (isObject(value)) {
+                    Object.assign(elem.style, value);
+                }
+                else if (typeof value === 'string') {
+                    elem.setAttribute('style', value);
+                }
+                else {
+                    throw new Error("Invalid value type for 'style' prop.");
+                }
+            }
+            else if (key === 'dataset') {
+                if (!isObject(value)) {
+                    throw new Error('Dataset value must be an object');
+                }
+                Object.assign(elem.dataset, value);
+            }
+            else if (key.startsWith('class:')) {
+                const className = key.slice(6);
+                const active = (value instanceof ObservableImpl ? value.value : value);
+                if (active) {
+                    elem.classList.add(className);
+                }
+            }
+            else if (key.startsWith('on:')) {
+                const event = key.slice(3);
+                let eventKey = _HandledEvents.get(event);
+                if (!eventKey) {
+                    eventKey = Symbol(event);
+                    _HandledEvents.set(event, eventKey);
+                    document.addEventListener(event, globalEventHandler);
+                }
+                elem[eventKey] = value;
+            }
+            else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+                elem[key] = value instanceof ObservableImpl
+                    ? value.value
+                    : value;
+            }
+            else {
+                if (key.includes(':')) {
+                    elem.setAttributeNS(splitNamespace(key)[0], key, value);
+                }
+                else {
+                    elem.setAttribute(key, value);
+                }
+            }
+        }
+    }
+    function observeProps(elem, props) {
+        const subscriptions = [];
+        for (const key in props) {
+            if (key === 'children') {
+                continue;
+            }
+            const value = props[key];
+            if (value instanceof ObservableImpl === false) {
+                continue;
+            }
+            if (key === 'ref') {
+                if (value instanceof ValImpl) {
+                    value.value = elem;
+                    subscriptions.push({
+                        unsubscribe: () => {
+                            value.value = null;
+                        },
+                    });
+                }
+            }
+            if (key.startsWith('class:')) {
+                const className = key.slice(6);
+                const setValue = (value) => {
+                    if (value) {
+                        elem.classList.add(className);
+                    }
+                    else {
+                        elem.classList.remove(className);
+                    }
+                };
+                subscriptions.push(value.subscribe(setValue));
+            }
+            else if (hasKey(elem, key)) {
+                const setValue = (value) => {
+                    elem[key] = value;
+                };
+                subscriptions.push(value.subscribe(setValue));
+                // two way updates for input element
+                if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
+                    || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
+                    if (value instanceof ValImpl) {
+                        const handler = (e) => {
+                            value.value = e.target[key];
+                        };
+                        elem.addEventListener('change', handler);
+                        subscriptions.push({
+                            unsubscribe: () => elem.removeEventListener('change', handler),
+                        });
+                    }
+                    else {
+                        const handler = (e) => {
+                            e.preventDefault();
+                            e.target[key] = value.value;
+                        };
+                        elem.addEventListener('change', handler);
+                        subscriptions.push({
+                            unsubscribe: () => elem.removeEventListener('change', handler),
+                        });
+                    }
+                }
+            }
+        }
+        return subscriptions.length === 0 ? null : subscriptions;
+    }
     function globalEventHandler(evt) {
-        const key = `@@${evt.type}`;
+        const key = _HandledEvents.get(evt.type);
         let node = evt.target;
         while (node) {
             const handler = node[key];
@@ -867,6 +1014,456 @@
                 return handler.call(node, evt);
             }
             node = node.parentNode;
+        }
+    }
+
+    class ReactiveNode {
+        placeholder = document.createComment('');
+        _children = [this.placeholder];
+        get children() {
+            return this._children;
+        }
+        update(rNode) {
+            if (rNode === null || rNode.length === 0) { // clearing
+                if (this._children[0] === this.placeholder) {
+                    return; // we are already cleared
+                }
+                rNode = [this.placeholder];
+            }
+            const children = resolveReactiveNodes(this._children);
+            const parent = children[0].parentNode;
+            if (parent) {
+                const newChildren = resolveReactiveNodes(rNode);
+                reconcileChildren(parent, children, newChildren);
+            }
+            this._children = rNode;
+        }
+    }
+    function resolveReactiveNodes(children) {
+        const childNodes = [];
+        const queue = new Array();
+        queue.push(...children);
+        while (queue.length > 0) {
+            const child = queue.shift();
+            if (child instanceof ReactiveNode) {
+                queue.unshift(...child.children);
+            }
+            else {
+                childNodes.push(child);
+            }
+        }
+        return childNodes;
+    }
+
+    new Array();
+    function runAsync(action) {
+        try {
+            const result = action();
+            if (result instanceof Promise) {
+                result.catch(err => console.error(err));
+            }
+        }
+        catch (err) {
+            console.error(err);
+        }
+    }
+
+    const Fragment = 'Fragment';
+    function jsx(type, props) {
+        return { type, props };
+    }
+    // export let initialRenderDone = false;
+    function render(root, jsxNode) {
+        const children = resolveReactiveNodes(renderJSX(jsxNode, null));
+        root.append(...children);
+        mountNodes(children);
+        // initialRenderDone = true;
+    }
+    function appendVNodeChild(parent, vNode) {
+        if (!parent)
+            return;
+        if (parent.lastChild) {
+            parent.lastChild.next = vNode;
+            parent.lastChild = vNode;
+        }
+        else {
+            parent.firstChild = parent.lastChild = vNode;
+        }
+    }
+    function renderJSX(jsxNode, parent, domNodes = []) {
+        const nodes = [];
+        nodes.push(jsxNode);
+        while (nodes.length > 0) {
+            const node = nodes.shift();
+            // skip null, undefined and boolean
+            if (node == null || typeof node === 'boolean') {
+                continue;
+            }
+            // flatten arrays
+            if (Array.isArray(node)) {
+                nodes.unshift(...node);
+                continue;
+            }
+            // flatten fragments
+            if (typeof node === 'object' && 'type' in node && node.type === Fragment) {
+                if (Array.isArray(node.props.children)) {
+                    nodes.unshift(...node.props.children);
+                }
+                else {
+                    nodes.unshift(node.props.children);
+                }
+                continue;
+            }
+            if (typeof node === 'string' || typeof node === 'number') {
+                const textNode = document.createTextNode(String(node));
+                if (parent?.type !== 'element') {
+                    const vNode = new _VNodeText(textNode, node, parent);
+                    patchNode(textNode, vNode);
+                    appendVNodeChild(parent, vNode);
+                }
+                domNodes.push(textNode);
+            }
+            else if (node instanceof ObservableImpl) {
+                const reactiveNode = new ReactiveNode();
+                const vNode = new _VNodeObservable(reactiveNode, node, parent);
+                appendVNodeChild(parent, vNode);
+                domNodes.push(reactiveNode);
+            }
+            else if ('type' in node) {
+                if (typeof node.type === 'string') {
+                    const hasNS = node.type.includes(':');
+                    const domElement = hasNS
+                        ? document.createElementNS(...splitNamespace(node.type))
+                        : document.createElement(node.type);
+                    setProps(domElement, node.props);
+                    if (parent?.type === 'element') {
+                        const subscriptions = observeProps(domElement, node.props);
+                        if (subscriptions) {
+                            if (parent.subscriptions) {
+                                parent.subscriptions.push(...subscriptions);
+                            }
+                            else {
+                                parent.subscriptions = subscriptions;
+                            }
+                        }
+                        const children = renderJSX(node.props.children, parent);
+                        domElement.append(...resolveReactiveNodes(children));
+                    }
+                    else {
+                        const vNode = new _VNodeElement(domElement, node.type, node.props, parent);
+                        vNode.subscriptions = observeProps(domElement, node.props);
+                        patchNode(domElement, vNode);
+                        appendVNodeChild(parent, vNode);
+                        const children = renderJSX(node.props.children, vNode);
+                        domElement.append(...resolveReactiveNodes(children));
+                    }
+                    domNodes.push(domElement);
+                }
+                else if (node.type === For) {
+                    const reactiveNode = new ReactiveNode();
+                    const vNode = new _VNodeFor(reactiveNode, node.props, parent);
+                    appendVNodeChild(parent, vNode);
+                    domNodes.push(reactiveNode);
+                }
+                else if (node.type === Show) {
+                    const reactiveNode = new ReactiveNode();
+                    const vNode = new _VNodeShow(reactiveNode, node.props, parent);
+                    appendVNodeChild(parent, vNode);
+                    domNodes.push(reactiveNode);
+                }
+                else if (typeof node.type === 'function') {
+                    const vNode = new _VNodeFunctionalComponent(node.type, node.props, parent);
+                    const defineRef = (ref) => {
+                        vNode.ref = ref;
+                    };
+                    const onMount = (fn) => {
+                        vNode.onMountCallback = fn;
+                    };
+                    const onUnmount = (fn) => {
+                        vNode.onUnmountCallback = fn;
+                    };
+                    const jsxNode = vNode.value(vNode.props, { defineRef, onMount, onUnmount });
+                    appendVNodeChild(parent, vNode);
+                    renderJSX(jsxNode, vNode, domNodes);
+                }
+                else {
+                    throw new Error('Invalid JSX node');
+                }
+            }
+            else {
+                throw new Error('Invalid JSX node');
+            }
+        }
+        return domNodes;
+    }
+    function resolveRenderedVNodes(vNodes, childNodes = []) {
+        let vNode = vNodes;
+        while (vNode) {
+            if (vNode.type === 'text') {
+                childNodes.push(vNode.ref);
+            }
+            else if (vNode.type === 'observable') {
+                childNodes.push(vNode.ref);
+            }
+            else if (vNode.type === 'element') {
+                childNodes.push(vNode.ref);
+            }
+            else if (vNode.type === 'component' && vNode.firstChild) {
+                resolveRenderedVNodes(vNode.firstChild, childNodes);
+            }
+            else if (vNode.type === 'builtin') {
+                childNodes.push(vNode.ref);
+            }
+            vNode = vNode.next;
+        }
+        return childNodes;
+    }
+    class _VNodeText {
+        type;
+        value;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        constructor(ref, value, parent) {
+            this.type = 'text';
+            this.value = value;
+            this.parent = parent;
+            this.ref = ref;
+        }
+    }
+    class _VNodeFunctionalComponent {
+        type;
+        value;
+        props;
+        ref = null;
+        isMounted = false;
+        mountedChildrenCount = 0;
+        onMountCallback = null;
+        onUnmountCallback = null;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        constructor(value, props, parent) {
+            this.type = 'component';
+            this.value = value;
+            this.props = props;
+            this.parent = parent;
+        }
+        onMount() {
+            if (this.props.ref instanceof ValImpl) {
+                this.props.ref.value = this.ref;
+            }
+            if (this.onMountCallback) {
+                runAsync(this.onMountCallback);
+            }
+            this.isMounted = true;
+        }
+        onUnmount() {
+            if (this.onUnmountCallback) {
+                runAsync(this.onUnmountCallback);
+            }
+            if (this.props.ref instanceof ValImpl) {
+                this.props.ref.value = null;
+            }
+            this.mountedChildrenCount = 0; // for when forcing an unmount
+            this.isMounted = false;
+        }
+    }
+    class _VNodeElement {
+        type;
+        value;
+        props;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        subscriptions = null;
+        constructor(ref, value, props, parent) {
+            this.type = 'element';
+            this.value = value;
+            this.props = props;
+            this.parent = parent;
+            this.ref = ref;
+        }
+        onUnmount() {
+            if (this.subscriptions) {
+                for (const subscription of this.subscriptions) {
+                    subscription.unsubscribe();
+                }
+                this.subscriptions = null;
+            }
+        }
+    }
+    class _VNodeObservable {
+        type;
+        value;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        subscription = null;
+        _renderedChildren = null;
+        constructor(ref, value, parent) {
+            this.type = 'observable';
+            this.value = value;
+            this.parent = parent;
+            this.ref = ref;
+            this.render(value.value);
+            this.subscription = value.subscribe(this.render.bind(this));
+        }
+        render(jsxNode) {
+            if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
+                && this._renderedChildren?.length === 1
+                && this._renderedChildren[0] instanceof Node
+                && this._renderedChildren[0].nodeType === Node.TEXT_NODE) {
+                // optimized update path for text nodes
+                this._renderedChildren[0].textContent = jsxNode.toString();
+            }
+            else {
+                this.firstChild = this.lastChild = null;
+                this._renderedChildren = renderJSX(jsxNode, this);
+                this.ref.update(this._renderedChildren);
+            }
+        }
+        onUnmount() {
+            if (this.subscription) {
+                this.subscription.unsubscribe();
+                this.subscription = null;
+            }
+        }
+    }
+    class _VNodeFor {
+        type;
+        value;
+        props;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        subscription = null;
+        cache = new MultiEntryCache();
+        mapFn;
+        constructor(ref, props, parent) {
+            this.type = 'builtin';
+            this.value = For;
+            this.props = props;
+            this.parent = parent;
+            this.ref = ref;
+            const typedProps = props;
+            if (typeof typedProps.children !== 'function') {
+                throw new Error('The <For> component must have exactly one child — a function that maps each item.');
+            }
+            this.mapFn = typedProps.children;
+            if (Array.isArray(typedProps.of)) {
+                this.render(typedProps.of);
+            }
+            else if (typedProps.of instanceof ObservableImpl) {
+                this.render(typedProps.of.value);
+                this.subscription = typedProps.of.subscribe(this.render.bind(this));
+            }
+            else {
+                throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
+            }
+        }
+        render(items) {
+            this.firstChild = this.lastChild = null;
+            const n = items.length;
+            const renderedItems = [];
+            for (let i = 0; i < n; i++) {
+                const value = items[i];
+                let item = this.cache.get(value);
+                if (item) {
+                    item.index.value = i;
+                    this.firstChild ??= item.head;
+                    if (item.tail) {
+                        if (this.lastChild) {
+                            this.lastChild.next = item.head;
+                        }
+                        this.lastChild = item.tail;
+                    }
+                }
+                else {
+                    const index = val(i);
+                    let head = this.lastChild;
+                    renderJSX(this.mapFn({ item: value, index }), this);
+                    let tail = this.lastChild;
+                    if (head !== tail) {
+                        head = head ? head.next : this.firstChild;
+                    }
+                    else {
+                        head = tail = null;
+                    }
+                    item = { index, head, tail };
+                }
+                renderedItems.push([value, item]);
+            }
+            if (this.lastChild) {
+                this.lastChild.next = null;
+            }
+            this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
+            this.cache.clear();
+            this.cache.addRange(renderedItems);
+        }
+        onUnmount() {
+            if (this.subscription) {
+                this.subscription.unsubscribe();
+                this.subscription = null;
+            }
+        }
+    }
+    class _VNodeShow {
+        type;
+        value;
+        props;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        subscription = null;
+        constructor(ref, props, parent) {
+            this.type = 'builtin';
+            this.value = Show;
+            this.props = props;
+            this.parent = parent;
+            this.ref = ref;
+            const when = props.when;
+            if (typeof when === 'boolean') {
+                this.render(when);
+            }
+            else if (when instanceof ObservableImpl) {
+                this.render(when.value);
+                this.subscription = when.subscribe(this.render.bind(this));
+            }
+            else {
+                throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");
+            }
+        }
+        render(value) {
+            if (value) {
+                const childrenOrFn = this.props.children;
+                this.firstChild = this.lastChild = null;
+                const children = renderJSX(typeof childrenOrFn === 'function'
+                    ? childrenOrFn()
+                    : childrenOrFn, this);
+                this.ref.update(children);
+            }
+            else {
+                this.firstChild = this.lastChild = null;
+                this.ref.update(null);
+            }
+        }
+        onUnmount() {
+            if (this.subscription) {
+                this.subscription.unsubscribe();
+                this.subscription = null;
+            }
         }
     }
 
@@ -878,7 +1475,7 @@
         '.pjscssed', // PlayerJS
     ].join(',');
 
-    function UpDown({ value = 1, minValue = 0, maxValue = 99, ...props }) {
+    const UpDown = ({ value = 1, minValue = 0, maxValue = 99, ...props }) => {
         const inputRef = ref();
         function increment() {
             const { value: input } = inputRef;
@@ -900,19 +1497,17 @@
                 input.dispatchEvent(new Event('change', { bubbles: true }));
             }
         }
-        return (jsx("div", { class: 'up-down-control', ...props, children: [jsx("input", { ref: inputRef, type: 'number', disabled: true, valueAsNumber: value, min: '0' }), jsx("div", { style: {
+        return (jsx("div", { class: 'up-down-control', ...props, children: [jsx("input", { ref: inputRef, type: 'number', disabled: true, valueAsNumber: value }), jsx("div", { style: {
                         display: 'flex',
                         flexDirection: 'column',
                         borderLeft: '1px solid #404040',
                     }, children: [jsx("button", { class: 'btn-increment', "on:click": increment, children: jsx("svg:svg", { height: '7', width: '7', children: jsx("svg:path", { d: 'M0,7 L3.5,0 L7,7 Z' }) }) }), jsx("button", { class: 'btn-decrement', "on:click": decrement, children: jsx("svg:svg", { height: '7', width: '7', children: jsx("svg:path", { d: 'M0,0 L3.5,7 L7,0 Z' }) }) })] })] }));
-    }
+    };
 
     const SkipDlg = ({ skipMins: initialSkipMins = 0, skipSecs: initialSkipSecs = 30, onAccept, onClosed }, { defineRef }) => {
-        const container = ref();
         const skipMins = val(initialSkipMins);
         const skipSecs = val(initialSkipSecs);
         function close() {
-            container.value?.remove();
             onClosed?.();
         }
         function handleCancel() {
@@ -923,7 +1518,7 @@
             close();
         }
         defineRef({ cancel: handleCancel, accept: handleOk });
-        return (jsx("div", { ref: container, class: 'skip-dlg-container', style: { opacity: 1 }, children: [jsx("div", { class: 'backdrop' }), jsx("div", { class: 'skip-dlg', children: [jsx("div", { class: 'title', children: jsx("label", { children: "Skip" }) }), jsx("div", { class: 'body', children: [jsx("div", { style: { display: 'flex', flexDirection: 'row', alignItems: 'baseline' }, children: [jsx("label", { children: "Mins:" }), jsx(UpDown, { value: skipMins, style: { marginLeft: '5px' } }), jsx("label", { style: { marginLeft: '5px' }, children: "Secs:" }), jsx(UpDown, { value: skipMins, maxValue: 59, style: { marginLeft: '5px' } })] }), jsx("div", { class: 'actions-container', style: { marginTop: '5px' }, children: [jsx("button", { "on:click": handleCancel, children: "Cancel" }), jsx("button", { style: { marginRight: '5px' }, "on:click": handleOk, children: "Ok" })] })] })] })] }));
+        return (jsx("div", { class: 'skip-dlg-container', children: [jsx("div", { class: 'backdrop' }), jsx("div", { class: 'skip-dlg', children: [jsx("div", { class: 'title', children: jsx("label", { children: "Skip" }) }), jsx("div", { class: 'body', children: [jsx("div", { style: { display: 'flex', flexDirection: 'row', alignItems: 'baseline' }, children: [jsx("label", { children: "Mins:" }), jsx(UpDown, { value: skipMins, style: { marginLeft: '5px' } }), jsx("label", { style: { marginLeft: '5px' }, children: "Secs:" }), jsx(UpDown, { value: skipSecs, maxValue: 59, style: { marginLeft: '5px' } })] }), jsx("div", { class: 'actions-container', style: { marginTop: '5px' }, children: [jsx("button", { "on:click": handleCancel, children: "Cancel" }), jsx("button", { style: { marginRight: '5px' }, "on:click": handleOk, children: "Ok" })] })] })] })] }));
     };
 
     class PlayerWrapper {
@@ -938,9 +1533,11 @@
         playerElement;
         videoElement;
         skipDlgRef = ref();
+        skipDlgRoot = val(null);
         constructor(playerElement, videoElement) {
             this.playerElement = playerElement;
             this.videoElement = videoElement;
+            render(this.playerElement, this.skipDlgRoot);
         }
         get status() {
             if (this.skipDlgRef.value) {
@@ -995,8 +1592,9 @@
                 if (wasPlaying) {
                     void this.videoElement.play();
                 }
+                this.skipDlgRoot.value = null;
             };
-            render(this.playerElement, jsx(SkipDlg, { ref: this.skipDlgRef, skipMins: skipMins, skipSecs: skipSecs, onAccept: handleAccept, onClosed: handleClosed }));
+            this.skipDlgRoot.value = (jsx(SkipDlg, { ref: this.skipDlgRef, skipMins: skipMins, skipSecs: skipSecs, onAccept: handleAccept, onClosed: handleClosed }));
         }
         skipDialogAccept() {
             this.skipDlgRef.value?.accept();

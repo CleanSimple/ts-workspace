@@ -1,4 +1,4 @@
-import type { Observable } from '@cleansimple/plain-jsx';
+import type { FunctionalComponent, Observable } from '@cleansimple/plain-jsx';
 import { ref } from '@cleansimple/plain-jsx';
 import type { JSX } from '@cleansimple/plain-jsx/jsx-runtime';
 
@@ -8,7 +8,9 @@ interface UpDownProps extends JSX.PropsOf<HTMLDivElement> {
     maxValue?: number;
 }
 
-export function UpDown({ value = 1, minValue = 0, maxValue = 99, ...props }: UpDownProps) {
+export const UpDown: FunctionalComponent<UpDownProps> = (
+    { value = 1, minValue = 0, maxValue = 99, ...props }: UpDownProps,
+) => {
     const inputRef = ref<HTMLInputElement>();
 
     function increment() {
@@ -34,7 +36,7 @@ export function UpDown({ value = 1, minValue = 0, maxValue = 99, ...props }: UpD
 
     return (
         <div class='up-down-control' {...props}>
-            <input ref={inputRef} type='number' disabled valueAsNumber={value} min='0' />
+            <input ref={inputRef} type='number' disabled valueAsNumber={value} />
             <div
                 style={{
                     display: 'flex',
@@ -55,4 +57,4 @@ export function UpDown({ value = 1, minValue = 0, maxValue = 99, ...props }: UpD
             </div>
         </div>
     );
-}
+};
