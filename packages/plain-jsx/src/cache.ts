@@ -19,7 +19,6 @@ export class MultiEntryCache<T> {
         if (!list) {
             list = [];
             this.map.set(key, list);
-            this.readIndex.set(key, 0);
         }
         list.push(value);
     }
@@ -37,9 +36,7 @@ export class MultiEntryCache<T> {
     }
 
     public reset() {
-        for (const key of this.map.keys()) {
-            this.readIndex.set(key, 0);
-        }
+        this.readIndex.clear();
     }
 
     public clear() {

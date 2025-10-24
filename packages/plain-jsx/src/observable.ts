@@ -53,7 +53,7 @@ class NotificationScheduler {
         }
     }
 
-    public static flush() {
+    public static flush(this: void) {
         const n = NotificationScheduler._notificationSources.length;
         for (let i = 0; i < n; ++i) {
             NotificationScheduler._notificationSources[i].notify();

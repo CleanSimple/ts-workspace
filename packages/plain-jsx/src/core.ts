@@ -366,7 +366,8 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
     public lastChild: VNode | null = null;
 
     private subscription: Subscription | null = null;
-    private readonly cache = new MultiEntryCache<RenderedItem>();
+    private frontBuffer = new MultiEntryCache<RenderedItem>();
+    private backBuffer = new MultiEntryCache<RenderedItem>();
     private readonly mapFn: (props: ForCallbackProps<T>) => JSXNode;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
@@ -401,10 +402,9 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
     public render(items: T[]) {
         this.firstChild = this.lastChild = null;
         const n = items.length;
-        const renderedItems: [unknown, RenderedItem][] = [];
         for (let i = 0; i < n; i++) {
             const value = items[i];
-            let item = this.cache.get(value);
+            let item = this.frontBuffer.get(value);
             if (item) {
                 item.index.value = i;
                 this.firstChild ??= item.head;
@@ -430,7 +430,7 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
                 item = { index, head, tail };
             }
 
-            renderedItems.push([value, item]);
+            this.backBuffer.add(value, item);
         }
         if (this.lastChild) {
             this.lastChild.next = null;
@@ -438,8 +438,8 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
 
         this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
 
-        this.cache.clear();
-        this.cache.addRange(renderedItems);
+        [this.frontBuffer, this.backBuffer] = [this.backBuffer, this.frontBuffer];
+        this.backBuffer.clear();
     }
 
     public onUnmount() {

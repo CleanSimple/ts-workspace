@@ -16,7 +16,6 @@ class MultiEntryCache {
         if (!list) {
             list = [];
             this.map.set(key, list);
-            this.readIndex.set(key, 0);
         }
         list.push(value);
     }
@@ -32,9 +31,7 @@ class MultiEntryCache {
         return result;
     }
     reset() {
-        for (const key of this.map.keys()) {
-            this.readIndex.set(key, 0);
-        }
+        this.readIndex.clear();
     }
     clear() {
         this.map.clear();

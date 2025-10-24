@@ -287,7 +287,8 @@ class _VNodeFor {
     firstChild = null;
     lastChild = null;
     subscription = null;
-    cache = new MultiEntryCache();
+    frontBuffer = new MultiEntryCache();
+    backBuffer = new MultiEntryCache();
     mapFn;
     constructor(ref, props, parent) {
         this.type = 'builtin';
@@ -314,10 +315,9 @@ class _VNodeFor {
     render(items) {
         this.firstChild = this.lastChild = null;
         const n = items.length;
-        const renderedItems = [];
         for (let i = 0; i < n; i++) {
             const value = items[i];
-            let item = this.cache.get(value);
+            let item = this.frontBuffer.get(value);
             if (item) {
                 item.index.value = i;
                 this.firstChild ??= item.head;
@@ -341,14 +341,14 @@ class _VNodeFor {
                 }
                 item = { index, head, tail };
             }
-            renderedItems.push([value, item]);
+            this.backBuffer.add(value, item);
         }
         if (this.lastChild) {
             this.lastChild.next = null;
         }
         this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
-        this.cache.clear();
-        this.cache.addRange(renderedItems);
+        [this.frontBuffer, this.backBuffer] = [this.backBuffer, this.frontBuffer];
+        this.backBuffer.clear();
     }
     onUnmount() {
         if (this.subscription) {
