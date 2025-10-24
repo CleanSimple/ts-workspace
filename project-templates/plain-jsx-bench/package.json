@@ -5,9 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
-        "build-js": "rollup -c --environment production",
-        "preview": "vite preview"
+        "build-js": "rollup -c --environment production"
     },
     "dependencies": {
         "@cleansimple/plain-jsx": "workspace:^"
