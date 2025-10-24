@@ -1,4 +1,3 @@
-import { MultiEntryCache } from './cache.esm.js';
 import { For } from './components/For.esm.js';
 import { Show } from './components/Show.esm.js';
 import { patchNode, setProps, observeProps } from './dom.esm.js';
@@ -277,8 +276,8 @@ class _VNodeFor {
     firstChild = null;
     lastChild = null;
     subscription = null;
-    frontBuffer = new MultiEntryCache();
-    backBuffer = new MultiEntryCache();
+    frontBuffer = new Map();
+    backBuffer = new Map();
     mapFn;
     constructor(ref, props, parent) {
         this.type = 'builtin';
@@ -329,7 +328,7 @@ class _VNodeFor {
                 }
                 item = { index, head, tail };
             }
-            this.backBuffer.add(value, item);
+            this.backBuffer.set(value, item);
         }
         if (this.lastChild) {
             this.lastChild.next = null;

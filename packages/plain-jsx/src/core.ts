@@ -1,5 +1,4 @@
 import type { MaybePromise } from '@cleansimple/utils-js';
-import { MultiEntryCache } from './cache';
 import { For, type ForCallbackProps, type ForProps } from './components/For';
 import { Show, type ShowProps } from './components/Show';
 import { observeProps, patchNode, setProps } from './dom';
@@ -358,8 +357,8 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
     public lastChild: VNode | null = null;
 
     private subscription: Subscription | null = null;
-    private frontBuffer = new MultiEntryCache<RenderedItem>();
-    private backBuffer = new MultiEntryCache<RenderedItem>();
+    private frontBuffer = new Map<unknown, RenderedItem>();
+    private backBuffer = new Map<unknown, RenderedItem>();
     private readonly mapFn: (props: ForCallbackProps<T>) => JSXNode;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
@@ -420,7 +419,7 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
                 item = { index, head, tail };
             }
 
-            this.backBuffer.add(value, item);
+            this.backBuffer.set(value, item);
         }
         if (this.lastChild) {
             this.lastChild.next = null;

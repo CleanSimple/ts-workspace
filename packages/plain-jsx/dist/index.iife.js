@@ -9,47 +9,6 @@ var PlainJSX = (function (exports, utilsJs) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
-    class MultiEntryCache {
-        map = new Map();
-        readIndex = new Map();
-        constructor(entries = null) {
-            if (entries) {
-                this.addRange(entries);
-            }
-        }
-        addRange(entries) {
-            for (const [key, value] of entries) {
-                this.add(key, value);
-            }
-        }
-        add(key, value) {
-            let list = this.map.get(key);
-            if (!list) {
-                list = [];
-                this.map.set(key, list);
-            }
-            list.push(value);
-        }
-        get(key) {
-            const list = this.map.get(key);
-            if (!list)
-                return undefined;
-            const index = this.readIndex.get(key) ?? 0;
-            if (index >= list.length)
-                return undefined;
-            const result = list[index];
-            this.readIndex.set(key, index + 1);
-            return result;
-        }
-        reset() {
-            this.readIndex.clear();
-        }
-        clear() {
-            this.map.clear();
-            this.readIndex.clear();
-        }
-    }
-
     /**
      * The mounting and unmounting process is a bit complex and needs this bit of documentation
      *
@@ -1060,8 +1019,8 @@ var PlainJSX = (function (exports, utilsJs) {
         firstChild = null;
         lastChild = null;
         subscription = null;
-        frontBuffer = new MultiEntryCache();
-        backBuffer = new MultiEntryCache();
+        frontBuffer = new Map();
+        backBuffer = new Map();
         mapFn;
         constructor(ref, props, parent) {
             this.type = 'builtin';
@@ -1112,7 +1071,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     }
                     item = { index, head, tail };
                 }
-                this.backBuffer.add(value, item);
+                this.backBuffer.set(value, item);
             }
             if (this.lastChild) {
                 this.lastChild.next = null;
