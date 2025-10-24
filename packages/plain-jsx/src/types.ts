@@ -20,31 +20,28 @@ export interface JSXElement {
 }
 
 /* VNode */
-export interface VNodeBase<TValue> {
+export interface VNodeBase {
     type: 'text' | 'element' | 'component' | 'builtin' | 'observable';
-    value: TValue;
     parent: VNode | null;
     firstChild: VNode | null; // head
     lastChild: VNode | null; // tail
     next: VNode | null;
 }
 
-export interface VNodeText extends VNodeBase<string | number> {
+export interface VNodeText extends VNodeBase {
     type: 'text';
     ref: Text;
 }
 
-export interface VNodeElement extends VNodeBase<string> {
+export interface VNodeElement extends VNodeBase {
     type: 'element';
-    props: PropsType;
     ref: Element;
     subscriptions: Subscription[] | null;
     onUnmount: Action;
 }
 
-export interface VNodeFunctionalComponent extends VNodeBase<FunctionalComponent> {
+export interface VNodeFunctionalComponent extends VNodeBase {
     type: 'component';
-    props: PropsType;
     ref: object | null;
     isMounted: boolean;
     mountedChildrenCount: number;
@@ -52,14 +49,13 @@ export interface VNodeFunctionalComponent extends VNodeBase<FunctionalComponent>
     onUnmount: Action;
 }
 
-export interface VNodeBuiltinComponent extends VNodeBase<FunctionalComponent> {
+export interface VNodeBuiltinComponent extends VNodeBase {
     type: 'builtin';
-    props: PropsType;
     ref: ReactiveNode;
     onUnmount: Action;
 }
 
-export interface VNodeObservable extends VNodeBase<Observable<JSXNode>> {
+export interface VNodeObservable extends VNodeBase {
     type: 'observable';
     ref: ReactiveNode;
     onUnmount: Action;

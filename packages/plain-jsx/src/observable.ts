@@ -64,26 +64,28 @@ class NotificationScheduler {
 }
 
 class SubscriptionImpl<T> implements Subscription {
-    public readonly id: number;
     public readonly cb: Observer<T>;
     public readonly instance: object | null;
-    private readonly subscriptions: Map<number, SubscriptionImpl<T>>;
+
+    private readonly id: number;
+    private observableImpl: ObservableImpl<T> | null;
 
     public constructor(
-        id: number,
         cb: Observer<T>,
         instance: object | null,
-        subscriptions: Map<number, SubscriptionImpl<T>>,
+        observableImpl: ObservableImpl<T>,
     ) {
-        this.id = id;
         this.cb = cb;
         this.instance = instance;
-        this.subscriptions = subscriptions;
-        this.subscriptions.set(id, this);
+        this.id = observableImpl.addSubscription(this);
+        this.observableImpl = observableImpl;
     }
 
     public unsubscribe(): void {
-        this.subscriptions.delete(this.id);
+        if (this.observableImpl) {
+            this.observableImpl.removeSubscription(this.id);
+            this.observableImpl = null;
+        }
     }
 }
 
@@ -143,15 +145,20 @@ export abstract class ObservableImpl<T> implements Observable<T>, INotificationS
         }
     }
 
+    public addSubscription(subscription: SubscriptionImpl<T>) {
+        const id = ++this._nextSubscriptionId;
+        this.subscriptions.set(id, subscription);
+        return id;
+    }
+
+    public removeSubscription(id: number) {
+        this.subscriptions.delete(id);
+    }
+
     public abstract get value(): T;
 
     public subscribe(observer: Observer<T>, instance?: object): Subscription {
-        return new SubscriptionImpl(
-            ++this._nextSubscriptionId,
-            observer,
-            instance ?? null,
-            this.subscriptions,
-        );
+        return new SubscriptionImpl(observer, instance ?? null, this);
     }
 
     public computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed> {

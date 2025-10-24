@@ -19,6 +19,14 @@ export declare function ref<T extends Element | FunctionalComponent<never, any>,
 interface INotificationSource {
     notify: () => void;
 }
+declare class SubscriptionImpl<T> implements Subscription {
+    readonly cb: Observer<T>;
+    readonly instance: object | null;
+    private readonly id;
+    private observableImpl;
+    constructor(cb: Observer<T>, instance: object | null, observableImpl: ObservableImpl<T>);
+    unsubscribe(): void;
+}
 interface IDependant {
     onDependencyUpdated: () => void;
 }
@@ -35,6 +43,8 @@ export declare abstract class ObservableImpl<T> implements Observable<T>, INotif
     protected notifyDependents(): void;
     protected queueNotify(): void;
     notify(): void;
+    addSubscription(subscription: SubscriptionImpl<T>): number;
+    removeSubscription(id: number): void;
     abstract get value(): T;
     subscribe(observer: Observer<T>, instance?: object): Subscription;
     computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed>;

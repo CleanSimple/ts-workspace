@@ -7,6 +7,7 @@ import { isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();
 const _HandledEvents = new Map<string, symbol>();
+const _CachedSetters = new Map<string, (value: unknown) => void>();
 
 const InputTwoWayProps = {
     value: null,
@@ -174,10 +175,7 @@ export function setProps(elem: HTMLElement, props: PropsType) {
     }
 }
 
-export function observeProps(
-    elem: HTMLElement,
-    props: PropsType,
-): Subscription[] | null {
+export function observeProps(elem: HTMLElement, props: PropsType): Subscription[] | null {
     const subscriptions: Subscription[] = [];
     for (const key in props) {
         if (key === 'children') {
@@ -199,55 +197,59 @@ export function observeProps(
                 });
             }
         }
-        if (key.startsWith('class:')) {
-            const className = key.slice(6);
-            const setValue = (value: boolean) => {
-                if (value) {
-                    elem.classList.add(className);
-                }
-                else {
-                    elem.classList.remove(className);
-                }
-            };
+        else if (key.startsWith('class:')) {
+            let setter = _CachedSetters.get(key);
+            if (!setter) {
+                const className = key.slice(6);
+                setter = createClassSetter(className);
+                _CachedSetters.set(key, setter);
+            }
 
-            subscriptions.push(value.subscribe(setValue));
+            subscriptions.push(value.subscribe(setter, elem));
         }
         else if (hasKey(elem, key)) {
-            const setValue = (value: unknown) => {
-                (elem as unknown as Record<string, unknown>)[key] = value;
-            };
+            let setter = _CachedSetters.get(key);
+            if (!setter) {
+                setter = createPropSetter(key);
+                _CachedSetters.set(key, setter);
+            }
 
-            subscriptions.push(value.subscribe(setValue));
+            subscriptions.push(value.subscribe(setter, elem));
 
             // two way updates for input element
             if (
                 (elem instanceof HTMLInputElement && key in InputTwoWayProps)
                 || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)
             ) {
-                if (value instanceof ValImpl) {
-                    const handler = (e: Event) => {
+                const handler = value instanceof ValImpl
+                    ? (e: Event) => {
                         value.value = (e.target as HTMLInputElement)[key];
-                    };
-                    elem.addEventListener('change', handler);
-                    subscriptions.push({
-                        unsubscribe: () => elem.removeEventListener('change', handler),
-                    });
-                }
-                else {
-                    const handler = (e: Event) => {
+                    }
+                    : (e: Event) => {
                         e.preventDefault();
                         (e.target as unknown as Record<string, unknown>)[key] = value.value;
                     };
-                    elem.addEventListener('change', handler);
-                    subscriptions.push({
-                        unsubscribe: () => elem.removeEventListener('change', handler),
-                    });
-                }
+                elem.addEventListener('change', handler);
+                subscriptions.push({
+                    unsubscribe: () => elem.removeEventListener('change', handler),
+                });
             }
         }
     }
 
     return subscriptions.length === 0 ? null : subscriptions;
+}
+
+function createPropSetter(key: string) {
+    return function(this: Record<string, unknown>, value: unknown) {
+        this[key] = value;
+    };
+}
+
+function createClassSetter(className: string) {
+    return function(this: Element, value: boolean) {
+        this.classList.toggle(className, value);
+    } as (value: unknown) => void;
 }
 
 function globalEventHandler(evt: Event) {

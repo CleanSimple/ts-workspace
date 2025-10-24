@@ -6,6 +6,7 @@ import { isReadonlyProp, splitNamespace } from './utils.esm.js';
 
 const _Fragment = document.createDocumentFragment();
 const _HandledEvents = new Map();
+const _CachedSetters = new Map();
 const InputTwoWayProps = {
     value: null,
     valueAsNumber: null,
@@ -178,49 +179,51 @@ function observeProps(elem, props) {
                 });
             }
         }
-        if (key.startsWith('class:')) {
-            const className = key.slice(6);
-            const setValue = (value) => {
-                if (value) {
-                    elem.classList.add(className);
-                }
-                else {
-                    elem.classList.remove(className);
-                }
-            };
-            subscriptions.push(value.subscribe(setValue));
+        else if (key.startsWith('class:')) {
+            let setter = _CachedSetters.get(key);
+            if (!setter) {
+                const className = key.slice(6);
+                setter = createClassSetter(className);
+                _CachedSetters.set(key, setter);
+            }
+            subscriptions.push(value.subscribe(setter, elem));
         }
         else if (hasKey(elem, key)) {
-            const setValue = (value) => {
-                elem[key] = value;
-            };
-            subscriptions.push(value.subscribe(setValue));
+            let setter = _CachedSetters.get(key);
+            if (!setter) {
+                setter = createPropSetter(key);
+                _CachedSetters.set(key, setter);
+            }
+            subscriptions.push(value.subscribe(setter, elem));
             // two way updates for input element
             if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
                 || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
-                if (value instanceof ValImpl) {
-                    const handler = (e) => {
+                const handler = value instanceof ValImpl
+                    ? (e) => {
                         value.value = e.target[key];
-                    };
-                    elem.addEventListener('change', handler);
-                    subscriptions.push({
-                        unsubscribe: () => elem.removeEventListener('change', handler),
-                    });
-                }
-                else {
-                    const handler = (e) => {
+                    }
+                    : (e) => {
                         e.preventDefault();
                         e.target[key] = value.value;
                     };
-                    elem.addEventListener('change', handler);
-                    subscriptions.push({
-                        unsubscribe: () => elem.removeEventListener('change', handler),
-                    });
-                }
+                elem.addEventListener('change', handler);
+                subscriptions.push({
+                    unsubscribe: () => elem.removeEventListener('change', handler),
+                });
             }
         }
     }
     return subscriptions.length === 0 ? null : subscriptions;
+}
+function createPropSetter(key) {
+    return function (value) {
+        this[key] = value;
+    };
+}
+function createClassSetter(className) {
+    return function (value) {
+        this.classList.toggle(className, value);
+    };
 }
 function globalEventHandler(evt) {
     const key = _HandledEvents.get(evt.type);

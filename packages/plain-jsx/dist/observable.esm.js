@@ -28,19 +28,21 @@ class NotificationScheduler {
     }
 }
 class SubscriptionImpl {
-    id;
     cb;
     instance;
-    subscriptions;
-    constructor(id, cb, instance, subscriptions) {
-        this.id = id;
+    id;
+    observableImpl;
+    constructor(cb, instance, observableImpl) {
         this.cb = cb;
         this.instance = instance;
-        this.subscriptions = subscriptions;
-        this.subscriptions.set(id, this);
+        this.id = observableImpl.addSubscription(this);
+        this.observableImpl = observableImpl;
     }
     unsubscribe() {
-        this.subscriptions.delete(this.id);
+        if (this.observableImpl) {
+            this.observableImpl.removeSubscription(this.id);
+            this.observableImpl = null;
+        }
     }
 }
 /**
@@ -90,8 +92,16 @@ class ObservableImpl {
             subscription.cb.call(subscription.instance, value);
         }
     }
+    addSubscription(subscription) {
+        const id = ++this._nextSubscriptionId;
+        this.subscriptions.set(id, subscription);
+        return id;
+    }
+    removeSubscription(id) {
+        this.subscriptions.delete(id);
+    }
     subscribe(observer, instance) {
-        return new SubscriptionImpl(++this._nextSubscriptionId, observer, instance ?? null, this.subscriptions);
+        return new SubscriptionImpl(observer, instance ?? null, this);
     }
     computed(compute) {
         return new ComputedSingle(compute, this);

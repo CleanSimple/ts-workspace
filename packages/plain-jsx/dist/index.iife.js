@@ -318,19 +318,21 @@ var PlainJSX = (function (exports, utilsJs) {
         }
     }
     class SubscriptionImpl {
-        id;
         cb;
         instance;
-        subscriptions;
-        constructor(id, cb, instance, subscriptions) {
-            this.id = id;
+        id;
+        observableImpl;
+        constructor(cb, instance, observableImpl) {
             this.cb = cb;
             this.instance = instance;
-            this.subscriptions = subscriptions;
-            this.subscriptions.set(id, this);
+            this.id = observableImpl.addSubscription(this);
+            this.observableImpl = observableImpl;
         }
         unsubscribe() {
-            this.subscriptions.delete(this.id);
+            if (this.observableImpl) {
+                this.observableImpl.removeSubscription(this.id);
+                this.observableImpl = null;
+            }
         }
     }
     /**
@@ -380,8 +382,16 @@ var PlainJSX = (function (exports, utilsJs) {
                 subscription.cb.call(subscription.instance, value);
             }
         }
+        addSubscription(subscription) {
+            const id = ++this._nextSubscriptionId;
+            this.subscriptions.set(id, subscription);
+            return id;
+        }
+        removeSubscription(id) {
+            this.subscriptions.delete(id);
+        }
         subscribe(observer, instance) {
-            return new SubscriptionImpl(++this._nextSubscriptionId, observer, instance ?? null, this.subscriptions);
+            return new SubscriptionImpl(observer, instance ?? null, this);
         }
         computed(compute) {
             return new ComputedSingle(compute, this);
@@ -485,6 +495,7 @@ var PlainJSX = (function (exports, utilsJs) {
 
     const _Fragment = document.createDocumentFragment();
     const _HandledEvents = new Map();
+    const _CachedSetters = new Map();
     const InputTwoWayProps = {
         value: null,
         valueAsNumber: null,
@@ -657,49 +668,51 @@ var PlainJSX = (function (exports, utilsJs) {
                     });
                 }
             }
-            if (key.startsWith('class:')) {
-                const className = key.slice(6);
-                const setValue = (value) => {
-                    if (value) {
-                        elem.classList.add(className);
-                    }
-                    else {
-                        elem.classList.remove(className);
-                    }
-                };
-                subscriptions.push(value.subscribe(setValue));
+            else if (key.startsWith('class:')) {
+                let setter = _CachedSetters.get(key);
+                if (!setter) {
+                    const className = key.slice(6);
+                    setter = createClassSetter(className);
+                    _CachedSetters.set(key, setter);
+                }
+                subscriptions.push(value.subscribe(setter, elem));
             }
             else if (utilsJs.hasKey(elem, key)) {
-                const setValue = (value) => {
-                    elem[key] = value;
-                };
-                subscriptions.push(value.subscribe(setValue));
+                let setter = _CachedSetters.get(key);
+                if (!setter) {
+                    setter = createPropSetter(key);
+                    _CachedSetters.set(key, setter);
+                }
+                subscriptions.push(value.subscribe(setter, elem));
                 // two way updates for input element
                 if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
                     || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
-                    if (value instanceof ValImpl) {
-                        const handler = (e) => {
+                    const handler = value instanceof ValImpl
+                        ? (e) => {
                             value.value = e.target[key];
-                        };
-                        elem.addEventListener('change', handler);
-                        subscriptions.push({
-                            unsubscribe: () => elem.removeEventListener('change', handler),
-                        });
-                    }
-                    else {
-                        const handler = (e) => {
+                        }
+                        : (e) => {
                             e.preventDefault();
                             e.target[key] = value.value;
                         };
-                        elem.addEventListener('change', handler);
-                        subscriptions.push({
-                            unsubscribe: () => elem.removeEventListener('change', handler),
-                        });
-                    }
+                    elem.addEventListener('change', handler);
+                    subscriptions.push({
+                        unsubscribe: () => elem.removeEventListener('change', handler),
+                    });
                 }
             }
         }
         return subscriptions.length === 0 ? null : subscriptions;
+    }
+    function createPropSetter(key) {
+        return function (value) {
+            this[key] = value;
+        };
+    }
+    function createClassSetter(className) {
+        return function (value) {
+            this.classList.toggle(className, value);
+        };
     }
     function globalEventHandler(evt) {
         const key = _HandledEvents.get(evt.type);
@@ -827,7 +840,7 @@ var PlainJSX = (function (exports, utilsJs) {
             if (typeof node === 'string' || typeof node === 'number') {
                 const textNode = document.createTextNode(String(node));
                 if (parent?.type !== 'element') {
-                    const vNode = new _VNodeText(textNode, node, parent);
+                    const vNode = new _VNodeText(textNode, parent);
                     patchNode(textNode, vNode);
                     appendVNodeChild(parent, vNode);
                 }
@@ -860,7 +873,7 @@ var PlainJSX = (function (exports, utilsJs) {
                         domElement.append(...resolveReactiveNodes(children));
                     }
                     else {
-                        const vNode = new _VNodeElement(domElement, node.type, node.props, parent);
+                        const vNode = new _VNodeElement(domElement, parent);
                         vNode.subscriptions = observeProps(domElement, node.props);
                         patchNode(domElement, vNode);
                         appendVNodeChild(parent, vNode);
@@ -882,7 +895,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     domNodes.push(reactiveNode);
                 }
                 else if (typeof node.type === 'function') {
-                    const vNode = new _VNodeFunctionalComponent(node.type, node.props, parent);
+                    const vNode = new _VNodeFunctionalComponent(node.props, parent);
                     const defineRef = (ref) => {
                         vNode.ref = ref;
                     };
@@ -892,7 +905,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     const onUnmount = (fn) => {
                         vNode.onUnmountCallback = fn;
                     };
-                    const jsxNode = vNode.value(vNode.props, { defineRef, onMount, onUnmount });
+                    const jsxNode = node.type(node.props, { defineRef, onMount, onUnmount });
                     appendVNodeChild(parent, vNode);
                     renderJSX(jsxNode, vNode, domNodes);
                 }
@@ -930,23 +943,19 @@ var PlainJSX = (function (exports, utilsJs) {
     }
     class _VNodeText {
         type;
-        value;
         ref;
         parent;
         next = null;
         firstChild = null;
         lastChild = null;
-        constructor(ref, value, parent) {
+        constructor(ref, parent) {
             this.type = 'text';
-            this.value = value;
             this.parent = parent;
             this.ref = ref;
         }
     }
     class _VNodeFunctionalComponent {
         type;
-        value;
-        props;
         ref = null;
         isMounted = false;
         mountedChildrenCount = 0;
@@ -956,15 +965,17 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        constructor(value, props, parent) {
+        propsRef = null;
+        constructor(props, parent) {
             this.type = 'component';
-            this.value = value;
-            this.props = props;
             this.parent = parent;
+            if (props.ref instanceof ValImpl) {
+                this.propsRef = props.ref;
+            }
         }
         onMount() {
-            if (this.props.ref instanceof ValImpl) {
-                this.props.ref.value = this.ref;
+            if (this.propsRef) {
+                this.propsRef.value = this.ref;
             }
             if (this.onMountCallback) {
                 runAsync(this.onMountCallback);
@@ -975,8 +986,8 @@ var PlainJSX = (function (exports, utilsJs) {
             if (this.onUnmountCallback) {
                 runAsync(this.onUnmountCallback);
             }
-            if (this.props.ref instanceof ValImpl) {
-                this.props.ref.value = null;
+            if (this.propsRef) {
+                this.propsRef.value = null;
             }
             this.mountedChildrenCount = 0; // for when forcing an unmount
             this.isMounted = false;
@@ -984,18 +995,14 @@ var PlainJSX = (function (exports, utilsJs) {
     }
     class _VNodeElement {
         type;
-        value;
-        props;
         ref;
         parent;
         next = null;
         firstChild = null;
         lastChild = null;
         subscriptions = null;
-        constructor(ref, value, props, parent) {
+        constructor(ref, parent) {
             this.type = 'element';
-            this.value = value;
-            this.props = props;
             this.parent = parent;
             this.ref = ref;
         }
@@ -1010,7 +1017,6 @@ var PlainJSX = (function (exports, utilsJs) {
     }
     class _VNodeObservable {
         type;
-        value;
         ref;
         parent;
         next = null;
@@ -1020,7 +1026,6 @@ var PlainJSX = (function (exports, utilsJs) {
         _renderedChildren = null;
         constructor(ref, value, parent) {
             this.type = 'observable';
-            this.value = value;
             this.parent = parent;
             this.ref = ref;
             this.render(value.value);
@@ -1049,8 +1054,6 @@ var PlainJSX = (function (exports, utilsJs) {
     }
     class _VNodeFor {
         type;
-        value;
-        props;
         ref;
         parent;
         next = null;
@@ -1062,8 +1065,6 @@ var PlainJSX = (function (exports, utilsJs) {
         mapFn;
         constructor(ref, props, parent) {
             this.type = 'builtin';
-            this.value = For;
-            this.props = props;
             this.parent = parent;
             this.ref = ref;
             const typedProps = props;
@@ -1129,18 +1130,15 @@ var PlainJSX = (function (exports, utilsJs) {
     }
     class _VNodeShow {
         type;
-        value;
-        props;
         ref;
         parent;
         next = null;
         firstChild = null;
         lastChild = null;
+        childrenOrFn;
         subscription = null;
         constructor(ref, props, parent) {
             this.type = 'builtin';
-            this.value = Show;
-            this.props = props;
             this.parent = parent;
             this.ref = ref;
             const when = props.when;
@@ -1154,14 +1152,14 @@ var PlainJSX = (function (exports, utilsJs) {
             else {
                 throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");
             }
+            this.childrenOrFn = props.children;
         }
         render(value) {
             if (value) {
-                const childrenOrFn = this.props.children;
                 this.firstChild = this.lastChild = null;
-                const children = renderJSX(typeof childrenOrFn === 'function'
-                    ? childrenOrFn()
-                    : childrenOrFn, this);
+                const children = renderJSX(typeof this.childrenOrFn === 'function'
+                    ? this.childrenOrFn()
+                    : this.childrenOrFn, this);
                 this.ref.update(children);
             }
             else {

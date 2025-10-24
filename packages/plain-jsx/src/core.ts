@@ -91,7 +91,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
         if (typeof node === 'string' || typeof node === 'number') {
             const textNode = document.createTextNode(String(node));
             if (parent?.type !== 'element') {
-                const vNode = new _VNodeText(textNode, node, parent);
+                const vNode = new _VNodeText(textNode, parent);
                 patchNode(textNode, vNode);
                 appendVNodeChild(parent, vNode);
             }
@@ -129,7 +129,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
                     domElement.append(...resolveReactiveNodes(children));
                 }
                 else {
-                    const vNode = new _VNodeElement(domElement, node.type, node.props, parent);
+                    const vNode = new _VNodeElement(domElement, parent);
                     vNode.subscriptions = observeProps(domElement as HTMLElement, node.props);
                     patchNode(domElement, vNode);
                     appendVNodeChild(parent, vNode);
@@ -157,7 +157,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
                 domNodes.push(reactiveNode);
             }
             else if (typeof node.type === 'function') {
-                const vNode = new _VNodeFunctionalComponent(node.type, node.props, parent);
+                const vNode = new _VNodeFunctionalComponent(node.props, parent);
                 const defineRef = (ref: object) => {
                     vNode.ref = ref;
                 };
@@ -168,7 +168,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
                     vNode.onUnmountCallback = fn;
                 };
 
-                const jsxNode = vNode.value(vNode.props, { defineRef, onMount, onUnmount });
+                const jsxNode = node.type(node.props, { defineRef, onMount, onUnmount });
 
                 appendVNodeChild(parent, vNode);
                 renderJSX(jsxNode, vNode, domNodes);
@@ -216,16 +216,14 @@ interface RenderedItem {
 
 class _VNodeText implements VNodeText {
     public readonly type: 'text';
-    public readonly value: string | number;
     public readonly ref: Text;
     public parent: VNode | null;
     public next: VNode | null = null;
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    public constructor(ref: Text, value: string | number, parent: VNode | null) {
+    public constructor(ref: Text, parent: VNode | null) {
         this.type = 'text';
-        this.value = value;
         this.parent = parent;
         this.ref = ref;
     }
@@ -233,8 +231,6 @@ class _VNodeText implements VNodeText {
 
 class _VNodeFunctionalComponent implements VNodeFunctionalComponent {
     public readonly type: 'component';
-    public readonly value: FunctionalComponent;
-    public readonly props: PropsType;
     public ref: object | null = null;
     public isMounted: boolean = false;
     public mountedChildrenCount: number = 0;
@@ -245,16 +241,20 @@ class _VNodeFunctionalComponent implements VNodeFunctionalComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    public constructor(value: FunctionalComponent, props: PropsType, parent: VNode | null) {
+    private readonly propsRef: Val<object | null> | null = null;
+
+    public constructor(props: PropsType, parent: VNode | null) {
         this.type = 'component';
-        this.value = value;
-        this.props = props;
         this.parent = parent;
+
+        if (props.ref instanceof ValImpl) {
+            this.propsRef = props.ref;
+        }
     }
 
     public onMount(): void {
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = this.ref;
+        if (this.propsRef) {
+            this.propsRef.value = this.ref;
         }
 
         if (this.onMountCallback) {
@@ -269,8 +269,8 @@ class _VNodeFunctionalComponent implements VNodeFunctionalComponent {
             runAsync(this.onUnmountCallback);
         }
 
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = null;
+        if (this.propsRef) {
+            this.propsRef.value = null;
         }
 
         this.mountedChildrenCount = 0; // for when forcing an unmount
@@ -280,8 +280,6 @@ class _VNodeFunctionalComponent implements VNodeFunctionalComponent {
 
 class _VNodeElement implements VNodeElement {
     public readonly type: 'element';
-    public readonly value: string;
-    public readonly props: PropsType;
     public readonly ref: Element;
     public parent: VNode | null;
     public next: VNode | null = null;
@@ -290,10 +288,8 @@ class _VNodeElement implements VNodeElement {
 
     public subscriptions: Subscription[] | null = null;
 
-    public constructor(ref: Element, value: string, props: PropsType, parent: VNode | null) {
+    public constructor(ref: Element, parent: VNode | null) {
         this.type = 'element';
-        this.value = value;
-        this.props = props;
         this.parent = parent;
         this.ref = ref;
     }
@@ -310,7 +306,6 @@ class _VNodeElement implements VNodeElement {
 
 class _VNodeObservable implements VNodeObservable {
     public readonly type: 'observable';
-    public readonly value: Observable<JSXNode>;
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
     public next: VNode | null = null;
@@ -322,7 +317,6 @@ class _VNodeObservable implements VNodeObservable {
 
     public constructor(ref: ReactiveNode, value: Observable<JSXNode>, parent: VNode | null) {
         this.type = 'observable';
-        this.value = value;
         this.parent = parent;
         this.ref = ref;
 
@@ -357,8 +351,6 @@ class _VNodeObservable implements VNodeObservable {
 
 class _VNodeFor<T> implements VNodeBuiltinComponent {
     public readonly type: 'builtin';
-    public readonly value: FunctionalComponent;
-    public readonly props: PropsType;
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
     public next: VNode | null = null;
@@ -372,8 +364,6 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
-        this.value = For as FunctionalComponent;
-        this.props = props;
         this.parent = parent;
         this.ref = ref;
 
@@ -452,20 +442,17 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
 
 class _VNodeShow implements VNodeBuiltinComponent {
     public readonly type: 'builtin';
-    public readonly value: FunctionalComponent;
-    public readonly props: PropsType;
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
     public next: VNode | null = null;
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
+    private readonly childrenOrFn: ShowProps['children'];
     private subscription: Subscription | null = null;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
-        this.value = Show as FunctionalComponent;
-        this.props = props;
         this.parent = parent;
         this.ref = ref;
 
@@ -482,17 +469,16 @@ class _VNodeShow implements VNodeBuiltinComponent {
                 "The 'when' prop on <Show> is required and must be a boolean or an observable boolean.",
             );
         }
+        this.childrenOrFn = props.children as ShowProps['children'];
     }
 
     public render(value: boolean) {
         if (value) {
-            const childrenOrFn = this.props.children as ShowProps['children'];
-
             this.firstChild = this.lastChild = null;
             const children = renderJSX(
-                typeof childrenOrFn === 'function'
-                    ? childrenOrFn()
-                    : childrenOrFn,
+                typeof this.childrenOrFn === 'function'
+                    ? this.childrenOrFn()
+                    : this.childrenOrFn,
                 this,
             );
             this.ref.update(children);

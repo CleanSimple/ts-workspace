@@ -57,7 +57,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
         if (typeof node === 'string' || typeof node === 'number') {
             const textNode = document.createTextNode(String(node));
             if (parent?.type !== 'element') {
-                const vNode = new _VNodeText(textNode, node, parent);
+                const vNode = new _VNodeText(textNode, parent);
                 patchNode(textNode, vNode);
                 appendVNodeChild(parent, vNode);
             }
@@ -90,7 +90,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                     domElement.append(...resolveReactiveNodes(children));
                 }
                 else {
-                    const vNode = new _VNodeElement(domElement, node.type, node.props, parent);
+                    const vNode = new _VNodeElement(domElement, parent);
                     vNode.subscriptions = observeProps(domElement, node.props);
                     patchNode(domElement, vNode);
                     appendVNodeChild(parent, vNode);
@@ -112,7 +112,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                 domNodes.push(reactiveNode);
             }
             else if (typeof node.type === 'function') {
-                const vNode = new _VNodeFunctionalComponent(node.type, node.props, parent);
+                const vNode = new _VNodeFunctionalComponent(node.props, parent);
                 const defineRef = (ref) => {
                     vNode.ref = ref;
                 };
@@ -122,7 +122,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                 const onUnmount = (fn) => {
                     vNode.onUnmountCallback = fn;
                 };
-                const jsxNode = vNode.value(vNode.props, { defineRef, onMount, onUnmount });
+                const jsxNode = node.type(node.props, { defineRef, onMount, onUnmount });
                 appendVNodeChild(parent, vNode);
                 renderJSX(jsxNode, vNode, domNodes);
             }
@@ -160,23 +160,19 @@ function resolveRenderedVNodes(vNodes, childNodes = []) {
 }
 class _VNodeText {
     type;
-    value;
     ref;
     parent;
     next = null;
     firstChild = null;
     lastChild = null;
-    constructor(ref, value, parent) {
+    constructor(ref, parent) {
         this.type = 'text';
-        this.value = value;
         this.parent = parent;
         this.ref = ref;
     }
 }
 class _VNodeFunctionalComponent {
     type;
-    value;
-    props;
     ref = null;
     isMounted = false;
     mountedChildrenCount = 0;
@@ -186,15 +182,17 @@ class _VNodeFunctionalComponent {
     next = null;
     firstChild = null;
     lastChild = null;
-    constructor(value, props, parent) {
+    propsRef = null;
+    constructor(props, parent) {
         this.type = 'component';
-        this.value = value;
-        this.props = props;
         this.parent = parent;
+        if (props.ref instanceof ValImpl) {
+            this.propsRef = props.ref;
+        }
     }
     onMount() {
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = this.ref;
+        if (this.propsRef) {
+            this.propsRef.value = this.ref;
         }
         if (this.onMountCallback) {
             runAsync(this.onMountCallback);
@@ -205,8 +203,8 @@ class _VNodeFunctionalComponent {
         if (this.onUnmountCallback) {
             runAsync(this.onUnmountCallback);
         }
-        if (this.props.ref instanceof ValImpl) {
-            this.props.ref.value = null;
+        if (this.propsRef) {
+            this.propsRef.value = null;
         }
         this.mountedChildrenCount = 0; // for when forcing an unmount
         this.isMounted = false;
@@ -214,18 +212,14 @@ class _VNodeFunctionalComponent {
 }
 class _VNodeElement {
     type;
-    value;
-    props;
     ref;
     parent;
     next = null;
     firstChild = null;
     lastChild = null;
     subscriptions = null;
-    constructor(ref, value, props, parent) {
+    constructor(ref, parent) {
         this.type = 'element';
-        this.value = value;
-        this.props = props;
         this.parent = parent;
         this.ref = ref;
     }
@@ -240,7 +234,6 @@ class _VNodeElement {
 }
 class _VNodeObservable {
     type;
-    value;
     ref;
     parent;
     next = null;
@@ -250,7 +243,6 @@ class _VNodeObservable {
     _renderedChildren = null;
     constructor(ref, value, parent) {
         this.type = 'observable';
-        this.value = value;
         this.parent = parent;
         this.ref = ref;
         this.render(value.value);
@@ -279,8 +271,6 @@ class _VNodeObservable {
 }
 class _VNodeFor {
     type;
-    value;
-    props;
     ref;
     parent;
     next = null;
@@ -292,8 +282,6 @@ class _VNodeFor {
     mapFn;
     constructor(ref, props, parent) {
         this.type = 'builtin';
-        this.value = For;
-        this.props = props;
         this.parent = parent;
         this.ref = ref;
         const typedProps = props;
@@ -359,18 +347,15 @@ class _VNodeFor {
 }
 class _VNodeShow {
     type;
-    value;
-    props;
     ref;
     parent;
     next = null;
     firstChild = null;
     lastChild = null;
+    childrenOrFn;
     subscription = null;
     constructor(ref, props, parent) {
         this.type = 'builtin';
-        this.value = Show;
-        this.props = props;
         this.parent = parent;
         this.ref = ref;
         const when = props.when;
@@ -384,14 +369,14 @@ class _VNodeShow {
         else {
             throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");
         }
+        this.childrenOrFn = props.children;
     }
     render(value) {
         if (value) {
-            const childrenOrFn = this.props.children;
             this.firstChild = this.lastChild = null;
-            const children = renderJSX(typeof childrenOrFn === 'function'
-                ? childrenOrFn()
-                : childrenOrFn, this);
+            const children = renderJSX(typeof this.childrenOrFn === 'function'
+                ? this.childrenOrFn()
+                : this.childrenOrFn, this);
             this.ref.update(children);
         }
         else {
