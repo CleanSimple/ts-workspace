@@ -1,7 +1,8 @@
 {
     "editor.defaultFormatter": "dprint.dprint",
     "eslint.probe": [
-        "typescript", "typescriptreact"
+        "typescript",
+        "typescriptreact"
     ],
     "eslint.nodePath": ".yarn/sdks",
     "typescript.tsdk": ".yarn/sdks/typescript/lib",
@@ -21,5 +22,9 @@
         "jsxs",
         "tampermonkey",
         "userscript"
-    ]
+    ],
+    "files.eol": "\n",
+    "files.encoding": "utf8",
+    "files.insertFinalNewline": true,
+    "files.trimTrailingWhitespace": true
 }
