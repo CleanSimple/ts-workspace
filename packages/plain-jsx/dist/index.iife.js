@@ -528,16 +528,27 @@ var PlainJSX = (function (exports, utilsJs) {
         node.__vNode = vNode;
     }
     function setProps(elem, props) {
+        const subscriptions = [];
         // handle class prop early so it doesn't overwrite class:* props
         if ('class' in props) {
             elem.className = props['class'];
         }
         for (const key in props) {
-            if (key === 'ref' || key === 'class' || key === 'children') {
+            if (key === 'class' || key === 'children') {
                 continue;
             }
             const value = props[key];
-            if (key === 'style') {
+            if (key === 'ref') {
+                if (value instanceof ValImpl) {
+                    value.value = elem;
+                    subscriptions.push({
+                        unsubscribe: () => {
+                            value.value = null;
+                        },
+                    });
+                }
+            }
+            else if (key === 'style') {
                 if (utilsJs.isObject(value)) {
                     Object.assign(elem.style, value);
                 }
@@ -556,9 +567,14 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             else if (key.startsWith('class:')) {
                 const className = key.slice(6);
-                const active = (value instanceof ObservableImpl ? value.value : value);
-                if (active) {
-                    elem.classList.add(className);
+                if (value instanceof ObservableImpl) {
+                    elem.classList.toggle(className, value.value);
+                    subscriptions.push(value.subscribe((value) => {
+                        elem.classList.toggle(className, value);
+                    }));
+                }
+                else {
+                    elem.classList.toggle(className, value);
                 }
             }
             else if (key.startsWith('on:')) {
@@ -572,9 +588,31 @@ var PlainJSX = (function (exports, utilsJs) {
                 elem[eventKey] = value;
             }
             else if (utilsJs.hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-                elem[key] = value instanceof ObservableImpl
-                    ? value.value
-                    : value;
+                if (value instanceof ObservableImpl) {
+                    elem[key] = value.value;
+                    subscriptions.push(value.subscribe((value) => {
+                        elem[key] = value;
+                    }));
+                    // two way updates for input element
+                    if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
+                        || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
+                        const handler = value instanceof ValImpl
+                            ? (e) => {
+                                value.value = e.target[key];
+                            }
+                            : (e) => {
+                                e.preventDefault();
+                                e.target[key] = value.value;
+                            };
+                        elem.addEventListener('change', handler);
+                        subscriptions.push({
+                            unsubscribe: () => elem.removeEventListener('change', handler),
+                        });
+                    }
+                }
+                else {
+                    elem[key] = value;
+                }
             }
             else {
                 if (key.includes(':')) {
@@ -582,55 +620,6 @@ var PlainJSX = (function (exports, utilsJs) {
                 }
                 else {
                     elem.setAttribute(key, value);
-                }
-            }
-        }
-    }
-    function observeProps(elem, props) {
-        const subscriptions = [];
-        for (const key in props) {
-            if (key === 'children') {
-                continue;
-            }
-            const value = props[key];
-            if (value instanceof ObservableImpl === false) {
-                continue;
-            }
-            if (key === 'ref') {
-                if (value instanceof ValImpl) {
-                    value.value = elem;
-                    subscriptions.push({
-                        unsubscribe: () => {
-                            value.value = null;
-                        },
-                    });
-                }
-            }
-            else if (key.startsWith('class:')) {
-                const className = key.slice(6);
-                subscriptions.push(value.subscribe((value) => {
-                    elem.classList.toggle(className, value);
-                }));
-            }
-            else if (utilsJs.hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-                subscriptions.push(value.subscribe((value) => {
-                    elem[key] = value;
-                }));
-                // two way updates for input element
-                if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
-                    || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
-                    const handler = value instanceof ValImpl
-                        ? (e) => {
-                            value.value = e.target[key];
-                        }
-                        : (e) => {
-                            e.preventDefault();
-                            e.target[key] = value.value;
-                        };
-                    elem.addEventListener('change', handler);
-                    subscriptions.push({
-                        unsubscribe: () => elem.removeEventListener('change', handler),
-                    });
                 }
             }
         }
@@ -777,9 +766,10 @@ var PlainJSX = (function (exports, utilsJs) {
                     const domElement = hasNS
                         ? document.createElementNS(...splitNamespace(node.type))
                         : document.createElement(node.type);
-                    setProps(domElement, node.props);
+                    const subscriptions = setProps(domElement, node.props);
                     if (parent?.type === 'element') {
-                        const subscriptions = observeProps(domElement, node.props);
+                        // VNodes are only used to track children of components and reactive nodes
+                        // if the parent is an element, we can append the dom element directly and add the subscriptions
                         if (subscriptions) {
                             if (parent.subscriptions) {
                                 parent.subscriptions.push(...subscriptions);
@@ -793,7 +783,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     }
                     else {
                         const vNode = new VNodeElementImpl(domElement, parent);
-                        vNode.subscriptions = observeProps(domElement, node.props);
+                        vNode.subscriptions = subscriptions;
                         patchNode(domElement, vNode);
                         appendVNodeChild(parent, vNode);
                         const children = renderJSX(node.props.children, vNode);

@@ -1,7 +1,7 @@
 import type { MaybePromise } from '@cleansimple/utils-js';
 import { For, type ForCallbackProps, type ForProps } from './components/For';
 import { Show, type ShowProps } from './components/Show';
-import { observeProps, patchNode, setProps } from './dom';
+import { patchNode, setProps } from './dom';
 import { mountNodes } from './lifecycle-events';
 import {
     type Observable,
@@ -14,12 +14,12 @@ import {
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
 import { runAsync } from './scheduling';
 import type {
-    RNode,
     DOMProps,
     FunctionalComponent,
     JSXElement,
     JSXNode,
     PropsType,
+    RNode,
     SVGProps,
     VNode,
     VNodeBuiltinComponent,
@@ -105,9 +105,11 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
                     ? document.createElementNS(...splitNamespace(node.type))
                     : document.createElement(node.type);
 
-                setProps(domElement as HTMLElement, node.props);
+                const subscriptions = setProps(domElement as HTMLElement, node.props);
+
                 if (parent?.type === 'element') {
-                    const subscriptions = observeProps(domElement as HTMLElement, node.props);
+                    // VNodes are only used to track children of components and reactive nodes
+                    // if the parent is an element, we can append the dom element directly and add the subscriptions
                     if (subscriptions) {
                         if (parent.subscriptions) {
                             parent.subscriptions.push(...subscriptions);
@@ -122,7 +124,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
                 }
                 else {
                     const vNode = new VNodeElementImpl(domElement, parent);
-                    vNode.subscriptions = observeProps(domElement as HTMLElement, node.props);
+                    vNode.subscriptions = subscriptions;
                     patchNode(domElement, vNode);
                     appendVNodeChild(parent, vNode);
 

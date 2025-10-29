@@ -1,6 +1,6 @@
 import { For } from './components/For.esm.js';
 import { Show } from './components/Show.esm.js';
-import { patchNode, setProps, observeProps } from './dom.esm.js';
+import { patchNode, setProps } from './dom.esm.js';
 import { mountNodes } from './lifecycle-events.esm.js';
 import { ObservableImpl, val, ValImpl } from './observable.esm.js';
 import { resolveReactiveNodes, ReactiveNode } from './reactive-node.esm.js';
@@ -71,9 +71,10 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                 const domElement = hasNS
                     ? document.createElementNS(...splitNamespace(node.type))
                     : document.createElement(node.type);
-                setProps(domElement, node.props);
+                const subscriptions = setProps(domElement, node.props);
                 if (parent?.type === 'element') {
-                    const subscriptions = observeProps(domElement, node.props);
+                    // VNodes are only used to track children of components and reactive nodes
+                    // if the parent is an element, we can append the dom element directly and add the subscriptions
                     if (subscriptions) {
                         if (parent.subscriptions) {
                             parent.subscriptions.push(...subscriptions);
@@ -87,7 +88,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                 }
                 else {
                     const vNode = new VNodeElementImpl(domElement, parent);
-                    vNode.subscriptions = observeProps(domElement, node.props);
+                    vNode.subscriptions = subscriptions;
                     patchNode(domElement, vNode);
                     appendVNodeChild(parent, vNode);
                     const children = renderJSX(node.props.children, vNode);

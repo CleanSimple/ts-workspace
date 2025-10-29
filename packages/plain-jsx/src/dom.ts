@@ -111,20 +111,32 @@ export function patchNode(node: DOMNode, vNode: VNode) {
     (node as HasVNode<DOMNode>).__vNode = vNode;
 }
 
-export function setProps(elem: HTMLElement, props: PropsType) {
+export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | null {
+    const subscriptions: Subscription[] = [];
+
     // handle class prop early so it doesn't overwrite class:* props
     if ('class' in props) {
         elem.className = props['class'] as string;
     }
 
     for (const key in props) {
-        if (key === 'ref' || key === 'class' || key === 'children') {
+        if (key === 'class' || key === 'children') {
             continue;
         }
 
         const value = props[key];
 
-        if (key === 'style') {
+        if (key === 'ref') {
+            if (value instanceof ValImpl) {
+                value.value = elem;
+                subscriptions.push({
+                    unsubscribe: () => {
+                        value.value = null;
+                    },
+                });
+            }
+        }
+        else if (key === 'style') {
             if (isObject(value)) {
                 Object.assign(elem.style, value);
             }
@@ -143,9 +155,14 @@ export function setProps(elem: HTMLElement, props: PropsType) {
         }
         else if (key.startsWith('class:')) {
             const className = key.slice(6);
-            const active = (value instanceof ObservableImpl ? value.value : value) as boolean;
-            if (active) {
-                elem.classList.add(className);
+            if (value instanceof ObservableImpl) {
+                elem.classList.toggle(className, value.value as boolean);
+                subscriptions.push(value.subscribe((value) => {
+                    elem.classList.toggle(className, value as boolean);
+                }));
+            }
+            else {
+                elem.classList.toggle(className, value as boolean);
             }
         }
         else if (key.startsWith('on:')) {
@@ -159,9 +176,35 @@ export function setProps(elem: HTMLElement, props: PropsType) {
             (elem as unknown as Record<symbol, unknown>)[eventKey] = value;
         }
         else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-            (elem as unknown as Record<string, unknown>)[key] = value instanceof ObservableImpl
-                ? value.value
-                : value;
+            if (value instanceof ObservableImpl) {
+                (elem as unknown as Record<string, unknown>)[key] = value.value;
+
+                subscriptions.push(value.subscribe((value) => {
+                    (elem as unknown as Record<string, unknown>)[key] = value;
+                }));
+
+                // two way updates for input element
+                if (
+                    (elem instanceof HTMLInputElement && key in InputTwoWayProps)
+                    || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)
+                ) {
+                    const handler = value instanceof ValImpl
+                        ? (e: Event) => {
+                            value.value = (e.target as HTMLInputElement)[key];
+                        }
+                        : (e: Event) => {
+                            e.preventDefault();
+                            (e.target as unknown as Record<string, unknown>)[key] = value.value;
+                        };
+                    elem.addEventListener('change', handler);
+                    subscriptions.push({
+                        unsubscribe: () => elem.removeEventListener('change', handler),
+                    });
+                }
+            }
+            else {
+                (elem as unknown as Record<string, unknown>)[key] = value;
+            }
         }
         else {
             if (key.includes(':')) {
@@ -172,63 +215,6 @@ export function setProps(elem: HTMLElement, props: PropsType) {
             }
         }
     }
-}
-
-export function observeProps(elem: HTMLElement, props: PropsType): Subscription[] | null {
-    const subscriptions: Subscription[] = [];
-    for (const key in props) {
-        if (key === 'children') {
-            continue;
-        }
-
-        const value = props[key];
-        if (value instanceof ObservableImpl === false) {
-            continue;
-        }
-
-        if (key === 'ref') {
-            if (value instanceof ValImpl) {
-                value.value = elem;
-                subscriptions.push({
-                    unsubscribe: () => {
-                        value.value = null;
-                    },
-                });
-            }
-        }
-        else if (key.startsWith('class:')) {
-            const className = key.slice(6);
-
-            subscriptions.push(value.subscribe((value) => {
-                elem.classList.toggle(className, value as boolean);
-            }));
-        }
-        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-            subscriptions.push(value.subscribe((value) => {
-                (elem as unknown as Record<string, unknown>)[key] = value;
-            }));
-
-            // two way updates for input element
-            if (
-                (elem instanceof HTMLInputElement && key in InputTwoWayProps)
-                || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)
-            ) {
-                const handler = value instanceof ValImpl
-                    ? (e: Event) => {
-                        value.value = (e.target as HTMLInputElement)[key];
-                    }
-                    : (e: Event) => {
-                        e.preventDefault();
-                        (e.target as unknown as Record<string, unknown>)[key] = value.value;
-                    };
-                elem.addEventListener('change', handler);
-                subscriptions.push({
-                    unsubscribe: () => elem.removeEventListener('change', handler),
-                });
-            }
-        }
-    }
-
     return subscriptions.length === 0 ? null : subscriptions;
 }
 

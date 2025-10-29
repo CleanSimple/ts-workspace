@@ -1,7 +1,7 @@
 import { isObject, hasKey } from '@cleansimple/utils-js';
 import { unmountNodes, mountNodes } from './lifecycle-events.esm.js';
 import { getLIS } from './lis.esm.js';
-import { ObservableImpl, ValImpl } from './observable.esm.js';
+import { ValImpl, ObservableImpl } from './observable.esm.js';
 import { isReadonlyProp, splitNamespace } from './utils.esm.js';
 
 const _Fragment = document.createDocumentFragment();
@@ -100,16 +100,27 @@ function patchNode(node, vNode) {
     node.__vNode = vNode;
 }
 function setProps(elem, props) {
+    const subscriptions = [];
     // handle class prop early so it doesn't overwrite class:* props
     if ('class' in props) {
         elem.className = props['class'];
     }
     for (const key in props) {
-        if (key === 'ref' || key === 'class' || key === 'children') {
+        if (key === 'class' || key === 'children') {
             continue;
         }
         const value = props[key];
-        if (key === 'style') {
+        if (key === 'ref') {
+            if (value instanceof ValImpl) {
+                value.value = elem;
+                subscriptions.push({
+                    unsubscribe: () => {
+                        value.value = null;
+                    },
+                });
+            }
+        }
+        else if (key === 'style') {
             if (isObject(value)) {
                 Object.assign(elem.style, value);
             }
@@ -128,9 +139,14 @@ function setProps(elem, props) {
         }
         else if (key.startsWith('class:')) {
             const className = key.slice(6);
-            const active = (value instanceof ObservableImpl ? value.value : value);
-            if (active) {
-                elem.classList.add(className);
+            if (value instanceof ObservableImpl) {
+                elem.classList.toggle(className, value.value);
+                subscriptions.push(value.subscribe((value) => {
+                    elem.classList.toggle(className, value);
+                }));
+            }
+            else {
+                elem.classList.toggle(className, value);
             }
         }
         else if (key.startsWith('on:')) {
@@ -144,9 +160,31 @@ function setProps(elem, props) {
             elem[eventKey] = value;
         }
         else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-            elem[key] = value instanceof ObservableImpl
-                ? value.value
-                : value;
+            if (value instanceof ObservableImpl) {
+                elem[key] = value.value;
+                subscriptions.push(value.subscribe((value) => {
+                    elem[key] = value;
+                }));
+                // two way updates for input element
+                if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
+                    || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
+                    const handler = value instanceof ValImpl
+                        ? (e) => {
+                            value.value = e.target[key];
+                        }
+                        : (e) => {
+                            e.preventDefault();
+                            e.target[key] = value.value;
+                        };
+                    elem.addEventListener('change', handler);
+                    subscriptions.push({
+                        unsubscribe: () => elem.removeEventListener('change', handler),
+                    });
+                }
+            }
+            else {
+                elem[key] = value;
+            }
         }
         else {
             if (key.includes(':')) {
@@ -154,55 +192,6 @@ function setProps(elem, props) {
             }
             else {
                 elem.setAttribute(key, value);
-            }
-        }
-    }
-}
-function observeProps(elem, props) {
-    const subscriptions = [];
-    for (const key in props) {
-        if (key === 'children') {
-            continue;
-        }
-        const value = props[key];
-        if (value instanceof ObservableImpl === false) {
-            continue;
-        }
-        if (key === 'ref') {
-            if (value instanceof ValImpl) {
-                value.value = elem;
-                subscriptions.push({
-                    unsubscribe: () => {
-                        value.value = null;
-                    },
-                });
-            }
-        }
-        else if (key.startsWith('class:')) {
-            const className = key.slice(6);
-            subscriptions.push(value.subscribe((value) => {
-                elem.classList.toggle(className, value);
-            }));
-        }
-        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
-            subscriptions.push(value.subscribe((value) => {
-                elem[key] = value;
-            }));
-            // two way updates for input element
-            if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
-                || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
-                const handler = value instanceof ValImpl
-                    ? (e) => {
-                        value.value = e.target[key];
-                    }
-                    : (e) => {
-                        e.preventDefault();
-                        e.target[key] = value.value;
-                    };
-                elem.addEventListener('change', handler);
-                subscriptions.push({
-                    unsubscribe: () => elem.removeEventListener('change', handler),
-                });
             }
         }
     }
@@ -220,4 +209,4 @@ function globalEventHandler(evt) {
     }
 }
 
-export { observeProps, patchNode, setProps, updateChildren };
+export { patchNode, setProps, updateChildren };
