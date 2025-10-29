@@ -342,8 +342,8 @@ var PlainJSX = (function (exports, utilsJs) {
             if (value === prevValue) {
                 return;
             }
-            for (const subscription of this.subscriptions.values()) {
-                subscription(value);
+            for (const observer of this.subscriptions.values()) {
+                observer(value);
             }
         }
         subscribe(observer) {
@@ -438,10 +438,12 @@ var PlainJSX = (function (exports, utilsJs) {
     };
     function splitNamespace(tagNS) {
         const [ns, tag] = tagNS.split(':', 2);
-        if (!utilsJs.hasKey(XMLNamespaces, ns)) {
+        if (ns in XMLNamespaces) {
+            return [XMLNamespaces[ns], tag];
+        }
+        else {
             throw new Error('Invalid namespace');
         }
-        return [XMLNamespaces[ns], tag];
     }
     function isReadonlyProp(obj, key) {
         let currentObj = obj;
@@ -469,16 +471,16 @@ var PlainJSX = (function (exports, utilsJs) {
         selectedIndex: null,
     };
     function updateChildren(parent, current, target) {
-        const newIndexMap = new Map();
-        const nTarget = target.length;
         const nCurrent = current.length;
-        for (let i = 0; i < nTarget; ++i) {
-            newIndexMap.set(target[i], i);
-        }
+        const nTarget = target.length;
+        const newIndexMap = new Map();
         const newIndexToOldIndexMap = new Int32Array(nTarget).fill(-1);
         const nodeAfterEnd = current[nCurrent - 1].nextSibling; // `current` should never be empty, so this is safe
         let maxNewIndexSoFar = -1;
         let moved = false;
+        for (let i = 0; i < nTarget; ++i) {
+            newIndexMap.set(target[i], i);
+        }
         const toRemove = new Array();
         for (let i = 0; i < nCurrent; ++i) {
             const oldNode = current[i];
@@ -610,7 +612,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 }
                 elem[eventKey] = value;
             }
-            else if (utilsJs.hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+            else if (key in elem && !isReadonlyProp(elem, key)) {
                 if (value instanceof ObservableImpl) {
                     elem[key] = value.value;
                     subscriptions.push(value.subscribe((value) => {
@@ -891,17 +893,17 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        propsRef = null;
+        refVal = null;
         constructor(props, parent) {
             this.type = 'component';
             this.parent = parent;
             if (props.ref instanceof ValImpl) {
-                this.propsRef = props.ref;
+                this.refVal = props.ref;
             }
         }
         onMount() {
-            if (this.propsRef) {
-                this.propsRef.value = this.ref;
+            if (this.refVal) {
+                this.refVal.value = this.ref;
             }
             if (this.onMountCallback) {
                 runAsync(this.onMountCallback);
@@ -912,8 +914,8 @@ var PlainJSX = (function (exports, utilsJs) {
             if (this.onUnmountCallback) {
                 runAsync(this.onUnmountCallback);
             }
-            if (this.propsRef) {
-                this.propsRef.value = null;
+            if (this.refVal) {
+                this.refVal.value = null;
             }
             this.mountedChildrenCount = 0; // for when forcing an unmount
             this.isMounted = false;

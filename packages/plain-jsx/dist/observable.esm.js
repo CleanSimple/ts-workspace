@@ -71,8 +71,8 @@ class ObservableImpl {
         if (value === prevValue) {
             return;
         }
-        for (const subscription of this.subscriptions.values()) {
-            subscription(value);
+        for (const observer of this.subscriptions.values()) {
+            observer(value);
         }
     }
     subscribe(observer) {

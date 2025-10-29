@@ -1,4 +1,4 @@
-import { isObject, hasKey } from '@cleansimple/utils-js';
+import { isObject } from '@cleansimple/utils-js';
 import { unmountNodes, mountNodes } from './lifecycle.esm.js';
 import { getLIS } from './lis.esm.js';
 import { ValImpl, ObservableImpl } from './observable.esm.js';
@@ -18,16 +18,16 @@ const SelectTwoWayProps = {
     selectedIndex: null,
 };
 function updateChildren(parent, current, target) {
-    const newIndexMap = new Map();
-    const nTarget = target.length;
     const nCurrent = current.length;
-    for (let i = 0; i < nTarget; ++i) {
-        newIndexMap.set(target[i], i);
-    }
+    const nTarget = target.length;
+    const newIndexMap = new Map();
     const newIndexToOldIndexMap = new Int32Array(nTarget).fill(-1);
     const nodeAfterEnd = current[nCurrent - 1].nextSibling; // `current` should never be empty, so this is safe
     let maxNewIndexSoFar = -1;
     let moved = false;
+    for (let i = 0; i < nTarget; ++i) {
+        newIndexMap.set(target[i], i);
+    }
     const toRemove = new Array();
     for (let i = 0; i < nCurrent; ++i) {
         const oldNode = current[i];
@@ -159,7 +159,7 @@ function setProps(elem, props) {
             }
             elem[eventKey] = value;
         }
-        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+        else if (key in elem && !isReadonlyProp(elem, key)) {
             if (value instanceof ObservableImpl) {
                 elem[key] = value.value;
                 subscriptions.push(value.subscribe((value) => {

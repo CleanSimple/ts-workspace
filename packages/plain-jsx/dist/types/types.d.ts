@@ -63,7 +63,7 @@ type CommonProps<T extends Element> = (T extends ElementCSSInlineStyle ? {
     children?: JSXNode;
     class?: string;
 };
-type TypedEvent<TElement extends Element, TEvent extends Event = Event> = Omit<TEvent, 'currentTarget'> & {
+type TypedEvent<TElement extends Element, TEvent extends Event = Event> = TEvent & {
     currentTarget: TElement;
 };
 type DOMEvents<T extends Element> = {

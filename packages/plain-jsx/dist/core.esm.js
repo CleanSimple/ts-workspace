@@ -172,17 +172,17 @@ class VNodeFunctionalComponentImpl {
     next = null;
     firstChild = null;
     lastChild = null;
-    propsRef = null;
+    refVal = null;
     constructor(props, parent) {
         this.type = 'component';
         this.parent = parent;
         if (props.ref instanceof ValImpl) {
-            this.propsRef = props.ref;
+            this.refVal = props.ref;
         }
     }
     onMount() {
-        if (this.propsRef) {
-            this.propsRef.value = this.ref;
+        if (this.refVal) {
+            this.refVal.value = this.ref;
         }
         if (this.onMountCallback) {
             runAsync(this.onMountCallback);
@@ -193,8 +193,8 @@ class VNodeFunctionalComponentImpl {
         if (this.onUnmountCallback) {
             runAsync(this.onUnmountCallback);
         }
-        if (this.propsRef) {
-            this.propsRef.value = null;
+        if (this.refVal) {
+            this.refVal.value = null;
         }
         this.mountedChildrenCount = 0; // for when forcing an unmount
         this.isMounted = false;

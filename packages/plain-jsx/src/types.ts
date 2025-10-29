@@ -102,7 +102,7 @@ type CommonProps<T extends Element> =
 
 /* event types */
 type TypedEvent<TElement extends Element, TEvent extends Event = Event> =
-    & Omit<TEvent, 'currentTarget'>
+    & TEvent
     & {
         currentTarget: TElement;
     };
