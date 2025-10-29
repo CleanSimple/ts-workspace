@@ -1,4 +1,4 @@
-import { type FunctionalComponent, type JSX, ref } from '@cleansimple/plain-jsx';
+import { type FunctionalComponent, type JSX, onMount, ref } from '@cleansimple/plain-jsx';
 
 interface InputProps extends JSX.PropsOf<HTMLInputElement> {
     focus?: boolean;
@@ -6,7 +6,6 @@ interface InputProps extends JSX.PropsOf<HTMLInputElement> {
 
 const Input: FunctionalComponent<InputProps, HTMLInputElement> = (
     { ref: inputRef, focus, ...props },
-    { onMount },
 ) => {
     inputRef = inputRef ?? ref<HTMLInputElement>();
 

@@ -1,7 +1,7 @@
 import { For } from './components/For.esm.js';
 import { Show } from './components/Show.esm.js';
 import { patchNode, setProps } from './dom.esm.js';
-import { mountNodes } from './lifecycle-events.esm.js';
+import { mountNodes, defineRef, setCurrentFunctionalComponent } from './lifecycle.esm.js';
 import { ObservableImpl, val, ValImpl } from './observable.esm.js';
 import { resolveReactiveNodes, ReactiveNode } from './reactive-node.esm.js';
 import { runAsync } from './scheduling.esm.js';
@@ -110,16 +110,9 @@ function renderJSX(jsxNode, parent, domNodes = []) {
             }
             else if (typeof node.type === 'function') {
                 const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
-                const defineRef = (ref) => {
-                    vNode.ref = ref;
-                };
-                const onMount = (fn) => {
-                    vNode.onMountCallback = fn;
-                };
-                const onUnmount = (fn) => {
-                    vNode.onUnmountCallback = fn;
-                };
-                const jsxNode = node.type(node.props, { defineRef, onMount, onUnmount });
+                setCurrentFunctionalComponent(vNode);
+                const jsxNode = node.type(node.props, { defineRef });
+                setCurrentFunctionalComponent(null);
                 appendVNodeChild(parent, vNode);
                 renderJSX(jsxNode, vNode, domNodes);
             }

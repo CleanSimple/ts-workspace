@@ -1,19 +1,20 @@
-let callbacks = new Array();
-let queued = false;
+let _callbacks = new Array();
+let _queued = false;
 function runNextTickCallbacks() {
+    const callbacks = _callbacks;
+    _callbacks = [];
+    _queued = false;
     const n = callbacks.length;
-    queued = false;
     for (let i = 0; i < n; i++) {
         runAsync(callbacks[i]);
     }
-    callbacks = [];
 }
 function nextTick(callback) {
-    callbacks.push(callback);
-    if (queued) {
+    _callbacks.push(callback);
+    if (_queued) {
         return;
     }
-    queued = true;
+    _queued = true;
     queueMicrotask(runNextTickCallbacks);
 }
 function runAsync(action) {

@@ -1,5 +1,7 @@
 import {
     type FunctionalComponent,
+    onMount,
+    onUnmount,
     type ParentComponent as _ParentComponent,
     val,
 } from '@cleansimple/plain-jsx';
@@ -14,7 +16,7 @@ interface DynamicChildrenRefType {
 
 const ParentComponent: FunctionalComponent<DynamicChildrenProps, DynamicChildrenRefType> = (
     { children },
-    { defineRef, onMount, onUnmount },
+    { defineRef },
 ) => {
     const content = val<(string | number)[]>(['Text']);
 

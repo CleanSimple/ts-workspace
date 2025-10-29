@@ -19,12 +19,13 @@ class NotificationScheduler {
         }
     }
     static flush() {
-        const n = NotificationScheduler._notificationSources.length;
-        for (let i = 0; i < n; ++i) {
-            NotificationScheduler._notificationSources[i].notify();
-        }
+        const notificationSources = NotificationScheduler._notificationSources;
         NotificationScheduler._notificationSources = [];
         NotificationScheduler._scheduled = false;
+        const n = notificationSources.length;
+        for (let i = 0; i < n; ++i) {
+            notificationSources[i].notify();
+        }
     }
 }
 /**

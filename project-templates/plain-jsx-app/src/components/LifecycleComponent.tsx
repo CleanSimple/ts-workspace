@@ -1,4 +1,4 @@
-import { type FunctionalComponent, type ParentComponent, ref, val } from '@cleansimple/plain-jsx';
+import { type FunctionalComponent, onMount, onUnmount, type ParentComponent, ref, val } from '@cleansimple/plain-jsx';
 
 interface LifecycleComponentProps extends ParentComponent {
     name?: string;
@@ -8,7 +8,6 @@ let count = 0;
 
 const LifecycleComponent: FunctionalComponent<LifecycleComponentProps> = (
     { name, children },
-    { onMount, onUnmount },
 ) => {
     name = name ?? `LifecycleComponent ${++count}`;
 

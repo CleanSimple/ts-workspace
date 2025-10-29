@@ -1,5 +1,5 @@
 import { isObject, hasKey } from '@cleansimple/utils-js';
-import { unmountNodes, mountNodes } from './lifecycle-events.esm.js';
+import { unmountNodes, mountNodes } from './lifecycle.esm.js';
 import { getLIS } from './lis.esm.js';
 import { ValImpl, ObservableImpl } from './observable.esm.js';
 import { isReadonlyProp, splitNamespace } from './utils.esm.js';

@@ -1,3 +1,25 @@
+let _CurrentFunctionalComponent = null;
+function setCurrentFunctionalComponent(component) {
+    _CurrentFunctionalComponent = component;
+}
+function defineRef(ref) {
+    if (!_CurrentFunctionalComponent) {
+        throw new Error('defineRef can only be called inside a functional component');
+    }
+    _CurrentFunctionalComponent.ref = ref;
+}
+function onMount(fn) {
+    if (!_CurrentFunctionalComponent) {
+        throw new Error('onMount can only be called inside a functional component');
+    }
+    _CurrentFunctionalComponent.onMountCallback = fn;
+}
+function onUnmount(fn) {
+    if (!_CurrentFunctionalComponent) {
+        throw new Error('onUnmount can only be called inside a functional component');
+    }
+    _CurrentFunctionalComponent.onUnmountCallback = fn;
+}
 /**
  * The mounting and unmounting process is a bit complex and needs this bit of documentation
  *
@@ -204,4 +226,4 @@ function findParentComponent(vNode) {
     return null;
 }
 
-export { mountNodes, unmountNodes };
+export { defineRef, mountNodes, onMount, onUnmount, setCurrentFunctionalComponent, unmountNodes };

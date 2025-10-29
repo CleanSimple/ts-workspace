@@ -9,6 +9,28 @@ var PlainJSX = (function (exports, utilsJs) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
+    let _CurrentFunctionalComponent = null;
+    function setCurrentFunctionalComponent(component) {
+        _CurrentFunctionalComponent = component;
+    }
+    function defineRef(ref) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('defineRef can only be called inside a functional component');
+        }
+        _CurrentFunctionalComponent.ref = ref;
+    }
+    function onMount(fn) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('onMount can only be called inside a functional component');
+        }
+        _CurrentFunctionalComponent.onMountCallback = fn;
+    }
+    function onUnmount(fn) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('onUnmount can only be called inside a functional component');
+        }
+        _CurrentFunctionalComponent.onUnmountCallback = fn;
+    }
     /**
      * The mounting and unmounting process is a bit complex and needs this bit of documentation
      *
@@ -268,12 +290,13 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         static flush() {
-            const n = NotificationScheduler._notificationSources.length;
-            for (let i = 0; i < n; ++i) {
-                NotificationScheduler._notificationSources[i].notify();
-            }
+            const notificationSources = NotificationScheduler._notificationSources;
             NotificationScheduler._notificationSources = [];
             NotificationScheduler._scheduled = false;
+            const n = notificationSources.length;
+            for (let i = 0; i < n; ++i) {
+                notificationSources[i].notify();
+            }
         }
     }
     /**
@@ -675,22 +698,23 @@ var PlainJSX = (function (exports, utilsJs) {
         return childNodes;
     }
 
-    let callbacks = new Array();
-    let queued = false;
+    let _callbacks = new Array();
+    let _queued = false;
     function runNextTickCallbacks() {
+        const callbacks = _callbacks;
+        _callbacks = [];
+        _queued = false;
         const n = callbacks.length;
-        queued = false;
         for (let i = 0; i < n; i++) {
             runAsync(callbacks[i]);
         }
-        callbacks = [];
     }
     function nextTick(callback) {
-        callbacks.push(callback);
-        if (queued) {
+        _callbacks.push(callback);
+        if (_queued) {
             return;
         }
-        queued = true;
+        _queued = true;
         queueMicrotask(runNextTickCallbacks);
     }
     function runAsync(action) {
@@ -805,16 +829,9 @@ var PlainJSX = (function (exports, utilsJs) {
                 }
                 else if (typeof node.type === 'function') {
                     const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
-                    const defineRef = (ref) => {
-                        vNode.ref = ref;
-                    };
-                    const onMount = (fn) => {
-                        vNode.onMountCallback = fn;
-                    };
-                    const onUnmount = (fn) => {
-                        vNode.onUnmountCallback = fn;
-                    };
-                    const jsxNode = node.type(node.props, { defineRef, onMount, onUnmount });
+                    setCurrentFunctionalComponent(vNode);
+                    const jsxNode = node.type(node.props, { defineRef });
+                    setCurrentFunctionalComponent(null);
                     appendVNodeChild(parent, vNode);
                     renderJSX(jsxNode, vNode, domNodes);
                 }
@@ -1088,6 +1105,8 @@ var PlainJSX = (function (exports, utilsJs) {
     exports.Show = Show;
     exports.computed = computed;
     exports.nextTick = nextTick;
+    exports.onMount = onMount;
+    exports.onUnmount = onUnmount;
     exports.ref = ref;
     exports.render = render;
     exports.val = val;
