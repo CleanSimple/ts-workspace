@@ -32,10 +32,7 @@ import { splitNamespace } from './utils';
 
 export const Fragment = 'Fragment';
 
-export function jsx(
-    type: string | FunctionalComponent,
-    props: PropsType,
-): JSXElement {
+export function jsx(type: string | FunctionalComponent, props: PropsType): JSXElement {
     return { type, props };
 }
 
@@ -61,9 +58,7 @@ function appendVNodeChild(parent: VNode | null, vNode: VNode) {
 }
 
 function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] = []): DOMNode[] {
-    const nodes: JSXNode[] = [];
-
-    nodes.push(jsxNode);
+    const nodes: JSXNode[] = [jsxNode];
     while (nodes.length > 0) {
         const node = nodes.shift();
 
@@ -327,8 +322,7 @@ class _VNodeObservable implements VNodeObservable {
         if (
             (typeof jsxNode === 'string' || typeof jsxNode === 'number')
             && this._renderedChildren?.length === 1
-            && this._renderedChildren[0] instanceof Node
-            && this._renderedChildren[0].nodeType === Node.TEXT_NODE
+            && this._renderedChildren[0] instanceof Text
         ) {
             // optimized update path for text nodes
             this._renderedChildren[0].textContent = jsxNode.toString();
