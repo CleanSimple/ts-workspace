@@ -6,7 +6,6 @@ import { isReadonlyProp, splitNamespace } from './utils.esm.js';
 
 const _Fragment = document.createDocumentFragment();
 const _HandledEvents = new Map();
-const _CachedSetters = new Map();
 const InputTwoWayProps = {
     value: null,
     valueAsNumber: null,
@@ -180,21 +179,15 @@ function observeProps(elem, props) {
             }
         }
         else if (key.startsWith('class:')) {
-            let setter = _CachedSetters.get(key);
-            if (!setter) {
-                const className = key.slice(6);
-                setter = createClassSetter(className);
-                _CachedSetters.set(key, setter);
-            }
-            subscriptions.push(value.subscribe(setter, elem));
+            const className = key.slice(6);
+            subscriptions.push(value.subscribe((value) => {
+                elem.classList.toggle(className, value);
+            }));
         }
-        else if (hasKey(elem, key)) {
-            let setter = _CachedSetters.get(key);
-            if (!setter) {
-                setter = createPropSetter(key);
-                _CachedSetters.set(key, setter);
-            }
-            subscriptions.push(value.subscribe(setter, elem));
+        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+            subscriptions.push(value.subscribe((value) => {
+                elem[key] = value;
+            }));
             // two way updates for input element
             if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
                 || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
@@ -214,16 +207,6 @@ function observeProps(elem, props) {
         }
     }
     return subscriptions.length === 0 ? null : subscriptions;
-}
-function createPropSetter(key) {
-    return function (value) {
-        this[key] = value;
-    };
-}
-function createClassSetter(className) {
-    return function (value) {
-        this.classList.toggle(className, value);
-    };
 }
 function globalEventHandler(evt) {
     const key = _HandledEvents.get(evt.type);

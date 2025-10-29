@@ -7,7 +7,6 @@ import { isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();
 const _HandledEvents = new Map<string, symbol>();
-const _CachedSetters = new Map<string, (value: unknown) => void>();
 
 const InputTwoWayProps = {
     value: null,
@@ -198,23 +197,16 @@ export function observeProps(elem: HTMLElement, props: PropsType): Subscription[
             }
         }
         else if (key.startsWith('class:')) {
-            let setter = _CachedSetters.get(key);
-            if (!setter) {
-                const className = key.slice(6);
-                setter = createClassSetter(className);
-                _CachedSetters.set(key, setter);
-            }
+            const className = key.slice(6);
 
-            subscriptions.push(value.subscribe(setter, elem));
+            subscriptions.push(value.subscribe((value) => {
+                elem.classList.toggle(className, value as boolean);
+            }));
         }
-        else if (hasKey(elem, key)) {
-            let setter = _CachedSetters.get(key);
-            if (!setter) {
-                setter = createPropSetter(key);
-                _CachedSetters.set(key, setter);
-            }
-
-            subscriptions.push(value.subscribe(setter, elem));
+        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+            subscriptions.push(value.subscribe((value) => {
+                (elem as unknown as Record<string, unknown>)[key] = value;
+            }));
 
             // two way updates for input element
             if (
@@ -238,18 +230,6 @@ export function observeProps(elem: HTMLElement, props: PropsType): Subscription[
     }
 
     return subscriptions.length === 0 ? null : subscriptions;
-}
-
-function createPropSetter(key: string) {
-    return function(this: Record<string, unknown>, value: unknown) {
-        this[key] = value;
-    };
-}
-
-function createClassSetter(className: string) {
-    return function(this: Element, value: boolean) {
-        this.classList.toggle(className, value);
-    } as (value: unknown) => void;
 }
 
 function globalEventHandler(evt: Event) {

@@ -8,7 +8,7 @@ export interface Subscription {
 export type Observer<T> = (value: T) => void;
 export interface Observable<T> {
     get value(): T;
-    subscribe: (observer: Observer<T>, instance?: object) => Subscription;
+    subscribe: (observer: Observer<T>) => Subscription;
     computed: <TComputed>(compute: (value: T) => TComputed) => Observable<TComputed>;
 }
 export interface Val<T> extends Observable<T> {
@@ -63,32 +63,6 @@ class NotificationScheduler {
     }
 }
 
-class SubscriptionImpl<T> implements Subscription {
-    public readonly cb: Observer<T>;
-    public readonly instance: object | null;
-
-    private readonly id: number;
-    private observableImpl: ObservableImpl<T> | null;
-
-    public constructor(
-        cb: Observer<T>,
-        instance: object | null,
-        observableImpl: ObservableImpl<T>,
-    ) {
-        this.cb = cb;
-        this.instance = instance;
-        this.id = observableImpl.addSubscription(this);
-        this.observableImpl = observableImpl;
-    }
-
-    public unsubscribe(): void {
-        if (this.observableImpl) {
-            this.observableImpl.removeSubscription(this.id);
-            this.observableImpl = null;
-        }
-    }
-}
-
 interface IDependant {
     onDependencyUpdated: () => void;
 }
@@ -97,7 +71,7 @@ interface IDependant {
  * Base class for observables
  */
 export abstract class ObservableImpl<T> implements Observable<T>, INotificationSource {
-    private readonly subscriptions = new Map<number, SubscriptionImpl<T>>();
+    private readonly subscriptions = new Map<number, Observer<T>>();
     private readonly dependents: WeakRef<IDependant>[] = [];
     private _nextSubscriptionId = 0;
     private _prevValue: T | null = null;
@@ -141,24 +115,20 @@ export abstract class ObservableImpl<T> implements Observable<T>, INotificationS
             return;
         }
         for (const subscription of this.subscriptions.values()) {
-            subscription.cb.call(subscription.instance, value);
+            subscription(value);
         }
-    }
-
-    public addSubscription(subscription: SubscriptionImpl<T>) {
-        const id = ++this._nextSubscriptionId;
-        this.subscriptions.set(id, subscription);
-        return id;
-    }
-
-    public removeSubscription(id: number) {
-        this.subscriptions.delete(id);
     }
 
     public abstract get value(): T;
 
-    public subscribe(observer: Observer<T>, instance?: object): Subscription {
-        return new SubscriptionImpl(observer, instance ?? null, this);
+    public subscribe(observer: Observer<T>): Subscription {
+        const id = ++this._nextSubscriptionId;
+        this.subscriptions.set(id, observer);
+        return {
+            unsubscribe: () => {
+                this.subscriptions.delete(id);
+            },
+        };
     }
 
     public computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed> {

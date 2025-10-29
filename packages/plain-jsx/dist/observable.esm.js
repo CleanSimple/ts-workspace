@@ -27,24 +27,6 @@ class NotificationScheduler {
         NotificationScheduler._scheduled = false;
     }
 }
-class SubscriptionImpl {
-    cb;
-    instance;
-    id;
-    observableImpl;
-    constructor(cb, instance, observableImpl) {
-        this.cb = cb;
-        this.instance = instance;
-        this.id = observableImpl.addSubscription(this);
-        this.observableImpl = observableImpl;
-    }
-    unsubscribe() {
-        if (this.observableImpl) {
-            this.observableImpl.removeSubscription(this.id);
-            this.observableImpl = null;
-        }
-    }
-}
 /**
  * Base class for observables
  */
@@ -89,19 +71,17 @@ class ObservableImpl {
             return;
         }
         for (const subscription of this.subscriptions.values()) {
-            subscription.cb.call(subscription.instance, value);
+            subscription(value);
         }
     }
-    addSubscription(subscription) {
+    subscribe(observer) {
         const id = ++this._nextSubscriptionId;
-        this.subscriptions.set(id, subscription);
-        return id;
-    }
-    removeSubscription(id) {
-        this.subscriptions.delete(id);
-    }
-    subscribe(observer, instance) {
-        return new SubscriptionImpl(observer, instance ?? null, this);
+        this.subscriptions.set(id, observer);
+        return {
+            unsubscribe: () => {
+                this.subscriptions.delete(id);
+            },
+        };
     }
     computed(compute) {
         return new ComputedSingle(compute, this);

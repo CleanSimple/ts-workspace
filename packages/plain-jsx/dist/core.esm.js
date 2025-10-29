@@ -30,8 +30,7 @@ function appendVNodeChild(parent, vNode) {
     }
 }
 function renderJSX(jsxNode, parent, domNodes = []) {
-    const nodes = [];
-    nodes.push(jsxNode);
+    const nodes = [jsxNode];
     while (nodes.length > 0) {
         const node = nodes.shift();
         // skip null, undefined and boolean
@@ -245,13 +244,12 @@ class _VNodeObservable {
         this.parent = parent;
         this.ref = ref;
         this.render(value.value);
-        this.subscription = value.subscribe(this.render.bind(this));
+        this.subscription = value.subscribe((value) => this.render(value));
     }
     render(jsxNode) {
         if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
             && this._renderedChildren?.length === 1
-            && this._renderedChildren[0] instanceof Node
-            && this._renderedChildren[0].nodeType === Node.TEXT_NODE) {
+            && this._renderedChildren[0] instanceof Text) {
             // optimized update path for text nodes
             this._renderedChildren[0].textContent = jsxNode.toString();
         }
@@ -293,7 +291,7 @@ class _VNodeFor {
         }
         else if (typedProps.of instanceof ObservableImpl) {
             this.render(typedProps.of.value);
-            this.subscription = typedProps.of.subscribe(this.render.bind(this));
+            this.subscription = typedProps.of.subscribe((value) => this.render(value));
         }
         else {
             throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
@@ -363,7 +361,7 @@ class _VNodeShow {
         }
         else if (when instanceof ObservableImpl) {
             this.render(when.value);
-            this.subscription = when.subscribe(this.render.bind(this));
+            this.subscription = when.subscribe((value) => this.render(value));
         }
         else {
             throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");

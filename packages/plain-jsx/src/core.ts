@@ -315,7 +315,7 @@ class _VNodeObservable implements VNodeObservable {
         this.ref = ref;
 
         this.render(value.value);
-        this.subscription = value.subscribe(this.render.bind(this));
+        this.subscription = value.subscribe((value: JSXNode) => this.render(value));
     }
 
     public render(jsxNode: JSXNode): void {
@@ -373,7 +373,7 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
         }
         else if (typedProps.of instanceof ObservableImpl) {
             this.render(typedProps.of.value as T[]);
-            this.subscription = typedProps.of.subscribe(this.render.bind(this));
+            this.subscription = typedProps.of.subscribe((value: T[]) => this.render(value));
         }
         else {
             throw new Error(
@@ -455,7 +455,7 @@ class _VNodeShow implements VNodeBuiltinComponent {
         }
         else if (when instanceof ObservableImpl) {
             this.render(when.value as boolean);
-            this.subscription = when.subscribe(this.render.bind(this));
+            this.subscription = when.subscribe((value: boolean) => this.render(value));
         }
         else {
             throw new Error(

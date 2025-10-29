@@ -276,24 +276,6 @@ var PlainJSX = (function (exports, utilsJs) {
             NotificationScheduler._scheduled = false;
         }
     }
-    class SubscriptionImpl {
-        cb;
-        instance;
-        id;
-        observableImpl;
-        constructor(cb, instance, observableImpl) {
-            this.cb = cb;
-            this.instance = instance;
-            this.id = observableImpl.addSubscription(this);
-            this.observableImpl = observableImpl;
-        }
-        unsubscribe() {
-            if (this.observableImpl) {
-                this.observableImpl.removeSubscription(this.id);
-                this.observableImpl = null;
-            }
-        }
-    }
     /**
      * Base class for observables
      */
@@ -338,19 +320,17 @@ var PlainJSX = (function (exports, utilsJs) {
                 return;
             }
             for (const subscription of this.subscriptions.values()) {
-                subscription.cb.call(subscription.instance, value);
+                subscription(value);
             }
         }
-        addSubscription(subscription) {
+        subscribe(observer) {
             const id = ++this._nextSubscriptionId;
-            this.subscriptions.set(id, subscription);
-            return id;
-        }
-        removeSubscription(id) {
-            this.subscriptions.delete(id);
-        }
-        subscribe(observer, instance) {
-            return new SubscriptionImpl(observer, instance ?? null, this);
+            this.subscriptions.set(id, observer);
+            return {
+                unsubscribe: () => {
+                    this.subscriptions.delete(id);
+                },
+            };
         }
         computed(compute) {
             return new ComputedSingle(compute, this);
@@ -454,7 +434,6 @@ var PlainJSX = (function (exports, utilsJs) {
 
     const _Fragment = document.createDocumentFragment();
     const _HandledEvents = new Map();
-    const _CachedSetters = new Map();
     const InputTwoWayProps = {
         value: null,
         valueAsNumber: null,
@@ -628,21 +607,15 @@ var PlainJSX = (function (exports, utilsJs) {
                 }
             }
             else if (key.startsWith('class:')) {
-                let setter = _CachedSetters.get(key);
-                if (!setter) {
-                    const className = key.slice(6);
-                    setter = createClassSetter(className);
-                    _CachedSetters.set(key, setter);
-                }
-                subscriptions.push(value.subscribe(setter, elem));
+                const className = key.slice(6);
+                subscriptions.push(value.subscribe((value) => {
+                    elem.classList.toggle(className, value);
+                }));
             }
-            else if (utilsJs.hasKey(elem, key)) {
-                let setter = _CachedSetters.get(key);
-                if (!setter) {
-                    setter = createPropSetter(key);
-                    _CachedSetters.set(key, setter);
-                }
-                subscriptions.push(value.subscribe(setter, elem));
+            else if (utilsJs.hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+                subscriptions.push(value.subscribe((value) => {
+                    elem[key] = value;
+                }));
                 // two way updates for input element
                 if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
                     || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
@@ -662,16 +635,6 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         return subscriptions.length === 0 ? null : subscriptions;
-    }
-    function createPropSetter(key) {
-        return function (value) {
-            this[key] = value;
-        };
-    }
-    function createClassSetter(className) {
-        return function (value) {
-            this.classList.toggle(className, value);
-        };
     }
     function globalEventHandler(evt) {
         const key = _HandledEvents.get(evt.type);
@@ -773,8 +736,7 @@ var PlainJSX = (function (exports, utilsJs) {
         }
     }
     function renderJSX(jsxNode, parent, domNodes = []) {
-        const nodes = [];
-        nodes.push(jsxNode);
+        const nodes = [jsxNode];
         while (nodes.length > 0) {
             const node = nodes.shift();
             // skip null, undefined and boolean
@@ -988,13 +950,12 @@ var PlainJSX = (function (exports, utilsJs) {
             this.parent = parent;
             this.ref = ref;
             this.render(value.value);
-            this.subscription = value.subscribe(this.render.bind(this));
+            this.subscription = value.subscribe((value) => this.render(value));
         }
         render(jsxNode) {
             if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
                 && this._renderedChildren?.length === 1
-                && this._renderedChildren[0] instanceof Node
-                && this._renderedChildren[0].nodeType === Node.TEXT_NODE) {
+                && this._renderedChildren[0] instanceof Text) {
                 // optimized update path for text nodes
                 this._renderedChildren[0].textContent = jsxNode.toString();
             }
@@ -1036,7 +997,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             else if (typedProps.of instanceof ObservableImpl) {
                 this.render(typedProps.of.value);
-                this.subscription = typedProps.of.subscribe(this.render.bind(this));
+                this.subscription = typedProps.of.subscribe((value) => this.render(value));
             }
             else {
                 throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
@@ -1106,7 +1067,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             else if (when instanceof ObservableImpl) {
                 this.render(when.value);
-                this.subscription = when.subscribe(this.render.bind(this));
+                this.subscription = when.subscribe((value) => this.render(value));
             }
             else {
                 throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");
