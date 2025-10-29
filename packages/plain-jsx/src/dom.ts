@@ -1,5 +1,5 @@
 import { hasKey, isObject } from '@cleansimple/utils-js';
-import { mountNodes, unmountNodes } from './lifecycle-events';
+import { mountNodes, unmountNodes } from './lifecycle';
 import { getLIS } from './lis';
 import { ObservableImpl, type Subscription, ValImpl } from './observable';
 import type { DOMNode, HasVNode, PropsType, VNode } from './types';

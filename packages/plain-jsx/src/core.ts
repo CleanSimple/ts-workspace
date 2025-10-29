@@ -2,7 +2,7 @@ import type { MaybePromise } from '@cleansimple/utils-js';
 import { For, type ForCallbackProps, type ForProps } from './components/For';
 import { Show, type ShowProps } from './components/Show';
 import { patchNode, setProps } from './dom';
-import { mountNodes } from './lifecycle-events';
+import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
 import {
     type Observable,
     ObservableImpl,
@@ -152,17 +152,10 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
             }
             else if (typeof node.type === 'function') {
                 const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
-                const defineRef = (ref: object) => {
-                    vNode.ref = ref;
-                };
-                const onMount = (fn: () => MaybePromise<void>) => {
-                    vNode.onMountCallback = fn;
-                };
-                const onUnmount = (fn: () => MaybePromise<void>) => {
-                    vNode.onUnmountCallback = fn;
-                };
 
-                const jsxNode = node.type(node.props, { defineRef, onMount, onUnmount });
+                setCurrentFunctionalComponent(vNode);
+                const jsxNode = node.type(node.props, { defineRef });
+                setCurrentFunctionalComponent(null);
 
                 appendVNodeChild(parent, vNode);
                 renderJSX(jsxNode, vNode, domNodes);

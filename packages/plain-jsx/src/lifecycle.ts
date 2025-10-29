@@ -1,4 +1,32 @@
+import type { MaybePromise } from '@cleansimple/utils-js';
 import type { DOMNode, HasVNode, VNode, VNodeFunctionalComponent } from './types';
+
+let _CurrentFunctionalComponent: VNodeFunctionalComponent | null = null;
+
+export function setCurrentFunctionalComponent(component: VNodeFunctionalComponent | null) {
+    _CurrentFunctionalComponent = component;
+}
+
+export function defineRef(ref: object) {
+    if (!_CurrentFunctionalComponent) {
+        throw new Error('defineRef can only be called inside a functional component');
+    }
+    _CurrentFunctionalComponent.ref = ref;
+}
+
+export function onMount(fn: () => MaybePromise<void>) {
+    if (!_CurrentFunctionalComponent) {
+        throw new Error('onMount can only be called inside a functional component');
+    }
+    _CurrentFunctionalComponent.onMountCallback = fn;
+}
+
+export function onUnmount(fn: () => MaybePromise<void>) {
+    if (!_CurrentFunctionalComponent) {
+        throw new Error('onUnmount can only be called inside a functional component');
+    }
+    _CurrentFunctionalComponent.onUnmountCallback = fn;
+}
 
 /**
  * The mounting and unmounting process is a bit complex and needs this bit of documentation
