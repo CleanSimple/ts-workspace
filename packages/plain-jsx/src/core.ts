@@ -228,20 +228,20 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly propsRef: Val<object | null> | null = null;
+    private readonly refVal: Val<object | null> | null = null;
 
     public constructor(props: PropsType, parent: VNode | null) {
         this.type = 'component';
         this.parent = parent;
 
         if (props.ref instanceof ValImpl) {
-            this.propsRef = props.ref;
+            this.refVal = props.ref;
         }
     }
 
     public onMount(): void {
-        if (this.propsRef) {
-            this.propsRef.value = this.ref;
+        if (this.refVal) {
+            this.refVal.value = this.ref;
         }
 
         if (this.onMountCallback) {
@@ -256,8 +256,8 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
             runAsync(this.onUnmountCallback);
         }
 
-        if (this.propsRef) {
-            this.propsRef.value = null;
+        if (this.refVal) {
+            this.refVal.value = null;
         }
 
         this.mountedChildrenCount = 0; // for when forcing an unmount
@@ -483,13 +483,8 @@ class VNodeShow implements VNodeBuiltinComponent {
     }
 }
 
-type DOMElement = Element;
-
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export declare namespace JSX {
-    /* utility */
-    type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
-
     /* jsx defs */
     type Fragment = typeof Fragment;
 
@@ -497,10 +492,10 @@ export declare namespace JSX {
 
     type BaseIntrinsicElements =
         & {
-            [K in keyof HTMLElementTagNameMap]: PropsOf<HTMLElementTagNameMap[K]>;
+            [K in keyof HTMLElementTagNameMap]: DOMProps<HTMLElementTagNameMap[K]>;
         }
         & {
-            [K in keyof SVGElementTagNameMap as `svg:${K}`]: PropsOf<SVGElementTagNameMap[K]>;
+            [K in keyof SVGElementTagNameMap as `svg:${K}`]: SVGProps<SVGElementTagNameMap[K]>;
         };
 
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
