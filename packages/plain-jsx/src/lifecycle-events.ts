@@ -1,4 +1,4 @@
-import type { HasVNode, VNode, VNodeFunctionalComponent } from './types';
+import type { DOMNode, HasVNode, VNode, VNodeFunctionalComponent } from './types';
 
 /**
  * The mounting and unmounting process is a bit complex and needs this bit of documentation
@@ -37,8 +37,8 @@ import type { HasVNode, VNode, VNodeFunctionalComponent } from './types';
  *  Reactive Nodes: The call to unmount will always unmount the reactive node but no signals are sent.
  */
 
-export function mountNodes(nodes: ChildNode[]) {
-    const customNodes = nodes as HasVNode<ChildNode>[];
+export function mountNodes(nodes: DOMNode[]) {
+    const customNodes = nodes as HasVNode<DOMNode>[];
     const n = customNodes.length;
     // handle reactive node placeholders
     if (n === 1 && customNodes[0] instanceof Comment) {
@@ -69,8 +69,8 @@ export function mountNodes(nodes: ChildNode[]) {
     }
 }
 
-export function unmountNodes(nodes: ChildNode[]) {
-    const customNodes = nodes as HasVNode<ChildNode>[];
+export function unmountNodes(nodes: DOMNode[]) {
+    const customNodes = nodes as HasVNode<DOMNode>[];
     const n = customNodes.length;
     // handle reactive node placeholders
     if (n === 1 && customNodes[0] instanceof Comment) {

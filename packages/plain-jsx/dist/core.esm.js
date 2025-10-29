@@ -11,12 +11,10 @@ const Fragment = 'Fragment';
 function jsx(type, props) {
     return { type, props };
 }
-// export let initialRenderDone = false;
 function render(root, jsxNode) {
     const children = resolveReactiveNodes(renderJSX(jsxNode, null));
     root.append(...children);
     mountNodes(children);
-    // initialRenderDone = true;
 }
 function appendVNodeChild(parent, vNode) {
     if (!parent)
@@ -55,7 +53,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
         if (typeof node === 'string' || typeof node === 'number') {
             const textNode = document.createTextNode(String(node));
             if (parent?.type !== 'element') {
-                const vNode = new _VNodeText(textNode, parent);
+                const vNode = new VNodeTextImpl(textNode, parent);
                 patchNode(textNode, vNode);
                 appendVNodeChild(parent, vNode);
             }
@@ -63,7 +61,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
         }
         else if (node instanceof ObservableImpl) {
             const reactiveNode = new ReactiveNode();
-            const vNode = new _VNodeObservable(reactiveNode, node, parent);
+            const vNode = new VNodeObservableImpl(reactiveNode, node, parent);
             appendVNodeChild(parent, vNode);
             domNodes.push(reactiveNode);
         }
@@ -88,7 +86,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                     domElement.append(...resolveReactiveNodes(children));
                 }
                 else {
-                    const vNode = new _VNodeElement(domElement, parent);
+                    const vNode = new VNodeElementImpl(domElement, parent);
                     vNode.subscriptions = observeProps(domElement, node.props);
                     patchNode(domElement, vNode);
                     appendVNodeChild(parent, vNode);
@@ -99,18 +97,18 @@ function renderJSX(jsxNode, parent, domNodes = []) {
             }
             else if (node.type === For) {
                 const reactiveNode = new ReactiveNode();
-                const vNode = new _VNodeFor(reactiveNode, node.props, parent);
+                const vNode = new VNodeFor(reactiveNode, node.props, parent);
                 appendVNodeChild(parent, vNode);
                 domNodes.push(reactiveNode);
             }
             else if (node.type === Show) {
                 const reactiveNode = new ReactiveNode();
-                const vNode = new _VNodeShow(reactiveNode, node.props, parent);
+                const vNode = new VNodeShow(reactiveNode, node.props, parent);
                 appendVNodeChild(parent, vNode);
                 domNodes.push(reactiveNode);
             }
             else if (typeof node.type === 'function') {
-                const vNode = new _VNodeFunctionalComponent(node.props, parent);
+                const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
                 const defineRef = (ref) => {
                     vNode.ref = ref;
                 };
@@ -156,7 +154,7 @@ function resolveRenderedVNodes(vNodes, childNodes = []) {
     }
     return childNodes;
 }
-class _VNodeText {
+class VNodeTextImpl {
     type;
     ref;
     parent;
@@ -169,7 +167,7 @@ class _VNodeText {
         this.ref = ref;
     }
 }
-class _VNodeFunctionalComponent {
+class VNodeFunctionalComponentImpl {
     type;
     ref = null;
     isMounted = false;
@@ -208,7 +206,7 @@ class _VNodeFunctionalComponent {
         this.isMounted = false;
     }
 }
-class _VNodeElement {
+class VNodeElementImpl {
     type;
     ref;
     parent;
@@ -230,7 +228,7 @@ class _VNodeElement {
         }
     }
 }
-class _VNodeObservable {
+class VNodeObservableImpl {
     type;
     ref;
     parent;
@@ -266,7 +264,7 @@ class _VNodeObservable {
         }
     }
 }
-class _VNodeFor {
+class VNodeFor {
     type;
     ref;
     parent;
@@ -342,7 +340,7 @@ class _VNodeFor {
         }
     }
 }
-class _VNodeShow {
+class VNodeShow {
     type;
     ref;
     parent;

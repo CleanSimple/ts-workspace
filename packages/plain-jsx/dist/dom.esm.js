@@ -17,7 +17,7 @@ const SelectTwoWayProps = {
     value: null,
     selectedIndex: null,
 };
-function reconcileChildren(parent, current, target) {
+function updateChildren(parent, current, target) {
     const newIndexMap = new Map();
     const nTarget = target.length;
     const nCurrent = current.length;
@@ -220,4 +220,4 @@ function globalEventHandler(evt) {
     }
 }
 
-export { observeProps, patchNode, reconcileChildren, setProps };
+export { observeProps, patchNode, setProps, updateChildren };

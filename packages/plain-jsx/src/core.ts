@@ -14,7 +14,7 @@ import {
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
 import { runAsync } from './scheduling';
 import type {
-    DOMNode,
+    RNode,
     DOMProps,
     FunctionalComponent,
     JSXElement,
@@ -38,12 +38,10 @@ export function jsx(type: string | FunctionalComponent, props: PropsType): JSXEl
 
 export { jsx as jsxDEV, jsx as jsxs };
 
-// export let initialRenderDone = false;
 export function render(root: Element | DocumentFragment, jsxNode: JSXNode): void {
     const children = resolveReactiveNodes(renderJSX(jsxNode, null));
     root.append(...children);
     mountNodes(children);
-    // initialRenderDone = true;
 }
 
 function appendVNodeChild(parent: VNode | null, vNode: VNode) {
@@ -57,7 +55,7 @@ function appendVNodeChild(parent: VNode | null, vNode: VNode) {
     }
 }
 
-function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] = []): DOMNode[] {
+function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = []): RNode[] {
     const nodes: JSXNode[] = [jsxNode];
     while (nodes.length > 0) {
         const node = nodes.shift();
@@ -85,7 +83,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
         if (typeof node === 'string' || typeof node === 'number') {
             const textNode = document.createTextNode(String(node));
             if (parent?.type !== 'element') {
-                const vNode = new _VNodeText(textNode, parent);
+                const vNode = new VNodeTextImpl(textNode, parent);
                 patchNode(textNode, vNode);
                 appendVNodeChild(parent, vNode);
             }
@@ -93,7 +91,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
         }
         else if (node instanceof ObservableImpl) {
             const reactiveNode = new ReactiveNode();
-            const vNode = new _VNodeObservable(reactiveNode, node, parent);
+            const vNode = new VNodeObservableImpl(reactiveNode, node, parent);
 
             appendVNodeChild(parent, vNode);
 
@@ -123,7 +121,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
                     domElement.append(...resolveReactiveNodes(children));
                 }
                 else {
-                    const vNode = new _VNodeElement(domElement, parent);
+                    const vNode = new VNodeElementImpl(domElement, parent);
                     vNode.subscriptions = observeProps(domElement as HTMLElement, node.props);
                     patchNode(domElement, vNode);
                     appendVNodeChild(parent, vNode);
@@ -136,7 +134,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
             }
             else if (node.type === For) {
                 const reactiveNode = new ReactiveNode();
-                const vNode = new _VNodeFor(reactiveNode, node.props, parent);
+                const vNode = new VNodeFor(reactiveNode, node.props, parent);
 
                 appendVNodeChild(parent, vNode);
 
@@ -144,14 +142,14 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
             }
             else if (node.type === Show) {
                 const reactiveNode = new ReactiveNode();
-                const vNode = new _VNodeShow(reactiveNode, node.props, parent);
+                const vNode = new VNodeShow(reactiveNode, node.props, parent);
 
                 appendVNodeChild(parent, vNode);
 
                 domNodes.push(reactiveNode);
             }
             else if (typeof node.type === 'function') {
-                const vNode = new _VNodeFunctionalComponent(node.props, parent);
+                const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
                 const defineRef = (ref: object) => {
                     vNode.ref = ref;
                 };
@@ -179,7 +177,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: DOMNode[] =
     return domNodes;
 }
 
-function resolveRenderedVNodes(vNodes: VNode, childNodes: DOMNode[] = []) {
+function resolveRenderedVNodes(vNodes: VNode, childNodes: RNode[] = []) {
     let vNode: VNode | null = vNodes;
     while (vNode) {
         if (vNode.type === 'text') {
@@ -208,7 +206,7 @@ interface RenderedItem {
     tail: VNode | null;
 }
 
-class _VNodeText implements VNodeText {
+class VNodeTextImpl implements VNodeText {
     public readonly type: 'text';
     public readonly ref: Text;
     public parent: VNode | null;
@@ -223,7 +221,7 @@ class _VNodeText implements VNodeText {
     }
 }
 
-class _VNodeFunctionalComponent implements VNodeFunctionalComponent {
+class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
     public readonly type: 'component';
     public ref: object | null = null;
     public isMounted: boolean = false;
@@ -272,7 +270,7 @@ class _VNodeFunctionalComponent implements VNodeFunctionalComponent {
     }
 }
 
-class _VNodeElement implements VNodeElement {
+class VNodeElementImpl implements VNodeElement {
     public readonly type: 'element';
     public readonly ref: Element;
     public parent: VNode | null;
@@ -298,7 +296,7 @@ class _VNodeElement implements VNodeElement {
     }
 }
 
-class _VNodeObservable implements VNodeObservable {
+class VNodeObservableImpl implements VNodeObservable {
     public readonly type: 'observable';
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
@@ -307,7 +305,7 @@ class _VNodeObservable implements VNodeObservable {
     public lastChild: VNode | null = null;
 
     private subscription: Subscription | null = null;
-    private _renderedChildren: DOMNode[] | null = null;
+    private _renderedChildren: RNode[] | null = null;
 
     public constructor(ref: ReactiveNode, value: Observable<JSXNode>, parent: VNode | null) {
         this.type = 'observable';
@@ -342,7 +340,7 @@ class _VNodeObservable implements VNodeObservable {
     }
 }
 
-class _VNodeFor<T> implements VNodeBuiltinComponent {
+class VNodeFor<T> implements VNodeBuiltinComponent {
     public readonly type: 'builtin';
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
@@ -433,7 +431,7 @@ class _VNodeFor<T> implements VNodeBuiltinComponent {
     }
 }
 
-class _VNodeShow implements VNodeBuiltinComponent {
+class VNodeShow implements VNodeBuiltinComponent {
     public readonly type: 'builtin';
     public readonly ref: ReactiveNode;
     public parent: VNode | null;

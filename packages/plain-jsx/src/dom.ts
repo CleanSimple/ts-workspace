@@ -2,7 +2,7 @@ import { hasKey, isObject } from '@cleansimple/utils-js';
 import { mountNodes, unmountNodes } from './lifecycle-events';
 import { getLIS } from './lis';
 import { ObservableImpl, type Subscription, ValImpl } from './observable';
-import type { HasVNode, PropsType, VNode } from './types';
+import type { DOMNode, HasVNode, PropsType, VNode } from './types';
 import { isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();
@@ -20,8 +20,8 @@ const SelectTwoWayProps = {
     selectedIndex: null,
 } as const;
 
-export function reconcileChildren(parent: ParentNode, current: ChildNode[], target: ChildNode[]) {
-    const newIndexMap = new Map<ChildNode, number>();
+export function updateChildren(parent: ParentNode, current: DOMNode[], target: DOMNode[]) {
+    const newIndexMap = new Map<DOMNode, number>();
     const nTarget = target.length;
     const nCurrent = current.length;
     for (let i = 0; i < nTarget; ++i) {
@@ -32,7 +32,7 @@ export function reconcileChildren(parent: ParentNode, current: ChildNode[], targ
     let maxNewIndexSoFar = -1;
     let moved = false;
 
-    const toRemove = new Array<ChildNode>();
+    const toRemove = new Array<DOMNode>();
     for (let i = 0; i < nCurrent; ++i) {
         const oldNode = current[i];
         const newIndex = newIndexMap.get(oldNode);
@@ -57,8 +57,8 @@ export function reconcileChildren(parent: ParentNode, current: ChildNode[], targ
 
     interface Op {
         type: 'insert' | 'move';
-        pos: ChildNode | null;
-        nodes: ChildNode[];
+        pos: DOMNode | null;
+        nodes: DOMNode[];
     }
     const ops: Op[] = [];
     let currentOp: Op | null = null;
@@ -107,8 +107,8 @@ export function reconcileChildren(parent: ParentNode, current: ChildNode[], targ
     }
 }
 
-export function patchNode(node: ChildNode, vNode: VNode) {
-    (node as HasVNode<ChildNode>).__vNode = vNode;
+export function patchNode(node: DOMNode, vNode: VNode) {
+    (node as HasVNode<DOMNode>).__vNode = vNode;
 }
 
 export function setProps(elem: HTMLElement, props: PropsType) {

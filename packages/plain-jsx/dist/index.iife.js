@@ -445,7 +445,7 @@ var PlainJSX = (function (exports, utilsJs) {
         value: null,
         selectedIndex: null,
     };
-    function reconcileChildren(parent, current, target) {
+    function updateChildren(parent, current, target) {
         const newIndexMap = new Map();
         const nTarget = target.length;
         const nCurrent = current.length;
@@ -665,7 +665,7 @@ var PlainJSX = (function (exports, utilsJs) {
             const parent = children[0].parentNode;
             if (parent) {
                 const newChildren = resolveReactiveNodes(rNode);
-                reconcileChildren(parent, children, newChildren);
+                updateChildren(parent, children, newChildren);
             }
             this._children = rNode;
         }
@@ -717,12 +717,10 @@ var PlainJSX = (function (exports, utilsJs) {
     }
 
     const Fragment = 'Fragment';
-    // export let initialRenderDone = false;
     function render(root, jsxNode) {
         const children = resolveReactiveNodes(renderJSX(jsxNode, null));
         root.append(...children);
         mountNodes(children);
-        // initialRenderDone = true;
     }
     function appendVNodeChild(parent, vNode) {
         if (!parent)
@@ -761,7 +759,7 @@ var PlainJSX = (function (exports, utilsJs) {
             if (typeof node === 'string' || typeof node === 'number') {
                 const textNode = document.createTextNode(String(node));
                 if (parent?.type !== 'element') {
-                    const vNode = new _VNodeText(textNode, parent);
+                    const vNode = new VNodeTextImpl(textNode, parent);
                     patchNode(textNode, vNode);
                     appendVNodeChild(parent, vNode);
                 }
@@ -769,7 +767,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             else if (node instanceof ObservableImpl) {
                 const reactiveNode = new ReactiveNode();
-                const vNode = new _VNodeObservable(reactiveNode, node, parent);
+                const vNode = new VNodeObservableImpl(reactiveNode, node, parent);
                 appendVNodeChild(parent, vNode);
                 domNodes.push(reactiveNode);
             }
@@ -794,7 +792,7 @@ var PlainJSX = (function (exports, utilsJs) {
                         domElement.append(...resolveReactiveNodes(children));
                     }
                     else {
-                        const vNode = new _VNodeElement(domElement, parent);
+                        const vNode = new VNodeElementImpl(domElement, parent);
                         vNode.subscriptions = observeProps(domElement, node.props);
                         patchNode(domElement, vNode);
                         appendVNodeChild(parent, vNode);
@@ -805,18 +803,18 @@ var PlainJSX = (function (exports, utilsJs) {
                 }
                 else if (node.type === For) {
                     const reactiveNode = new ReactiveNode();
-                    const vNode = new _VNodeFor(reactiveNode, node.props, parent);
+                    const vNode = new VNodeFor(reactiveNode, node.props, parent);
                     appendVNodeChild(parent, vNode);
                     domNodes.push(reactiveNode);
                 }
                 else if (node.type === Show) {
                     const reactiveNode = new ReactiveNode();
-                    const vNode = new _VNodeShow(reactiveNode, node.props, parent);
+                    const vNode = new VNodeShow(reactiveNode, node.props, parent);
                     appendVNodeChild(parent, vNode);
                     domNodes.push(reactiveNode);
                 }
                 else if (typeof node.type === 'function') {
-                    const vNode = new _VNodeFunctionalComponent(node.props, parent);
+                    const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
                     const defineRef = (ref) => {
                         vNode.ref = ref;
                     };
@@ -862,7 +860,7 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         return childNodes;
     }
-    class _VNodeText {
+    class VNodeTextImpl {
         type;
         ref;
         parent;
@@ -875,7 +873,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this.ref = ref;
         }
     }
-    class _VNodeFunctionalComponent {
+    class VNodeFunctionalComponentImpl {
         type;
         ref = null;
         isMounted = false;
@@ -914,7 +912,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this.isMounted = false;
         }
     }
-    class _VNodeElement {
+    class VNodeElementImpl {
         type;
         ref;
         parent;
@@ -936,7 +934,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
     }
-    class _VNodeObservable {
+    class VNodeObservableImpl {
         type;
         ref;
         parent;
@@ -972,7 +970,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
     }
-    class _VNodeFor {
+    class VNodeFor {
         type;
         ref;
         parent;
@@ -1048,7 +1046,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
     }
-    class _VNodeShow {
+    class VNodeShow {
         type;
         ref;
         parent;

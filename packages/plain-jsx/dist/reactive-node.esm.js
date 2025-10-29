@@ -1,4 +1,4 @@
-import { reconcileChildren } from './dom.esm.js';
+import { updateChildren } from './dom.esm.js';
 
 class ReactiveNode {
     placeholder = document.createComment('');
@@ -17,7 +17,7 @@ class ReactiveNode {
         const parent = children[0].parentNode;
         if (parent) {
             const newChildren = resolveReactiveNodes(rNode);
-            reconcileChildren(parent, children, newChildren);
+            updateChildren(parent, children, newChildren);
         }
         this._children = rNode;
     }

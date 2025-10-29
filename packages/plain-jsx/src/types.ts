@@ -68,8 +68,11 @@ export type VNode =
     | VNodeBuiltinComponent
     | VNodeObservable;
 
+/* Rendered Node */
+export type RNode = ChildNode | ReactiveNode;
+
 /* DOM Node */
-export type DOMNode = ChildNode | ReactiveNode;
+export type DOMNode = ChildNode;
 
 // component types
 export type FunctionalComponent = (...args: unknown[]) => JSXNode;

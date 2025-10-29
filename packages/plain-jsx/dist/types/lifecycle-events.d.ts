@@ -1,3 +1,4 @@
+import type { DOMNode } from './types';
 /**
  * The mounting and unmounting process is a bit complex and needs this bit of documentation
  *
@@ -34,5 +35,5 @@
  *      Functional components will also signal parent functional components to be unmounted.
  *  Reactive Nodes: The call to unmount will always unmount the reactive node but no signals are sent.
  */
-export declare function mountNodes(nodes: ChildNode[]): void;
-export declare function unmountNodes(nodes: ChildNode[]): void;
+export declare function mountNodes(nodes: DOMNode[]): void;
+export declare function unmountNodes(nodes: DOMNode[]): void;

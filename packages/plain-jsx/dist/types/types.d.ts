@@ -43,7 +43,8 @@ export interface VNodeObservable extends VNodeBase {
     onUnmount: Action;
 }
 export type VNode = VNodeText | VNodeElement | VNodeFunctionalComponent | VNodeBuiltinComponent | VNodeObservable;
-export type DOMNode = ChildNode | ReactiveNode;
+export type RNode = ChildNode | ReactiveNode;
+export type DOMNode = ChildNode;
 export type FunctionalComponent = (...args: unknown[]) => JSXNode;
 export type PropsType = Record<string, unknown> & {
     ref?: unknown;
