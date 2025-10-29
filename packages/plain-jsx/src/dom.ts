@@ -1,4 +1,4 @@
-import { hasKey, isObject } from '@cleansimple/utils-js';
+import { isObject } from '@cleansimple/utils-js';
 import { mountNodes, unmountNodes } from './lifecycle';
 import { getLIS } from './lis';
 import { ObservableImpl, type Subscription, ValImpl } from './observable';
@@ -21,16 +21,17 @@ const SelectTwoWayProps = {
 } as const;
 
 export function updateChildren(parent: ParentNode, current: DOMNode[], target: DOMNode[]) {
-    const newIndexMap = new Map<DOMNode, number>();
-    const nTarget = target.length;
     const nCurrent = current.length;
-    for (let i = 0; i < nTarget; ++i) {
-        newIndexMap.set(target[i], i);
-    }
+    const nTarget = target.length;
+    const newIndexMap = new Map<DOMNode, number>();
     const newIndexToOldIndexMap = new Int32Array(nTarget).fill(-1);
     const nodeAfterEnd = current[nCurrent - 1].nextSibling; // `current` should never be empty, so this is safe
     let maxNewIndexSoFar = -1;
     let moved = false;
+
+    for (let i = 0; i < nTarget; ++i) {
+        newIndexMap.set(target[i], i);
+    }
 
     const toRemove = new Array<DOMNode>();
     for (let i = 0; i < nCurrent; ++i) {
@@ -175,7 +176,7 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
             }
             (elem as unknown as Record<symbol, unknown>)[eventKey] = value;
         }
-        else if (hasKey(elem, key) && !isReadonlyProp(elem, key)) {
+        else if (key in elem && !isReadonlyProp(elem, key as keyof HTMLElement)) {
             if (value instanceof ObservableImpl) {
                 (elem as unknown as Record<string, unknown>)[key] = value.value;
 
@@ -190,7 +191,7 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
                 ) {
                     const handler = value instanceof ValImpl
                         ? (e: Event) => {
-                            value.value = (e.target as HTMLInputElement)[key];
+                            value.value = (e.target as unknown as Record<string, unknown>)[key];
                         }
                         : (e: Event) => {
                             e.preventDefault();

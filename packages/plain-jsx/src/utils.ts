@@ -1,5 +1,3 @@
-import { hasKey } from '@cleansimple/utils-js';
-
 const XMLNamespaces = {
     'svg': 'http://www.w3.org/2000/svg' as const,
     'xhtml': 'http://www.w3.org/1999/xhtml' as const,
@@ -7,10 +5,12 @@ const XMLNamespaces = {
 
 export function splitNamespace(tagNS: string) {
     const [ns, tag] = tagNS.split(':', 2);
-    if (!hasKey(XMLNamespaces, ns)) {
+    if (ns in XMLNamespaces) {
+        return [XMLNamespaces[ns as keyof typeof XMLNamespaces], tag] as const;
+    }
+    else {
         throw new Error('Invalid namespace');
     }
-    return [XMLNamespaces[ns], tag] as const;
 }
 
 export function isReadonlyProp<T>(obj: T, key: keyof T): boolean {

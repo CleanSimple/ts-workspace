@@ -23,7 +23,7 @@ export function nextTick(callback: Action) {
     queueMicrotask(runNextTickCallbacks);
 }
 
-export function runAsync(action: () => MaybePromise<void>) {
+export function runAsync(action: Action) {
     try {
         const result = action();
         if (result instanceof Promise) {
