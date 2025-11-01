@@ -347,7 +347,9 @@ class VNodeShow {
         this.type = 'builtin';
         this.parent = parent;
         this.ref = ref;
-        const when = props.when;
+        const showProps = props;
+        const when = showProps.when;
+        this.childrenOrFn = showProps.children;
         if (typeof when === 'boolean') {
             this.render(when);
         }
@@ -358,7 +360,6 @@ class VNodeShow {
         else {
             throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");
         }
-        this.childrenOrFn = props.children;
     }
     render(value) {
         if (value) {

@@ -442,7 +442,10 @@ class VNodeShow implements VNodeBuiltinComponent {
         this.parent = parent;
         this.ref = ref;
 
-        const when = (props as unknown as ShowProps).when;
+        const showProps = props as unknown as ShowProps;
+        const when = showProps.when;
+        this.childrenOrFn = showProps.children;
+
         if (typeof when === 'boolean') {
             this.render(when);
         }
@@ -455,7 +458,6 @@ class VNodeShow implements VNodeBuiltinComponent {
                 "The 'when' prop on <Show> is required and must be a boolean or an observable boolean.",
             );
         }
-        this.childrenOrFn = props.children as ShowProps['children'];
     }
 
     public render(value: boolean) {
@@ -483,8 +485,13 @@ class VNodeShow implements VNodeBuiltinComponent {
     }
 }
 
+type DOMElement = Element;
+
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export declare namespace JSX {
+    /* utility */
+    type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
+
     /* jsx defs */
     type Fragment = typeof Fragment;
 
