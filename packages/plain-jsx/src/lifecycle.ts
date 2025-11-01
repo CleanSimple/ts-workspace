@@ -68,19 +68,26 @@ export function onUnmount(fn: () => MaybePromise<void>) {
 export function mountNodes(nodes: DOMNode[]) {
     const customNodes = nodes as HasVNode<DOMNode>[];
     const n = customNodes.length;
-    // handle reactive node placeholders
-    if (n === 1 && customNodes[0] instanceof Comment) {
-        return;
+
+    let parent: VNodeFunctionalComponent | null | undefined = undefined;
+    let mountedCount = 0;
+    for (let i = 0; i < n; i++) {
+        const node = customNodes[i];
+        // ignore reactive node placeholders
+        if (node instanceof Comment) {
+            continue;
+        }
+        mountVNode(node.__vNode);
+        mountedCount++;
+
+        // this always gets called on children of the same parent, so it's safe to use the parent of the first node
+        if (parent === undefined) {
+            parent = findParentComponent(node.__vNode);
+        }
     }
-    // this always gets called on children of the same parent, so it's safe to use the parent of the first node
-    const parent = findParentComponent(customNodes[0].__vNode);
 
     if (parent) {
-        for (let i = 0; i < n; i++) {
-            mountVNode(customNodes[i].__vNode);
-            parent.mountedChildrenCount++;
-        }
-
+        parent.mountedChildrenCount += mountedCount;
         // we want to defer parent mount/unmount until all children have settled
         // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
         queueMicrotask(() => {
@@ -90,29 +97,31 @@ export function mountNodes(nodes: DOMNode[]) {
             }
         });
     }
-    else {
-        for (let i = 0; i < n; i++) {
-            mountVNode(customNodes[i].__vNode);
-        }
-    }
 }
 
 export function unmountNodes(nodes: DOMNode[]) {
     const customNodes = nodes as HasVNode<DOMNode>[];
     const n = customNodes.length;
-    // handle reactive node placeholders
-    if (n === 1 && customNodes[0] instanceof Comment) {
-        return;
+
+    let parent: VNodeFunctionalComponent | null | undefined = undefined;
+    let unmountedCount = 0;
+    for (let i = 0; i < n; i++) {
+        const node = customNodes[i];
+        // ignore reactive node placeholders
+        if (node instanceof Comment) {
+            continue;
+        }
+        unmountVNode(node.__vNode);
+        unmountedCount++;
+
+        // this always gets called on children of the same parent, so it's safe to use the parent of the first node
+        if (parent === undefined) {
+            parent = findParentComponent(node.__vNode);
+        }
     }
-    // this always gets called on children of the same parent, so it's safe to use the parent of the first node
-    const parent = findParentComponent(customNodes[0].__vNode);
 
     if (parent) {
-        for (let i = 0; i < n; i++) {
-            unmountVNode(customNodes[i].__vNode);
-            parent.mountedChildrenCount--;
-        }
-
+        parent.mountedChildrenCount -= unmountedCount;
         // we want to defer parent mount/unmount until all children have settled
         // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
         queueMicrotask(() => {
@@ -121,11 +130,6 @@ export function unmountNodes(nodes: DOMNode[]) {
                 signalParentComponent(parent, 'unmount');
             }
         });
-    }
-    else {
-        for (let i = 0; i < n; i++) {
-            unmountVNode(customNodes[i].__vNode);
-        }
     }
 }
 
