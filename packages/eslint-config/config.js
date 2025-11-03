@@ -25,7 +25,9 @@ export default defineConfig([
         },
         // additional rules
         rules: {
+            '@typescript-eslint/no-import-type-side-effects': 'warn',
             '@typescript-eslint/consistent-type-imports': 'warn',
+            '@typescript-eslint/consistent-type-exports': 'warn',
             '@typescript-eslint/method-signature-style': 'warn',
 
             '@typescript-eslint/explicit-member-accessibility': 'error',
