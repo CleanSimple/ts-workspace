@@ -54,14 +54,12 @@ export type PropsType = Record<string, unknown> & {
 };
 type ClassProp = `class:${string}`;
 type Classes = Record<ClassProp, boolean | Observable<boolean>>;
-type CommonProps<T extends Element> = (T extends ElementCSSInlineStyle ? {
-    style?: CSS | string;
-} : object) & (T extends HTMLOrSVGElement ? {
-    dataset?: DOMStringMap;
-} : object) & Classes & {
+type CommonProps<T extends Element> = Classes & {
     ref?: Ref<T>;
     children?: JSXNode;
     class?: string;
+    style?: CSS | string;
+    dataset?: DOMStringMap;
 };
 type TypedEvent<TElement extends Element, TEvent extends Event = Event> = TEvent & {
     currentTarget: TElement;

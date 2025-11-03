@@ -1,5 +1,6 @@
-import { updateChildren } from './dom';
 import type { DOMNode, RNode } from './types';
+
+import { updateChildren } from './dom';
 
 export class ReactiveNode {
     private readonly placeholder = document.createComment('');

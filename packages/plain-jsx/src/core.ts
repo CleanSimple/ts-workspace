@@ -1,18 +1,7 @@
 import type { MaybePromise } from '@cleansimple/utils-js';
-import { For, type ForCallbackProps, type ForProps } from './components/For';
-import { Show, type ShowProps } from './components/Show';
-import { patchNode, setProps } from './dom';
-import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
-import {
-    type Observable,
-    ObservableImpl,
-    type Subscription,
-    type Val,
-    val,
-    ValImpl,
-} from './observable';
-import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
-import { runAsync } from './scheduling';
+import type { ForCallbackProps, ForProps } from './components/For';
+import type { ShowProps } from './components/Show';
+import type { Observable, Subscription, Val } from './observable';
 import type {
     DOMProps,
     FunctionalComponent,
@@ -28,6 +17,14 @@ import type {
     VNodeObservable,
     VNodeText,
 } from './types';
+
+import { For } from './components/For';
+import { Show } from './components/Show';
+import { patchNode, setProps } from './dom';
+import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
+import { ObservableImpl, val, ValImpl } from './observable';
+import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
+import { runAsync } from './scheduling';
 import { splitNamespace } from './utils';
 
 export const Fragment = 'Fragment';

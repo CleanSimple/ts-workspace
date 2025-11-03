@@ -1,8 +1,10 @@
+import type { Subscription } from './observable';
+import type { DOMNode, HasVNode, PropsType, VNode } from './types';
+
 import { isObject } from '@cleansimple/utils-js';
 import { mountNodes, unmountNodes } from './lifecycle';
 import { getLIS } from './lis';
-import { ObservableImpl, type Subscription, ValImpl } from './observable';
-import type { DOMNode, HasVNode, PropsType, VNode } from './types';
+import { ObservableImpl, ValImpl } from './observable';
 import { isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();

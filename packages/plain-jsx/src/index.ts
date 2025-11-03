@@ -2,11 +2,14 @@ import type { Setter } from '@cleansimple/utils-js';
 import type { Observable } from './observable';
 import type { JSXNode } from './types';
 
+export type { JSX } from './core';
+export type { Observable, Ref, Subscription, Val } from './observable';
+
 export { For } from './components/For';
 export { Show } from './components/Show';
-export { Fragment, type JSX, render } from './core';
+export { Fragment, render } from './core';
 export { onMount, onUnmount } from './lifecycle';
-export { computed, type Observable, type Ref, ref, type Val, val } from './observable';
+export { computed, ref, val } from './observable';
 export { nextTick } from './scheduling';
 
 export interface Helpers<TRef> {
