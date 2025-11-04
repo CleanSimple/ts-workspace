@@ -13,7 +13,7 @@ export {};
  * @template T
  */
 /**
- * @typedef {T extends void ? () => void : (arg: T) => void} Action
+ * @typedef {[T] extends [void] ? () => void : (arg: T) => void} Action
  * @template [T=void]
  */
 /**
