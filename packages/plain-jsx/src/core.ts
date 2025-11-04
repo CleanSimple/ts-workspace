@@ -357,13 +357,14 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
             );
         }
         this.mapFn = typedProps.children;
+        const of = typedProps.of as T[] | ObservableImpl<T[]>;
 
-        if (Array.isArray(typedProps.of)) {
-            this.render(typedProps.of);
+        if (Array.isArray(of)) {
+            this.render(of);
         }
-        else if (typedProps.of instanceof ObservableImpl) {
-            this.render(typedProps.of.value as T[]);
-            this.subscription = typedProps.of.subscribe((value: T[]) => this.render(value));
+        else if (of instanceof ObservableImpl) {
+            this.render(of.value);
+            this.subscription = of.subscribe((value: T[]) => this.render(value));
         }
         else {
             throw new Error(
@@ -423,7 +424,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
     }
 }
 
-class VNodeShow implements VNodeBuiltinComponent {
+class VNodeShow<T> implements VNodeBuiltinComponent {
     public readonly type: 'builtin';
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
@@ -431,34 +432,50 @@ class VNodeShow implements VNodeBuiltinComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly childrenOrFn: ShowProps['children'];
+    private readonly childrenOrFn: ShowProps<T>['children'];
+    private readonly keyed: boolean;
+    private readonly condition: ShowProps<T>['is'];
     private subscription: Subscription | null = null;
+    private shown = false;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
         this.parent = parent;
         this.ref = ref;
 
-        const showProps = props as unknown as ShowProps;
-        const when = showProps.when;
+        const showProps = props as unknown as ShowProps<T>;
+        const when = showProps.when as T | ObservableImpl<T>;
+        this.condition = showProps.is;
+        this.keyed = showProps.keyed ?? false;
         this.childrenOrFn = showProps.children;
 
-        if (typeof when === 'boolean') {
-            this.render(when);
-        }
-        else if (when instanceof ObservableImpl) {
-            this.render(when.value as boolean);
-            this.subscription = when.subscribe((value: boolean) => this.render(value));
+        if (when instanceof ObservableImpl) {
+            this.render(when.value);
+            this.subscription = when.subscribe((value: T) => this.render(value));
         }
         else {
-            throw new Error(
-                "The 'when' prop on <Show> is required and must be a boolean or an observable boolean.",
-            );
+            this.render(when);
         }
     }
 
-    public render(value: boolean) {
-        if (value) {
+    public render(value: T) {
+        let show: boolean;
+        if (this.condition === undefined) {
+            show = Boolean(value);
+        }
+        else if (typeof this.condition === 'function') {
+            show = (this.condition as (value: T) => boolean)(value);
+        }
+        else {
+            show = value === this.condition;
+        }
+
+        if (!this.keyed && this.shown === show) {
+            return;
+        }
+        this.shown = show;
+
+        if (show) {
             this.firstChild = this.lastChild = null;
             const children = renderJSX(
                 typeof this.childrenOrFn === 'function'
@@ -504,5 +521,6 @@ export declare namespace JSX {
 
     // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface IntrinsicElements extends BaseIntrinsicElements {
+        // allow extending the intrinsic elements
     }
 }
