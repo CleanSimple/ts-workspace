@@ -1,5 +1,6 @@
 import type { MaybePromise } from '@cleansimple/utils-js';
 import type { DOMNode, HasVNode, VNode, VNodeFunctionalComponent } from './types';
+import { findParentComponent } from './utils';
 
 let _CurrentFunctionalComponent: VNodeFunctionalComponent | null = null;
 
@@ -76,7 +77,7 @@ export function mountNodes(nodes: DOMNode[]) {
             continue;
         }
         mountVNode(node.__vNode);
-        signalParentComponent(node.__vNode, 'mount');
+        findParentComponent(node.__vNode)?.mount();
     }
 }
 
@@ -91,7 +92,7 @@ export function unmountNodes(nodes: DOMNode[]) {
             continue;
         }
         unmountVNode(node.__vNode);
-        signalParentComponent(node.__vNode, 'unmount');
+        findParentComponent(node.__vNode)?.unmount(false);
     }
 }
 
@@ -116,28 +117,10 @@ function mountVNode(vNode: VNode, parentComponent: VNodeFunctionalComponent | nu
 
     // mount self
     if (vNode.type === 'element') {
-        if (parentComponent) {
-            parentComponent.mountedChildrenCount++;
-        }
+        parentComponent?.mount();
     }
     else if (vNode.type === 'text') {
-        if (parentComponent) {
-            parentComponent.mountedChildrenCount++;
-        }
-    }
-    // else if (vNode.type === 'builtin') {
-    //     vNode.onMount();
-    // }
-    // else if (vNode.type === 'observable') {
-    //     vNode.onMount();
-    // }
-    else if (vNode.type === 'component') {
-        if (vNode.mountedChildrenCount > 0 && !vNode.isMounted) {
-            vNode.onMount();
-            if (parentComponent) {
-                parentComponent.mountedChildrenCount++;
-            }
-        }
+        parentComponent?.mount();
     }
 }
 
@@ -151,66 +134,17 @@ function unmountVNode(vNode: VNode) {
 
     // unmount self
     if (vNode.type === 'element') {
-        vNode.onUnmount();
+        vNode.unmount();
     }
     // else if (vNode.type === 'text') {
     // }
     else if (vNode.type === 'builtin') {
-        vNode.onUnmount();
+        vNode.unmount();
     }
     else if (vNode.type === 'observable') {
-        vNode.onUnmount();
+        vNode.unmount();
     }
     else if (vNode.type === 'component') {
-        if (vNode.isMounted) {
-            vNode.onUnmount();
-        }
-    }
-}
-
-let _SignaledComponents = new Set<VNodeFunctionalComponent>();
-let _FlushSignaledComponentsScheduled = false;
-
-function signalParentComponent(vNode: VNode, signal: 'mount' | 'unmount') {
-    let parent = vNode.parent;
-    while (parent) {
-        if (parent.type === 'component') {
-            break;
-        }
-        else if (parent.type === 'element') {
-            return;
-        }
-        parent = parent.parent;
-    }
-
-    if (!parent) return;
-
-    if (signal === 'mount') {
-        parent.mountedChildrenCount++;
-    }
-    else if (signal === 'unmount') {
-        parent.mountedChildrenCount--;
-    }
-    _SignaledComponents.add(parent);
-    if (!_FlushSignaledComponentsScheduled) {
-        _FlushSignaledComponentsScheduled = true;
-        queueMicrotask(flushSignaledComponents);
-    }
-}
-
-function flushSignaledComponents() {
-    const components = _SignaledComponents;
-    _SignaledComponents = new Set();
-    _FlushSignaledComponentsScheduled = false;
-
-    for (const component of components) {
-        if (component.mountedChildrenCount > 0 && !component.isMounted) {
-            component.onMount();
-            signalParentComponent(component, 'mount');
-        }
-        else if (component.mountedChildrenCount === 0 && component.isMounted) {
-            component.onUnmount();
-            signalParentComponent(component, 'unmount');
-        }
+        vNode.unmount(true);
     }
 }

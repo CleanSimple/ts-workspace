@@ -1,21 +1,40 @@
 let _callbacks = new Array();
-let _queued = false;
-function runNextTickCallbacks() {
+let _scheduled = false;
+function nextTick(callback) {
+    _callbacks.push(callback);
+    if (_scheduled)
+        return;
+    _scheduled = true;
+    queueMicrotask(flushNextTickCallbacks);
+}
+function flushNextTickCallbacks() {
     const callbacks = _callbacks;
     _callbacks = [];
-    _queued = false;
+    _scheduled = false;
     const n = callbacks.length;
     for (let i = 0; i < n; i++) {
         runAsync(callbacks[i]);
     }
 }
-function nextTick(callback) {
-    _callbacks.push(callback);
-    if (_queued) {
-        return;
+class DeferredUpdatesScheduler {
+    static _items = [];
+    static _scheduled = false;
+    static schedule(item) {
+        DeferredUpdatesScheduler._items.push(item);
+        if (DeferredUpdatesScheduler._scheduled)
+            return;
+        DeferredUpdatesScheduler._scheduled = true;
+        queueMicrotask(DeferredUpdatesScheduler.flush);
     }
-    _queued = true;
-    queueMicrotask(runNextTickCallbacks);
+    static flush() {
+        const items = DeferredUpdatesScheduler._items;
+        DeferredUpdatesScheduler._items = [];
+        DeferredUpdatesScheduler._scheduled = false;
+        const n = items.length;
+        for (let i = 0; i < n; ++i) {
+            items[i].flushUpdates();
+        }
+    }
 }
 function runAsync(action) {
     try {
@@ -29,4 +48,4 @@ function runAsync(action) {
     }
 }
 
-export { nextTick, runAsync };
+export { DeferredUpdatesScheduler, nextTick, runAsync };

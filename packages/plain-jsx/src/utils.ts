@@ -1,3 +1,5 @@
+import type { VNode } from './types';
+
 const XMLNamespaces = {
     'svg': 'http://www.w3.org/2000/svg' as const,
     'xhtml': 'http://www.w3.org/1999/xhtml' as const,
@@ -23,4 +25,18 @@ export function isReadonlyProp<T>(obj: T, key: keyof T): boolean {
         currentObj = Object.getPrototypeOf(currentObj);
     }
     return true;
+}
+
+export function findParentComponent(vNode: VNode) {
+    let parent = vNode.parent;
+    while (parent) {
+        if (parent.type === 'component') {
+            break;
+        }
+        else if (parent.type === 'element') {
+            return;
+        }
+        parent = parent.parent;
+    }
+    return parent;
 }

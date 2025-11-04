@@ -22,5 +22,18 @@ function isReadonlyProp(obj, key) {
     }
     return true;
 }
+function findParentComponent(vNode) {
+    let parent = vNode.parent;
+    while (parent) {
+        if (parent.type === 'component') {
+            break;
+        }
+        else if (parent.type === 'element') {
+            return;
+        }
+        parent = parent.parent;
+    }
+    return parent;
+}
 
-export { isReadonlyProp, splitNamespace };
+export { findParentComponent, isReadonlyProp, splitNamespace };

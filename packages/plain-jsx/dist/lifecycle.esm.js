@@ -1,3 +1,5 @@
+import { findParentComponent } from './utils.esm.js';
+
 let _CurrentFunctionalComponent = null;
 function setCurrentFunctionalComponent(component) {
     _CurrentFunctionalComponent = component;
@@ -59,8 +61,6 @@ function onUnmount(fn) {
 function mountNodes(nodes) {
     const customNodes = nodes;
     const n = customNodes.length;
-    let parent = undefined;
-    let mountedCount = 0;
     for (let i = 0; i < n; i++) {
         const node = customNodes[i];
         // ignore reactive node placeholders
@@ -68,29 +68,12 @@ function mountNodes(nodes) {
             continue;
         }
         mountVNode(node.__vNode);
-        mountedCount++;
-        // this always gets called on children of the same parent, so it's safe to use the parent of the first node
-        if (parent === undefined) {
-            parent = findParentComponent(node.__vNode);
-        }
-    }
-    if (parent) {
-        parent.mountedChildrenCount += mountedCount;
-        // we want to defer parent mount/unmount until all children have settled
-        // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
-        queueMicrotask(() => {
-            if (parent.mountedChildrenCount > 0 && !parent.isMounted) {
-                parent.onMount();
-                signalParentComponent(parent, 'mount');
-            }
-        });
+        findParentComponent(node.__vNode)?.mount();
     }
 }
 function unmountNodes(nodes) {
     const customNodes = nodes;
     const n = customNodes.length;
-    let parent = undefined;
-    let unmountedCount = 0;
     for (let i = 0; i < n; i++) {
         const node = customNodes[i];
         // ignore reactive node placeholders
@@ -98,22 +81,7 @@ function unmountNodes(nodes) {
             continue;
         }
         unmountVNode(node.__vNode);
-        unmountedCount++;
-        // this always gets called on children of the same parent, so it's safe to use the parent of the first node
-        if (parent === undefined) {
-            parent = findParentComponent(node.__vNode);
-        }
-    }
-    if (parent) {
-        parent.mountedChildrenCount -= unmountedCount;
-        // we want to defer parent mount/unmount until all children have settled
-        // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
-        queueMicrotask(() => {
-            if (parent.mountedChildrenCount === 0 && parent.isMounted) {
-                parent.onUnmount();
-                signalParentComponent(parent, 'unmount');
-            }
-        });
+        findParentComponent(node.__vNode)?.unmount(false);
     }
 }
 function mountVNode(vNode, parentComponent = null) {
@@ -135,28 +103,10 @@ function mountVNode(vNode, parentComponent = null) {
     }
     // mount self
     if (vNode.type === 'element') {
-        if (parentComponent) {
-            parentComponent.mountedChildrenCount++;
-        }
+        parentComponent?.mount();
     }
     else if (vNode.type === 'text') {
-        if (parentComponent) {
-            parentComponent.mountedChildrenCount++;
-        }
-    }
-    // else if (vNode.type === 'builtin') {
-    //     vNode.onMount();
-    // }
-    // else if (vNode.type === 'observable') {
-    //     vNode.onMount();
-    // }
-    else if (vNode.type === 'component') {
-        if (vNode.mountedChildrenCount > 0 && !vNode.isMounted) {
-            vNode.onMount();
-            if (parentComponent) {
-                parentComponent.mountedChildrenCount++;
-            }
-        }
+        parentComponent?.mount();
     }
 }
 function unmountVNode(vNode) {
@@ -168,64 +118,19 @@ function unmountVNode(vNode) {
     }
     // unmount self
     if (vNode.type === 'element') {
-        vNode.onUnmount();
+        vNode.unmount();
     }
     // else if (vNode.type === 'text') {
     // }
     else if (vNode.type === 'builtin') {
-        vNode.onUnmount();
+        vNode.unmount();
     }
     else if (vNode.type === 'observable') {
-        vNode.onUnmount();
+        vNode.unmount();
     }
     else if (vNode.type === 'component') {
-        vNode.onUnmount();
+        vNode.unmount(true);
     }
-}
-function signalParentComponent(vNode, signal) {
-    let parent = vNode.parent;
-    while (parent) {
-        if (parent.type === 'component') {
-            break;
-        }
-        else if (parent.type === 'element') {
-            return;
-        }
-        parent = parent.parent;
-    }
-    if (!parent)
-        return;
-    if (signal === 'mount') {
-        parent.mountedChildrenCount++;
-        queueMicrotask(() => {
-            if (parent.mountedChildrenCount > 0 && !parent.isMounted) {
-                parent.onMount();
-                signalParentComponent(parent, 'mount');
-            }
-        });
-    }
-    else if (signal === 'unmount') {
-        parent.mountedChildrenCount--;
-        queueMicrotask(() => {
-            if (parent.mountedChildrenCount === 0 && parent.isMounted) {
-                parent.onUnmount();
-                signalParentComponent(parent, 'unmount');
-            }
-        });
-    }
-}
-function findParentComponent(vNode) {
-    let parent = vNode.parent;
-    while (parent) {
-        if (parent.type === 'component') {
-            return parent;
-        }
-        else if (parent.type === 'element') {
-            return null;
-        }
-        parent = parent.parent;
-    }
-    return null;
 }
 
 export { defineRef, mountNodes, onMount, onUnmount, setCurrentFunctionalComponent, unmountNodes };

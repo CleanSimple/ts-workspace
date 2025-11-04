@@ -2,25 +2,49 @@ import type { MaybePromise } from '@cleansimple/utils-js';
 
 type Action = () => MaybePromise<void>;
 let _callbacks = new Array<Action>();
-let _queued = false;
+let _scheduled = false;
 
-function runNextTickCallbacks() {
+export function nextTick(callback: Action) {
+    _callbacks.push(callback);
+    if (_scheduled) return;
+    _scheduled = true;
+    queueMicrotask(flushNextTickCallbacks);
+}
+
+function flushNextTickCallbacks() {
     const callbacks = _callbacks;
     _callbacks = [];
-    _queued = false;
+    _scheduled = false;
     const n = callbacks.length;
     for (let i = 0; i < n; i++) {
         runAsync(callbacks[i]);
     }
 }
 
-export function nextTick(callback: Action) {
-    _callbacks.push(callback);
-    if (_queued) {
-        return;
+export interface IHasUpdates {
+    flushUpdates: () => void;
+}
+
+export class DeferredUpdatesScheduler {
+    private static _items: IHasUpdates[] = [];
+    private static _scheduled: boolean = false;
+
+    public static schedule(item: IHasUpdates) {
+        DeferredUpdatesScheduler._items.push(item);
+        if (DeferredUpdatesScheduler._scheduled) return;
+        DeferredUpdatesScheduler._scheduled = true;
+        queueMicrotask(DeferredUpdatesScheduler.flush);
     }
-    _queued = true;
-    queueMicrotask(runNextTickCallbacks);
+
+    public static flush(this: void) {
+        const items = DeferredUpdatesScheduler._items;
+        DeferredUpdatesScheduler._items = [];
+        DeferredUpdatesScheduler._scheduled = false;
+        const n = items.length;
+        for (let i = 0; i < n; ++i) {
+            items[i].flushUpdates();
+        }
+    }
 }
 
 export function runAsync(action: Action) {

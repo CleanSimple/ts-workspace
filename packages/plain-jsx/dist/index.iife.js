@@ -9,6 +9,44 @@ var PlainJSX = (function (exports, utilsJs) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
+    const XMLNamespaces = {
+        'svg': 'http://www.w3.org/2000/svg',
+        'xhtml': 'http://www.w3.org/1999/xhtml',
+    };
+    function splitNamespace(tagNS) {
+        const [ns, tag] = tagNS.split(':', 2);
+        if (ns in XMLNamespaces) {
+            return [XMLNamespaces[ns], tag];
+        }
+        else {
+            throw new Error('Invalid namespace');
+        }
+    }
+    function isReadonlyProp(obj, key) {
+        let currentObj = obj;
+        while (currentObj !== null) {
+            const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+            if (desc) {
+                return desc.writable === false || desc.set === undefined;
+            }
+            currentObj = Object.getPrototypeOf(currentObj);
+        }
+        return true;
+    }
+    function findParentComponent(vNode) {
+        let parent = vNode.parent;
+        while (parent) {
+            if (parent.type === 'component') {
+                break;
+            }
+            else if (parent.type === 'element') {
+                return;
+            }
+            parent = parent.parent;
+        }
+        return parent;
+    }
+
     let _CurrentFunctionalComponent = null;
     function setCurrentFunctionalComponent(component) {
         _CurrentFunctionalComponent = component;
@@ -70,8 +108,6 @@ var PlainJSX = (function (exports, utilsJs) {
     function mountNodes(nodes) {
         const customNodes = nodes;
         const n = customNodes.length;
-        let parent = undefined;
-        let mountedCount = 0;
         for (let i = 0; i < n; i++) {
             const node = customNodes[i];
             // ignore reactive node placeholders
@@ -79,29 +115,12 @@ var PlainJSX = (function (exports, utilsJs) {
                 continue;
             }
             mountVNode(node.__vNode);
-            mountedCount++;
-            // this always gets called on children of the same parent, so it's safe to use the parent of the first node
-            if (parent === undefined) {
-                parent = findParentComponent(node.__vNode);
-            }
-        }
-        if (parent) {
-            parent.mountedChildrenCount += mountedCount;
-            // we want to defer parent mount/unmount until all children have settled
-            // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
-            queueMicrotask(() => {
-                if (parent.mountedChildrenCount > 0 && !parent.isMounted) {
-                    parent.onMount();
-                    signalParentComponent(parent, 'mount');
-                }
-            });
+            findParentComponent(node.__vNode)?.mount();
         }
     }
     function unmountNodes(nodes) {
         const customNodes = nodes;
         const n = customNodes.length;
-        let parent = undefined;
-        let unmountedCount = 0;
         for (let i = 0; i < n; i++) {
             const node = customNodes[i];
             // ignore reactive node placeholders
@@ -109,22 +128,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 continue;
             }
             unmountVNode(node.__vNode);
-            unmountedCount++;
-            // this always gets called on children of the same parent, so it's safe to use the parent of the first node
-            if (parent === undefined) {
-                parent = findParentComponent(node.__vNode);
-            }
-        }
-        if (parent) {
-            parent.mountedChildrenCount -= unmountedCount;
-            // we want to defer parent mount/unmount until all children have settled
-            // we are not aware that there are other reactive nodes under the same parent that will mount/unmount in the same tick
-            queueMicrotask(() => {
-                if (parent.mountedChildrenCount === 0 && parent.isMounted) {
-                    parent.onUnmount();
-                    signalParentComponent(parent, 'unmount');
-                }
-            });
+            findParentComponent(node.__vNode)?.unmount(false);
         }
     }
     function mountVNode(vNode, parentComponent = null) {
@@ -146,28 +150,10 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         // mount self
         if (vNode.type === 'element') {
-            if (parentComponent) {
-                parentComponent.mountedChildrenCount++;
-            }
+            parentComponent?.mount();
         }
         else if (vNode.type === 'text') {
-            if (parentComponent) {
-                parentComponent.mountedChildrenCount++;
-            }
-        }
-        // else if (vNode.type === 'builtin') {
-        //     vNode.onMount();
-        // }
-        // else if (vNode.type === 'observable') {
-        //     vNode.onMount();
-        // }
-        else if (vNode.type === 'component') {
-            if (vNode.mountedChildrenCount > 0 && !vNode.isMounted) {
-                vNode.onMount();
-                if (parentComponent) {
-                    parentComponent.mountedChildrenCount++;
-                }
-            }
+            parentComponent?.mount();
         }
     }
     function unmountVNode(vNode) {
@@ -179,64 +165,19 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         // unmount self
         if (vNode.type === 'element') {
-            vNode.onUnmount();
+            vNode.unmount();
         }
         // else if (vNode.type === 'text') {
         // }
         else if (vNode.type === 'builtin') {
-            vNode.onUnmount();
+            vNode.unmount();
         }
         else if (vNode.type === 'observable') {
-            vNode.onUnmount();
+            vNode.unmount();
         }
         else if (vNode.type === 'component') {
-            vNode.onUnmount();
+            vNode.unmount(true);
         }
-    }
-    function signalParentComponent(vNode, signal) {
-        let parent = vNode.parent;
-        while (parent) {
-            if (parent.type === 'component') {
-                break;
-            }
-            else if (parent.type === 'element') {
-                return;
-            }
-            parent = parent.parent;
-        }
-        if (!parent)
-            return;
-        if (signal === 'mount') {
-            parent.mountedChildrenCount++;
-            queueMicrotask(() => {
-                if (parent.mountedChildrenCount > 0 && !parent.isMounted) {
-                    parent.onMount();
-                    signalParentComponent(parent, 'mount');
-                }
-            });
-        }
-        else if (signal === 'unmount') {
-            parent.mountedChildrenCount--;
-            queueMicrotask(() => {
-                if (parent.mountedChildrenCount === 0 && parent.isMounted) {
-                    parent.onUnmount();
-                    signalParentComponent(parent, 'unmount');
-                }
-            });
-        }
-    }
-    function findParentComponent(vNode) {
-        let parent = vNode.parent;
-        while (parent) {
-            if (parent.type === 'component') {
-                return parent;
-            }
-            else if (parent.type === 'element') {
-                return null;
-            }
-            parent = parent.parent;
-        }
-        return null;
     }
 
     function getLIS(arr) {
@@ -271,6 +212,56 @@ var PlainJSX = (function (exports, utilsJs) {
         return lis;
     }
 
+    let _callbacks = new Array();
+    let _scheduled = false;
+    function nextTick(callback) {
+        _callbacks.push(callback);
+        if (_scheduled)
+            return;
+        _scheduled = true;
+        queueMicrotask(flushNextTickCallbacks);
+    }
+    function flushNextTickCallbacks() {
+        const callbacks = _callbacks;
+        _callbacks = [];
+        _scheduled = false;
+        const n = callbacks.length;
+        for (let i = 0; i < n; i++) {
+            runAsync(callbacks[i]);
+        }
+    }
+    class DeferredUpdatesScheduler {
+        static _items = [];
+        static _scheduled = false;
+        static schedule(item) {
+            DeferredUpdatesScheduler._items.push(item);
+            if (DeferredUpdatesScheduler._scheduled)
+                return;
+            DeferredUpdatesScheduler._scheduled = true;
+            queueMicrotask(DeferredUpdatesScheduler.flush);
+        }
+        static flush() {
+            const items = DeferredUpdatesScheduler._items;
+            DeferredUpdatesScheduler._items = [];
+            DeferredUpdatesScheduler._scheduled = false;
+            const n = items.length;
+            for (let i = 0; i < n; ++i) {
+                items[i].flushUpdates();
+            }
+        }
+    }
+    function runAsync(action) {
+        try {
+            const result = action();
+            if (result instanceof Promise) {
+                result.catch(err => console.error(err));
+            }
+        }
+        catch (err) {
+            console.error(err);
+        }
+    }
+
     /* helpers */
     function val(initialValue) {
         return new ValImpl(initialValue);
@@ -281,26 +272,6 @@ var PlainJSX = (function (exports, utilsJs) {
     function ref() {
         return new ValImpl(null);
     }
-    class NotificationScheduler {
-        static _notificationSources = [];
-        static _scheduled = false;
-        static schedule(notificationSource) {
-            this._notificationSources.push(notificationSource);
-            if (!this._scheduled) {
-                this._scheduled = true;
-                queueMicrotask(this.flush);
-            }
-        }
-        static flush() {
-            const notificationSources = NotificationScheduler._notificationSources;
-            NotificationScheduler._notificationSources = [];
-            NotificationScheduler._scheduled = false;
-            const n = notificationSources.length;
-            for (let i = 0; i < n; ++i) {
-                notificationSources[i].notify();
-            }
-        }
-    }
     /**
      * Base class for observables
      */
@@ -309,7 +280,7 @@ var PlainJSX = (function (exports, utilsJs) {
         dependents = [];
         _nextSubscriptionId = 0;
         _prevValue = null;
-        _pendingNotify = false;
+        _pendingUpdates = false;
         registerDependant(dependant) {
             this.dependents.push(new WeakRef(dependant));
         }
@@ -325,21 +296,21 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             this.dependents.length = write;
         }
-        queueNotify() {
-            if (this._pendingNotify) {
+        invalidate() {
+            if (this._pendingUpdates) {
                 return;
             }
-            this._pendingNotify = true;
+            this._pendingUpdates = true;
             this._prevValue = this.value;
-            NotificationScheduler.schedule(this);
+            DeferredUpdatesScheduler.schedule(this);
         }
-        notify() {
-            if (!this._pendingNotify) {
+        flushUpdates() {
+            if (!this._pendingUpdates) {
                 return;
             }
             const prevValue = this._prevValue;
             const value = this.value;
-            this._pendingNotify = false;
+            this._pendingUpdates = false;
             this._prevValue = null;
             if (value === prevValue) {
                 return;
@@ -374,7 +345,7 @@ var PlainJSX = (function (exports, utilsJs) {
             return this._value;
         }
         set value(newValue) {
-            this.queueNotify();
+            this.invalidate();
             this._value = newValue;
             this.notifyDependents();
         }
@@ -393,7 +364,7 @@ var PlainJSX = (function (exports, utilsJs) {
             observable.registerDependant(this);
         }
         onDependencyUpdated() {
-            this.queueNotify();
+            this.invalidate();
             this._shouldReCompute = true;
             this.notifyDependents();
         }
@@ -421,7 +392,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         onDependencyUpdated() {
-            this.queueNotify();
+            this.invalidate();
             this._shouldReCompute = true;
             this.notifyDependents();
         }
@@ -432,31 +403,6 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             return this._value;
         }
-    }
-
-    const XMLNamespaces = {
-        'svg': 'http://www.w3.org/2000/svg',
-        'xhtml': 'http://www.w3.org/1999/xhtml',
-    };
-    function splitNamespace(tagNS) {
-        const [ns, tag] = tagNS.split(':', 2);
-        if (ns in XMLNamespaces) {
-            return [XMLNamespaces[ns], tag];
-        }
-        else {
-            throw new Error('Invalid namespace');
-        }
-    }
-    function isReadonlyProp(obj, key) {
-        let currentObj = obj;
-        while (currentObj !== null) {
-            const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-            if (desc) {
-                return desc.writable === false || desc.set === undefined;
-            }
-            currentObj = Object.getPrototypeOf(currentObj);
-        }
-        return true;
     }
 
     const _Fragment = document.createDocumentFragment();
@@ -702,37 +648,6 @@ var PlainJSX = (function (exports, utilsJs) {
         return childNodes;
     }
 
-    let _callbacks = new Array();
-    let _queued = false;
-    function runNextTickCallbacks() {
-        const callbacks = _callbacks;
-        _callbacks = [];
-        _queued = false;
-        const n = callbacks.length;
-        for (let i = 0; i < n; i++) {
-            runAsync(callbacks[i]);
-        }
-    }
-    function nextTick(callback) {
-        _callbacks.push(callback);
-        if (_queued) {
-            return;
-        }
-        _queued = true;
-        queueMicrotask(runNextTickCallbacks);
-    }
-    function runAsync(action) {
-        try {
-            const result = action();
-            if (result instanceof Promise) {
-                result.catch(err => console.error(err));
-            }
-        }
-        catch (err) {
-            console.error(err);
-        }
-    }
-
     const Fragment = 'Fragment';
     function render(root, jsxNode) {
         const children = resolveReactiveNodes(renderJSX(jsxNode, null));
@@ -896,6 +811,7 @@ var PlainJSX = (function (exports, utilsJs) {
         firstChild = null;
         lastChild = null;
         refVal = null;
+        _pendingUpdates = false;
         constructor(props, parent) {
             this.type = 'component';
             this.parent = parent;
@@ -903,7 +819,39 @@ var PlainJSX = (function (exports, utilsJs) {
                 this.refVal = props.ref;
             }
         }
-        onMount() {
+        mount() {
+            this.mountedChildrenCount++;
+            if (!this._pendingUpdates) {
+                this._pendingUpdates = true;
+                DeferredUpdatesScheduler.schedule(this);
+            }
+        }
+        unmount(force) {
+            if (force) {
+                if (this.isMounted) {
+                    this.unmountInternal();
+                }
+                this.mountedChildrenCount = 0;
+                return;
+            }
+            this.mountedChildrenCount--;
+            if (!this._pendingUpdates) {
+                this._pendingUpdates = true;
+                DeferredUpdatesScheduler.schedule(this);
+            }
+        }
+        flushUpdates() {
+            this._pendingUpdates = false;
+            if (this.mountedChildrenCount > 0 && !this.isMounted) {
+                this.mountInternal();
+                findParentComponent(this)?.mount();
+            }
+            else if (this.mountedChildrenCount === 0 && this.isMounted) {
+                this.unmountInternal();
+                findParentComponent(this)?.unmount(false);
+            }
+        }
+        mountInternal() {
             if (this.refVal) {
                 this.refVal.value = this.ref;
             }
@@ -912,14 +860,13 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             this.isMounted = true;
         }
-        onUnmount() {
+        unmountInternal() {
             if (this.onUnmountCallback) {
                 runAsync(this.onUnmountCallback);
             }
             if (this.refVal) {
                 this.refVal.value = null;
             }
-            this.mountedChildrenCount = 0; // for when forcing an unmount
             this.isMounted = false;
         }
     }
@@ -936,7 +883,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this.parent = parent;
             this.ref = ref;
         }
-        onUnmount() {
+        unmount() {
             if (this.subscriptions) {
                 for (const subscription of this.subscriptions) {
                     subscription.unsubscribe();
@@ -974,7 +921,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 this.ref.update(this._renderedChildren);
             }
         }
-        onUnmount() {
+        unmount() {
             if (this.subscription) {
                 this.subscription.unsubscribe();
                 this.subscription = null;
@@ -1001,12 +948,13 @@ var PlainJSX = (function (exports, utilsJs) {
                 throw new Error('The <For> component must have exactly one child — a function that maps each item.');
             }
             this.mapFn = typedProps.children;
-            if (Array.isArray(typedProps.of)) {
-                this.render(typedProps.of);
+            const of = typedProps.of;
+            if (Array.isArray(of)) {
+                this.render(of);
             }
-            else if (typedProps.of instanceof ObservableImpl) {
-                this.render(typedProps.of.value);
-                this.subscription = typedProps.of.subscribe((value) => this.render(value));
+            else if (of instanceof ObservableImpl) {
+                this.render(of.value);
+                this.subscription = of.subscribe((value) => this.render(value));
             }
             else {
                 throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
@@ -1050,7 +998,7 @@ var PlainJSX = (function (exports, utilsJs) {
             [this.frontBuffer, this.backBuffer] = [this.backBuffer, this.frontBuffer];
             this.backBuffer.clear();
         }
-        onUnmount() {
+        unmount() {
             if (this.subscription) {
                 this.subscription.unsubscribe();
                 this.subscription = null;
@@ -1065,27 +1013,43 @@ var PlainJSX = (function (exports, utilsJs) {
         firstChild = null;
         lastChild = null;
         childrenOrFn;
+        keyed;
+        condition;
         subscription = null;
+        shown = false;
         constructor(ref, props, parent) {
             this.type = 'builtin';
             this.parent = parent;
             this.ref = ref;
             const showProps = props;
             const when = showProps.when;
+            this.condition = showProps.is;
+            this.keyed = showProps.keyed ?? false;
             this.childrenOrFn = showProps.children;
-            if (typeof when === 'boolean') {
-                this.render(when);
-            }
-            else if (when instanceof ObservableImpl) {
+            if (when instanceof ObservableImpl) {
                 this.render(when.value);
                 this.subscription = when.subscribe((value) => this.render(value));
             }
             else {
-                throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");
+                this.render(when);
             }
         }
         render(value) {
-            if (value) {
+            let show;
+            if (this.condition === undefined) {
+                show = Boolean(value);
+            }
+            else if (typeof this.condition === 'function') {
+                show = this.condition(value);
+            }
+            else {
+                show = value === this.condition;
+            }
+            if (!this.keyed && this.shown === show) {
+                return;
+            }
+            this.shown = show;
+            if (show) {
                 this.firstChild = this.lastChild = null;
                 const children = renderJSX(typeof this.childrenOrFn === 'function'
                     ? this.childrenOrFn()
@@ -1097,7 +1061,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 this.ref.update(null);
             }
         }
-        onUnmount() {
+        unmount() {
             if (this.subscription) {
                 this.subscription.unsubscribe();
                 this.subscription = null;

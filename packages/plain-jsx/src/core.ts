@@ -2,6 +2,7 @@ import type { MaybePromise } from '@cleansimple/utils-js';
 import type { ForCallbackProps, ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { Observable, Subscription, Val } from './observable';
+import type { IHasUpdates } from './scheduling';
 import type {
     DOMProps,
     FunctionalComponent,
@@ -24,8 +25,8 @@ import { patchNode, setProps } from './dom';
 import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
 import { ObservableImpl, val, ValImpl } from './observable';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
-import { runAsync } from './scheduling';
-import { splitNamespace } from './utils';
+import { DeferredUpdatesScheduler, runAsync } from './scheduling';
+import { findParentComponent, splitNamespace } from './utils';
 
 export const Fragment = 'Fragment';
 
@@ -213,7 +214,7 @@ class VNodeTextImpl implements VNodeText {
     }
 }
 
-class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
+class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpdates {
     public readonly type: 'component';
     public ref: object | null = null;
     public isMounted: boolean = false;
@@ -226,6 +227,7 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
     public lastChild: VNode | null = null;
 
     private readonly refVal: Val<object | null> | null = null;
+    private _pendingUpdates: boolean = false;
 
     public constructor(props: PropsType, parent: VNode | null) {
         this.type = 'component';
@@ -236,7 +238,43 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
         }
     }
 
-    public onMount(): void {
+    public mount(): void {
+        this.mountedChildrenCount++;
+        if (!this._pendingUpdates) {
+            this._pendingUpdates = true;
+            DeferredUpdatesScheduler.schedule(this);
+        }
+    }
+
+    public unmount(force: boolean): void {
+        if (force) {
+            if (this.isMounted) {
+                this.unmountInternal();
+            }
+            this.mountedChildrenCount = 0;
+            return;
+        }
+        this.mountedChildrenCount--;
+        if (!this._pendingUpdates) {
+            this._pendingUpdates = true;
+            DeferredUpdatesScheduler.schedule(this);
+        }
+    }
+
+    public flushUpdates() {
+        this._pendingUpdates = false;
+
+        if (this.mountedChildrenCount > 0 && !this.isMounted) {
+            this.mountInternal();
+            findParentComponent(this)?.mount();
+        }
+        else if (this.mountedChildrenCount === 0 && this.isMounted) {
+            this.unmountInternal();
+            findParentComponent(this)?.unmount(false);
+        }
+    }
+
+    private mountInternal(): void {
         if (this.refVal) {
             this.refVal.value = this.ref;
         }
@@ -248,7 +286,7 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
         this.isMounted = true;
     }
 
-    public onUnmount(): void {
+    private unmountInternal(): void {
         if (this.onUnmountCallback) {
             runAsync(this.onUnmountCallback);
         }
@@ -257,7 +295,6 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
             this.refVal.value = null;
         }
 
-        this.mountedChildrenCount = 0; // for when forcing an unmount
         this.isMounted = false;
     }
 }
@@ -278,7 +315,7 @@ class VNodeElementImpl implements VNodeElement {
         this.ref = ref;
     }
 
-    public onUnmount(): void {
+    public unmount(): void {
         if (this.subscriptions) {
             for (const subscription of this.subscriptions) {
                 subscription.unsubscribe();
@@ -324,7 +361,7 @@ class VNodeObservableImpl implements VNodeObservable {
         }
     }
 
-    public onUnmount(): void {
+    public unmount(): void {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null;
@@ -416,7 +453,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         this.backBuffer.clear();
     }
 
-    public onUnmount() {
+    public unmount() {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null;
@@ -491,7 +528,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         }
     }
 
-    public onUnmount() {
+    public unmount() {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null;

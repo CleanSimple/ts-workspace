@@ -22,27 +22,27 @@ export interface VNodeElement extends VNodeBase {
     type: 'element';
     ref: Element;
     subscriptions: Subscription[] | null;
-    onUnmount: Action;
+    unmount: Action;
 }
 export interface VNodeFunctionalComponent extends VNodeBase {
     type: 'component';
     ref: object | null;
     isMounted: boolean;
     mountedChildrenCount: number;
-    onMount: Action;
-    onUnmount: Action;
+    mount: Action;
+    unmount: (force: boolean) => void;
     onMountCallback: (() => MaybePromise<void>) | null;
     onUnmountCallback: (() => MaybePromise<void>) | null;
 }
 export interface VNodeBuiltinComponent extends VNodeBase {
     type: 'builtin';
     ref: ReactiveNode;
-    onUnmount: Action;
+    unmount: Action;
 }
 export interface VNodeObservable extends VNodeBase {
     type: 'observable';
     ref: ReactiveNode;
-    onUnmount: Action;
+    unmount: Action;
 }
 export type VNode = VNodeText | VNodeElement | VNodeFunctionalComponent | VNodeBuiltinComponent | VNodeObservable;
 export type RNode = ChildNode | ReactiveNode;

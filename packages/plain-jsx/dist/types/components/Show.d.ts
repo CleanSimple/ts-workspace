@@ -1,7 +1,13 @@
 import type { Observable } from '../observable';
 import type { JSXNode } from '../types';
-export interface ShowProps {
-    when: boolean | Observable<boolean>;
+export interface ShowProps<T> {
+    when: T | Observable<T>;
+    is?: T | ((value: T) => boolean);
+    /**
+     * If `true`, the children will be re-rendered when the value changes.
+     * @default false
+     */
+    keyed?: boolean;
     children: JSXNode | (() => JSXNode);
 }
-export declare function Show(_props: ShowProps): JSXNode;
+export declare function Show<T>(_props: ShowProps<T>): JSXNode;

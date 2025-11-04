@@ -4,8 +4,8 @@ import { patchNode, setProps } from './dom.esm.js';
 import { mountNodes, defineRef, setCurrentFunctionalComponent } from './lifecycle.esm.js';
 import { ObservableImpl, val, ValImpl } from './observable.esm.js';
 import { resolveReactiveNodes, ReactiveNode } from './reactive-node.esm.js';
-import { runAsync } from './scheduling.esm.js';
-import { splitNamespace } from './utils.esm.js';
+import { DeferredUpdatesScheduler, runAsync } from './scheduling.esm.js';
+import { splitNamespace, findParentComponent } from './utils.esm.js';
 
 const Fragment = 'Fragment';
 function jsx(type, props) {
@@ -173,6 +173,7 @@ class VNodeFunctionalComponentImpl {
     firstChild = null;
     lastChild = null;
     refVal = null;
+    _pendingUpdates = false;
     constructor(props, parent) {
         this.type = 'component';
         this.parent = parent;
@@ -180,7 +181,39 @@ class VNodeFunctionalComponentImpl {
             this.refVal = props.ref;
         }
     }
-    onMount() {
+    mount() {
+        this.mountedChildrenCount++;
+        if (!this._pendingUpdates) {
+            this._pendingUpdates = true;
+            DeferredUpdatesScheduler.schedule(this);
+        }
+    }
+    unmount(force) {
+        if (force) {
+            if (this.isMounted) {
+                this.unmountInternal();
+            }
+            this.mountedChildrenCount = 0;
+            return;
+        }
+        this.mountedChildrenCount--;
+        if (!this._pendingUpdates) {
+            this._pendingUpdates = true;
+            DeferredUpdatesScheduler.schedule(this);
+        }
+    }
+    flushUpdates() {
+        this._pendingUpdates = false;
+        if (this.mountedChildrenCount > 0 && !this.isMounted) {
+            this.mountInternal();
+            findParentComponent(this)?.mount();
+        }
+        else if (this.mountedChildrenCount === 0 && this.isMounted) {
+            this.unmountInternal();
+            findParentComponent(this)?.unmount(false);
+        }
+    }
+    mountInternal() {
         if (this.refVal) {
             this.refVal.value = this.ref;
         }
@@ -189,14 +222,13 @@ class VNodeFunctionalComponentImpl {
         }
         this.isMounted = true;
     }
-    onUnmount() {
+    unmountInternal() {
         if (this.onUnmountCallback) {
             runAsync(this.onUnmountCallback);
         }
         if (this.refVal) {
             this.refVal.value = null;
         }
-        this.mountedChildrenCount = 0; // for when forcing an unmount
         this.isMounted = false;
     }
 }
@@ -213,7 +245,7 @@ class VNodeElementImpl {
         this.parent = parent;
         this.ref = ref;
     }
-    onUnmount() {
+    unmount() {
         if (this.subscriptions) {
             for (const subscription of this.subscriptions) {
                 subscription.unsubscribe();
@@ -251,7 +283,7 @@ class VNodeObservableImpl {
             this.ref.update(this._renderedChildren);
         }
     }
-    onUnmount() {
+    unmount() {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null;
@@ -278,12 +310,13 @@ class VNodeFor {
             throw new Error('The <For> component must have exactly one child — a function that maps each item.');
         }
         this.mapFn = typedProps.children;
-        if (Array.isArray(typedProps.of)) {
-            this.render(typedProps.of);
+        const of = typedProps.of;
+        if (Array.isArray(of)) {
+            this.render(of);
         }
-        else if (typedProps.of instanceof ObservableImpl) {
-            this.render(typedProps.of.value);
-            this.subscription = typedProps.of.subscribe((value) => this.render(value));
+        else if (of instanceof ObservableImpl) {
+            this.render(of.value);
+            this.subscription = of.subscribe((value) => this.render(value));
         }
         else {
             throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
@@ -327,7 +360,7 @@ class VNodeFor {
         [this.frontBuffer, this.backBuffer] = [this.backBuffer, this.frontBuffer];
         this.backBuffer.clear();
     }
-    onUnmount() {
+    unmount() {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null;
@@ -342,27 +375,43 @@ class VNodeShow {
     firstChild = null;
     lastChild = null;
     childrenOrFn;
+    keyed;
+    condition;
     subscription = null;
+    shown = false;
     constructor(ref, props, parent) {
         this.type = 'builtin';
         this.parent = parent;
         this.ref = ref;
         const showProps = props;
         const when = showProps.when;
+        this.condition = showProps.is;
+        this.keyed = showProps.keyed ?? false;
         this.childrenOrFn = showProps.children;
-        if (typeof when === 'boolean') {
-            this.render(when);
-        }
-        else if (when instanceof ObservableImpl) {
+        if (when instanceof ObservableImpl) {
             this.render(when.value);
             this.subscription = when.subscribe((value) => this.render(value));
         }
         else {
-            throw new Error("The 'when' prop on <Show> is required and must be a boolean or an observable boolean.");
+            this.render(when);
         }
     }
     render(value) {
-        if (value) {
+        let show;
+        if (this.condition === undefined) {
+            show = Boolean(value);
+        }
+        else if (typeof this.condition === 'function') {
+            show = this.condition(value);
+        }
+        else {
+            show = value === this.condition;
+        }
+        if (!this.keyed && this.shown === show) {
+            return;
+        }
+        this.shown = show;
+        if (show) {
             this.firstChild = this.lastChild = null;
             const children = renderJSX(typeof this.childrenOrFn === 'function'
                 ? this.childrenOrFn()
@@ -374,7 +423,7 @@ class VNodeShow {
             this.ref.update(null);
         }
     }
-    onUnmount() {
+    unmount() {
         if (this.subscription) {
             this.subscription.unsubscribe();
             this.subscription = null;

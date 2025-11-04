@@ -6,28 +6,20 @@ import { Fragments } from './components/Fragments';
 import { Input } from './components/Input';
 import { LifecycleComponent } from './components/LifecycleComponent';
 import { ParentComponent } from './components/ParentComponent';
+import { Timer } from './components/Timer';
 import typescriptLogo from './typescript.svg';
 
 const App: FunctionalComponent = () => {
     const showDynamicComponent = val(false);
     const items1 = val([1, 2, 3]);
-    const items2 = val(['Test']);
+    const items2 = val(['Test1']);
     const counter = val<CounterRefType | null>(null);
     const switchValue = val(0);
+    const key = val(0);
 
     setInterval(() => {
         switchValue.value += 1;
     }, 1000);
-
-    function createTimer() {
-        const timer = val<string>('0');
-        const start = performance.now();
-
-        setInterval(() => {
-            timer.value = ((performance.now() - start) / 1000).toFixed(1);
-        }, 100);
-        return timer;
-    }
 
     function toggleDynamicCompetent() {
         showDynamicComponent.value = !showDynamicComponent.value;
@@ -35,7 +27,6 @@ const App: FunctionalComponent = () => {
 
     function addItem1() {
         items1.value = [...items1.value, items1.value.length + 1];
-        // items.value = [items.value.length + 1, ...items.value];
     }
 
     function removeItem1() {
@@ -44,7 +35,7 @@ const App: FunctionalComponent = () => {
     }
 
     function addItem2() {
-        items2.value = [...items2.value, 'Test'];
+        items2.value = [...items2.value, `Test${items2.value.length + 1}`];
     }
 
     function removeItem2() {
@@ -69,6 +60,7 @@ const App: FunctionalComponent = () => {
                     <Input type='text' focus={true} value='Input with focus' />
                     <Fragments />
                     <button on:click={toggleDynamicCompetent}>Toggle Dynamic Component</button>
+                    <button on:click={() => key.value += 1}>Increment Key</button>
                     <div style={{ display: 'flex', flexFlow: 'row', gap: '0.5rem' }}>
                         <button on:click={addItem1}>Add Dynamic Child 1</button>
                         <button on:click={addItem2}>Add Dynamic Child 2</button>
@@ -87,34 +79,49 @@ const App: FunctionalComponent = () => {
                     <span>Dynamic Components:</span>
                     <Show when={showDynamicComponent}>
                         <LifecycleComponent name='Component'>
-                            Component {createTimer()}
+                            Component <Timer />
                         </LifecycleComponent>
                     </Show>
                     <Show when={showDynamicComponent}>
                         {() => (
                             <LifecycleComponent name='Callback'>
-                                Callback {createTimer()}
+                                Callback <Timer />
                             </LifecycleComponent>
                         )}
                     </Show>
-                    {switchValue.computed((switchValue) => (
-                        <>
-                            {switchValue % 3 === 0 && 'yay!'}
-                            {switchValue % 3 === 1 && 'wow!'}
-                            {switchValue % 3 === 2 && 'lol!'}
-                        </>
-                    ))}
+
+                    <span>
+                        <Show when={key} keyed>
+                            Show Keyed <Timer />
+                        </Show>
+                    </span>
+                    <span>
+                        <Show when={switchValue} is={(value) => value % 3 === 0}>
+                            yay!
+                        </Show>
+                        <Show when={switchValue} is={(value) => value % 3 === 1}>
+                            wow!
+                        </Show>
+                        <Show when={switchValue} is={(value) => value % 3 === 2}>
+                            lol!
+                        </Show>
+                    </span>
+
                     <ParentComponent>
                         <ParentComponent>
                             <For of={items1}>
                                 {({ item, index }) => (
-                                    <span>{index}. Item: {item} {createTimer()}</span>
+                                    <span>
+                                        {index}. Item: {item} <Timer />
+                                    </span>
                                 )}
                             </For>
                             <>
                                 <For of={items2}>
                                     {({ item, index }) => (
-                                        <span>{index}. Item: {item} {createTimer()}</span>
+                                        <span>
+                                            {index}. Item: {item} <Timer />
+                                        </span>
                                     )}
                                 </For>
                             </>

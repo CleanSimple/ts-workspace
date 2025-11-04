@@ -1,5 +1,6 @@
 import type { Action } from '@cleansimple/utils-js';
 import type { FunctionalComponent } from '.';
+import type { IHasUpdates } from './scheduling';
 export interface Subscription {
     unsubscribe: Action;
 }
@@ -16,25 +17,22 @@ export type Ref<T> = Observable<T | null>;
 export declare function val<T>(initialValue: T): Val<T>;
 export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
 export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Ref<U>;
-interface INotificationSource {
-    notify: () => void;
-}
 interface IDependant {
     onDependencyUpdated: () => void;
 }
 /**
  * Base class for observables
  */
-export declare abstract class ObservableImpl<T> implements Observable<T>, INotificationSource {
+export declare abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
     private readonly subscriptions;
     private readonly dependents;
     private _nextSubscriptionId;
     private _prevValue;
-    private _pendingNotify;
+    private _pendingUpdates;
     registerDependant(dependant: IDependant): void;
     protected notifyDependents(): void;
-    protected queueNotify(): void;
-    notify(): void;
+    protected invalidate(): void;
+    flushUpdates(): void;
     abstract get value(): T;
     subscribe(observer: Observer<T>): Subscription;
     computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed>;

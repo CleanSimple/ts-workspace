@@ -1,5 +1,8 @@
 import type { Action } from '@cleansimple/utils-js';
 import type { FunctionalComponent } from '.';
+import type { IHasUpdates } from './scheduling';
+
+import { DeferredUpdatesScheduler } from './scheduling';
 
 /* types */
 export interface Subscription {
@@ -36,34 +39,6 @@ export function ref<
     return new ValImpl<U | null>(null);
 }
 
-/* implementation */
-interface INotificationSource {
-    notify: () => void;
-}
-
-class NotificationScheduler {
-    private static _notificationSources: INotificationSource[] = [];
-    private static _scheduled: boolean = false;
-
-    public static schedule(notificationSource: INotificationSource) {
-        this._notificationSources.push(notificationSource);
-        if (!this._scheduled) {
-            this._scheduled = true;
-            queueMicrotask(this.flush);
-        }
-    }
-
-    public static flush(this: void) {
-        const notificationSources = NotificationScheduler._notificationSources;
-        NotificationScheduler._notificationSources = [];
-        NotificationScheduler._scheduled = false;
-        const n = notificationSources.length;
-        for (let i = 0; i < n; ++i) {
-            notificationSources[i].notify();
-        }
-    }
-}
-
 interface IDependant {
     onDependencyUpdated: () => void;
 }
@@ -71,12 +46,12 @@ interface IDependant {
 /**
  * Base class for observables
  */
-export abstract class ObservableImpl<T> implements Observable<T>, INotificationSource {
+export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
     private readonly subscriptions = new Map<number, Observer<T>>();
     private readonly dependents: WeakRef<IDependant>[] = [];
     private _nextSubscriptionId = 0;
     private _prevValue: T | null = null;
-    private _pendingNotify = false;
+    private _pendingUpdates = false;
 
     public registerDependant(dependant: IDependant) {
         this.dependents.push(new WeakRef(dependant));
@@ -95,22 +70,22 @@ export abstract class ObservableImpl<T> implements Observable<T>, INotificationS
         this.dependents.length = write;
     }
 
-    protected queueNotify() {
-        if (this._pendingNotify) {
+    protected invalidate() {
+        if (this._pendingUpdates) {
             return;
         }
-        this._pendingNotify = true;
+        this._pendingUpdates = true;
         this._prevValue = this.value;
-        NotificationScheduler.schedule(this);
+        DeferredUpdatesScheduler.schedule(this);
     }
 
-    public notify() {
-        if (!this._pendingNotify) {
+    public flushUpdates() {
+        if (!this._pendingUpdates) {
             return;
         }
         const prevValue = this._prevValue;
         const value = this.value;
-        this._pendingNotify = false;
+        this._pendingUpdates = false;
         this._prevValue = null;
         if (value === prevValue) {
             return;
@@ -153,7 +128,7 @@ export class ValImpl<T> extends ObservableImpl<T> {
     }
 
     public set value(newValue) {
-        this.queueNotify();
+        this.invalidate();
         this._value = newValue;
         this.notifyDependents();
     }
@@ -176,7 +151,7 @@ class ComputedSingle<TVal, TComputed> extends ObservableImpl<TComputed> implemen
     }
 
     public onDependencyUpdated(): void {
-        this.queueNotify();
+        this.invalidate();
         this._shouldReCompute = true;
         this.notifyDependents();
     }
@@ -215,7 +190,7 @@ class Computed<T extends readonly unknown[], R> extends ObservableImpl<R> implem
     }
 
     public onDependencyUpdated() {
-        this.queueNotify();
+        this.invalidate();
         this._shouldReCompute = true;
         this.notifyDependents();
     }

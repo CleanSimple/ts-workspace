@@ -1,3 +1,5 @@
+import { DeferredUpdatesScheduler } from './scheduling.esm.js';
+
 /* helpers */
 function val(initialValue) {
     return new ValImpl(initialValue);
@@ -8,26 +10,6 @@ function computed(observables, compute) {
 function ref() {
     return new ValImpl(null);
 }
-class NotificationScheduler {
-    static _notificationSources = [];
-    static _scheduled = false;
-    static schedule(notificationSource) {
-        this._notificationSources.push(notificationSource);
-        if (!this._scheduled) {
-            this._scheduled = true;
-            queueMicrotask(this.flush);
-        }
-    }
-    static flush() {
-        const notificationSources = NotificationScheduler._notificationSources;
-        NotificationScheduler._notificationSources = [];
-        NotificationScheduler._scheduled = false;
-        const n = notificationSources.length;
-        for (let i = 0; i < n; ++i) {
-            notificationSources[i].notify();
-        }
-    }
-}
 /**
  * Base class for observables
  */
@@ -36,7 +18,7 @@ class ObservableImpl {
     dependents = [];
     _nextSubscriptionId = 0;
     _prevValue = null;
-    _pendingNotify = false;
+    _pendingUpdates = false;
     registerDependant(dependant) {
         this.dependents.push(new WeakRef(dependant));
     }
@@ -52,21 +34,21 @@ class ObservableImpl {
         }
         this.dependents.length = write;
     }
-    queueNotify() {
-        if (this._pendingNotify) {
+    invalidate() {
+        if (this._pendingUpdates) {
             return;
         }
-        this._pendingNotify = true;
+        this._pendingUpdates = true;
         this._prevValue = this.value;
-        NotificationScheduler.schedule(this);
+        DeferredUpdatesScheduler.schedule(this);
     }
-    notify() {
-        if (!this._pendingNotify) {
+    flushUpdates() {
+        if (!this._pendingUpdates) {
             return;
         }
         const prevValue = this._prevValue;
         const value = this.value;
-        this._pendingNotify = false;
+        this._pendingUpdates = false;
         this._prevValue = null;
         if (value === prevValue) {
             return;
@@ -101,7 +83,7 @@ class ValImpl extends ObservableImpl {
         return this._value;
     }
     set value(newValue) {
-        this.queueNotify();
+        this.invalidate();
         this._value = newValue;
         this.notifyDependents();
     }
@@ -120,7 +102,7 @@ class ComputedSingle extends ObservableImpl {
         observable.registerDependant(this);
     }
     onDependencyUpdated() {
-        this.queueNotify();
+        this.invalidate();
         this._shouldReCompute = true;
         this.notifyDependents();
     }
@@ -148,7 +130,7 @@ class Computed extends ObservableImpl {
         }
     }
     onDependencyUpdated() {
-        this.queueNotify();
+        this.invalidate();
         this._shouldReCompute = true;
         this.notifyDependents();
     }
