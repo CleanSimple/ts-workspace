@@ -9,6 +9,7 @@ import {
     subscribe,
     val,
     With,
+    WithMany,
 } from '@cleansimple/plain-jsx';
 import { Counter, type CounterRefType } from './components/Counter';
 import { Fragments } from './components/Fragments';
@@ -110,20 +111,30 @@ const App: FunctionalComponent = () => {
                         </span>
                     </Show>
 
-                    <With value={[switchValue, key]}>
-                        {(value, key) => {
+                    <With value={switchValue}>
+                        {(value) => {
                             switch (value % 4) {
                                 case 0:
-                                    return <span>yay! {key}</span>;
+                                    return <span>yay!</span>;
                                 case 1:
-                                    return <span>wow! {key}</span>;
+                                    return <span>wow!</span>;
                                 case 2:
-                                    return <span>lol! {key}</span>;
+                                    return <span>lol!</span>;
                                 default:
-                                    return <span>hmm! {key}</span>;
+                                    return <span>hmm!</span>;
                             }
                         }}
                     </With>
+
+                    <WithMany values={[showDynamicComponent, key]}>
+                        {(showDynamicComponent, key) => (
+                            showDynamicComponent && key && (
+                                <span>
+                                    showDynamicComponent: {String(showDynamicComponent)}, key: {key}
+                                </span>
+                            )
+                        )}
+                    </WithMany>
 
                     <ParentComponent>
                         <ParentComponent>
