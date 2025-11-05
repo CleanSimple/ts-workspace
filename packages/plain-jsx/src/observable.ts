@@ -24,6 +24,14 @@ export function val<T>(initialValue: T): Val<T> {
     return new ValImpl<T>(initialValue);
 }
 
+export function ref<
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    T extends Element | FunctionalComponent<never, any>,
+    U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never,
+>(): Ref<U> {
+    return new ValImpl<U | null>(null);
+}
+
 export function computed<T extends readonly unknown[], R>(
     observables: ObservablesOf<T>,
     compute: (...values: T) => R,
@@ -31,12 +39,11 @@ export function computed<T extends readonly unknown[], R>(
     return new Computed(observables, compute);
 }
 
-export function ref<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    T extends Element | FunctionalComponent<never, any>,
-    U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never,
->(): Ref<U> {
-    return new ValImpl<U | null>(null);
+export function subscribe<T extends readonly unknown[]>(
+    observables: ObservablesOf<T>,
+    observer: (...values: T) => void,
+): Subscription {
+    return new MultiObservableSubscription(observables, observer);
 }
 
 interface IDependant {
@@ -47,42 +54,47 @@ interface IDependant {
  * Base class for observables
  */
 export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
-    private readonly subscriptions = new Map<number, Observer<T>>();
-    private readonly dependents: WeakRef<IDependant>[] = [];
+    private subscriptions: Map<number, Observer<T>> | null = null;
+    private dependents: Map<number, WeakRef<IDependant>> | null = null;
+    private _nextDependantId = 0;
     private _nextSubscriptionId = 0;
     private _prevValue: T | null = null;
     private _pendingUpdates = false;
 
     public registerDependant(dependant: IDependant) {
-        this.dependents.push(new WeakRef(dependant));
+        this.dependents ??= new Map();
+        const id = ++this._nextDependantId;
+        this.dependents.set(id, new WeakRef(dependant));
+        return {
+            unsubscribe: () => {
+                this.dependents!.delete(id);
+            },
+        };
     }
 
     protected notifyDependents() {
-        const n = this.dependents.length;
-        let write = 0;
-        for (let i = 0; i < n; ++i) {
-            const dependant = this.dependents[i].deref();
+        if (!this.dependents) return;
+        for (const [id, ref] of this.dependents.entries()) {
+            const dependant = ref.deref();
             if (dependant) {
                 dependant.onDependencyUpdated();
-                this.dependents[write++] = this.dependents[i];
+            }
+            else {
+                this.dependents.delete(id);
             }
         }
-        this.dependents.length = write;
     }
 
     protected invalidate() {
-        if (this._pendingUpdates) {
-            return;
-        }
+        if (!this.subscriptions) return;
+        if (this._pendingUpdates) return;
         this._pendingUpdates = true;
         this._prevValue = this.value;
         DeferredUpdatesScheduler.schedule(this);
     }
 
     public flushUpdates() {
-        if (!this._pendingUpdates) {
-            return;
-        }
+        if (!this._pendingUpdates) return;
         const prevValue = this._prevValue;
         const value = this.value;
         this._pendingUpdates = false;
@@ -90,7 +102,7 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
         if (value === prevValue) {
             return;
         }
-        for (const observer of this.subscriptions.values()) {
+        for (const observer of this.subscriptions!.values()) {
             observer(value);
         }
     }
@@ -98,11 +110,12 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
     public abstract get value(): T;
 
     public subscribe(observer: Observer<T>): Subscription {
+        this.subscriptions ??= new Map();
         const id = ++this._nextSubscriptionId;
         this.subscriptions.set(id, observer);
         return {
             unsubscribe: () => {
-                this.subscriptions.delete(id);
+                this.subscriptions!.delete(id);
             },
         };
     }
@@ -203,5 +216,43 @@ class Computed<T extends readonly unknown[], R> extends ObservableImpl<R> implem
             );
         }
         return this._value;
+    }
+}
+
+class MultiObservableSubscription<T extends readonly unknown[]>
+    implements Subscription, IDependant, IHasUpdates
+{
+    private readonly observables: ObservablesOf<T>;
+    private readonly observer: (...values: T) => void;
+    private readonly subscriptions: Subscription[];
+    private _pendingUpdates: boolean = false;
+
+    public constructor(observables: ObservablesOf<T>, observer: (...values: T) => void) {
+        this.observer = observer;
+        this.observables = observables;
+        this.subscriptions = [];
+        for (let i = 0; i < observables.length; ++i) {
+            this.subscriptions.push(
+                (observables[i] as ObservableImpl<T>).registerDependant(this),
+            );
+        }
+    }
+
+    public onDependencyUpdated() {
+        if (this._pendingUpdates) return;
+        this._pendingUpdates = true;
+        DeferredUpdatesScheduler.schedule(this);
+    }
+
+    public flushUpdates() {
+        if (!this._pendingUpdates) return;
+        this._pendingUpdates = false;
+        this.observer(...this.observables.map(observable => observable.value) as unknown as T);
+    }
+
+    public unsubscribe() {
+        for (let i = 0; i < this.subscriptions.length; ++i) {
+            this.subscriptions[i].unsubscribe();
+        }
     }
 }

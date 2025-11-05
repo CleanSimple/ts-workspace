@@ -270,48 +270,60 @@ var PlainJSX = (function (exports, utilsJs) {
     function val(initialValue) {
         return new ValImpl(initialValue);
     }
+    function ref() {
+        return new ValImpl(null);
+    }
     function computed(observables, compute) {
         return new Computed(observables, compute);
     }
-    function ref() {
-        return new ValImpl(null);
+    function subscribe(observables, observer) {
+        return new MultiObservableSubscription(observables, observer);
     }
     /**
      * Base class for observables
      */
     class ObservableImpl {
-        subscriptions = new Map();
-        dependents = [];
+        subscriptions = null;
+        dependents = null;
+        _nextDependantId = 0;
         _nextSubscriptionId = 0;
         _prevValue = null;
         _pendingUpdates = false;
         registerDependant(dependant) {
-            this.dependents.push(new WeakRef(dependant));
+            this.dependents ??= new Map();
+            const id = ++this._nextDependantId;
+            this.dependents.set(id, new WeakRef(dependant));
+            return {
+                unsubscribe: () => {
+                    this.dependents.delete(id);
+                },
+            };
         }
         notifyDependents() {
-            const n = this.dependents.length;
-            let write = 0;
-            for (let i = 0; i < n; ++i) {
-                const dependant = this.dependents[i].deref();
+            if (!this.dependents)
+                return;
+            for (const [id, ref] of this.dependents.entries()) {
+                const dependant = ref.deref();
                 if (dependant) {
                     dependant.onDependencyUpdated();
-                    this.dependents[write++] = this.dependents[i];
+                }
+                else {
+                    this.dependents.delete(id);
                 }
             }
-            this.dependents.length = write;
         }
         invalidate() {
-            if (this._pendingUpdates) {
+            if (!this.subscriptions)
                 return;
-            }
+            if (this._pendingUpdates)
+                return;
             this._pendingUpdates = true;
             this._prevValue = this.value;
             DeferredUpdatesScheduler.schedule(this);
         }
         flushUpdates() {
-            if (!this._pendingUpdates) {
+            if (!this._pendingUpdates)
                 return;
-            }
             const prevValue = this._prevValue;
             const value = this.value;
             this._pendingUpdates = false;
@@ -324,6 +336,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         subscribe(observer) {
+            this.subscriptions ??= new Map();
             const id = ++this._nextSubscriptionId;
             this.subscriptions.set(id, observer);
             return {
@@ -406,6 +419,37 @@ var PlainJSX = (function (exports, utilsJs) {
                 this._value = this.compute(...this.observables.map(observable => observable.value));
             }
             return this._value;
+        }
+    }
+    class MultiObservableSubscription {
+        observables;
+        observer;
+        subscriptions;
+        _pendingUpdates = false;
+        constructor(observables, observer) {
+            this.observer = observer;
+            this.observables = observables;
+            this.subscriptions = [];
+            for (let i = 0; i < observables.length; ++i) {
+                this.subscriptions.push(observables[i].registerDependant(this));
+            }
+        }
+        onDependencyUpdated() {
+            if (this._pendingUpdates)
+                return;
+            this._pendingUpdates = true;
+            DeferredUpdatesScheduler.schedule(this);
+        }
+        flushUpdates() {
+            if (!this._pendingUpdates)
+                return;
+            this._pendingUpdates = false;
+            this.observer(...this.observables.map(observable => observable.value));
+        }
+        unsubscribe() {
+            for (let i = 0; i < this.subscriptions.length; ++i) {
+                this.subscriptions[i].unsubscribe();
+            }
         }
     }
 
@@ -1126,6 +1170,7 @@ var PlainJSX = (function (exports, utilsJs) {
     exports.onUnmount = onUnmount;
     exports.ref = ref;
     exports.render = render;
+    exports.subscribe = subscribe;
     exports.val = val;
 
     return exports;

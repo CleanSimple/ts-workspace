@@ -10,7 +10,7 @@ export { Show } from './components/Show';
 export { With } from './components/With';
 export { Fragment, render } from './core';
 export { onMount, onUnmount } from './lifecycle';
-export { computed, ref, val } from './observable';
+export { computed, ref, subscribe, val } from './observable';
 export { nextTick } from './scheduling';
 
 export interface Helpers<TRef> {

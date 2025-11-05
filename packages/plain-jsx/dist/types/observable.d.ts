@@ -15,8 +15,9 @@ export interface Val<T> extends Observable<T> {
 }
 export type Ref<T> = Observable<T | null>;
 export declare function val<T>(initialValue: T): Val<T>;
-export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
 export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Ref<U>;
+export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
+export declare function subscribe<T extends readonly unknown[]>(observables: ObservablesOf<T>, observer: (...values: T) => void): Subscription;
 interface IDependant {
     onDependencyUpdated: () => void;
 }
@@ -24,12 +25,15 @@ interface IDependant {
  * Base class for observables
  */
 export declare abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
-    private readonly subscriptions;
-    private readonly dependents;
+    private subscriptions;
+    private dependents;
+    private _nextDependantId;
     private _nextSubscriptionId;
     private _prevValue;
     private _pendingUpdates;
-    registerDependant(dependant: IDependant): void;
+    registerDependant(dependant: IDependant): {
+        unsubscribe: () => void;
+    };
     protected notifyDependents(): void;
     protected invalidate(): void;
     flushUpdates(): void;
