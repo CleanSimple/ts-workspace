@@ -9,6 +9,10 @@ var PlainJSX = (function (exports, utilsJs) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
+    function With(_props) {
+        throw new Error('This component cannot be called directly — it must be used through the render function.');
+    }
+
     const XMLNamespaces = {
         'svg': 'http://www.w3.org/2000/svg',
         'xhtml': 'http://www.w3.org/1999/xhtml',
@@ -746,6 +750,12 @@ var PlainJSX = (function (exports, utilsJs) {
                     appendVNodeChild(parent, vNode);
                     domNodes.push(reactiveNode);
                 }
+                else if (node.type === With) {
+                    const reactiveNode = new ReactiveNode();
+                    const vNode = new VNodeWith(reactiveNode, node.props, parent);
+                    appendVNodeChild(parent, vNode);
+                    domNodes.push(reactiveNode);
+                }
                 else if (typeof node.type === 'function') {
                     const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
                     setCurrentFunctionalComponent(vNode);
@@ -943,12 +953,12 @@ var PlainJSX = (function (exports, utilsJs) {
             this.type = 'builtin';
             this.parent = parent;
             this.ref = ref;
-            const typedProps = props;
-            if (typeof typedProps.children !== 'function') {
+            const forProps = props;
+            if (typeof forProps.children !== 'function') {
                 throw new Error('The <For> component must have exactly one child — a function that maps each item.');
             }
-            this.mapFn = typedProps.children;
-            const of = typedProps.of;
+            this.mapFn = forProps.children;
+            const of = forProps.of;
             if (Array.isArray(of)) {
                 this.render(of);
             }
@@ -1049,17 +1059,54 @@ var PlainJSX = (function (exports, utilsJs) {
                 return;
             }
             this.shown = show;
+            this.firstChild = this.lastChild = null;
             if (show) {
-                this.firstChild = this.lastChild = null;
                 const children = renderJSX(typeof this.childrenOrFn === 'function'
                     ? this.childrenOrFn()
                     : this.childrenOrFn, this);
                 this.ref.update(children);
             }
             else {
-                this.firstChild = this.lastChild = null;
                 this.ref.update(null);
             }
+        }
+        unmount() {
+            if (this.subscription) {
+                this.subscription.unsubscribe();
+                this.subscription = null;
+            }
+        }
+    }
+    class VNodeWith {
+        type;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        childrenOrFn;
+        subscription = null;
+        constructor(ref, props, parent) {
+            this.type = 'builtin';
+            this.parent = parent;
+            this.ref = ref;
+            const withProps = props;
+            const value = withProps.value;
+            this.childrenOrFn = withProps.children;
+            if (value instanceof ObservableImpl) {
+                this.render(value.value);
+                this.subscription = value.subscribe((value) => this.render(value));
+            }
+            else {
+                this.render(value);
+            }
+        }
+        render(value) {
+            this.firstChild = this.lastChild = null;
+            const children = renderJSX(typeof this.childrenOrFn === 'function'
+                ? this.childrenOrFn(value)
+                : this.childrenOrFn, this);
+            this.ref.update(children);
         }
         unmount() {
             if (this.subscription) {
@@ -1072,6 +1119,7 @@ var PlainJSX = (function (exports, utilsJs) {
     exports.For = For;
     exports.Fragment = Fragment;
     exports.Show = Show;
+    exports.With = With;
     exports.computed = computed;
     exports.nextTick = nextTick;
     exports.onMount = onMount;

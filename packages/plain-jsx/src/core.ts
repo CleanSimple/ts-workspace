@@ -1,6 +1,7 @@
 import type { MaybePromise } from '@cleansimple/utils-js';
 import type { ForCallbackProps, ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
+import type { WithProps } from './components/With';
 import type { Observable, Subscription, Val } from './observable';
 import type { IHasUpdates } from './scheduling';
 import type {
@@ -21,6 +22,7 @@ import type {
 
 import { For } from './components/For';
 import { Show } from './components/Show';
+import { With } from './components/With';
 import { patchNode, setProps } from './dom';
 import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
 import { ObservableImpl, val, ValImpl } from './observable';
@@ -143,6 +145,14 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
             else if (node.type === Show) {
                 const reactiveNode = new ReactiveNode();
                 const vNode = new VNodeShow(reactiveNode, node.props, parent);
+
+                appendVNodeChild(parent, vNode);
+
+                domNodes.push(reactiveNode);
+            }
+            else if (node.type === With) {
+                const reactiveNode = new ReactiveNode();
+                const vNode = new VNodeWith(reactiveNode, node.props, parent);
 
                 appendVNodeChild(parent, vNode);
 
@@ -387,14 +397,14 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         this.parent = parent;
         this.ref = ref;
 
-        const typedProps = props as unknown as ForProps<T>;
-        if (typeof typedProps.children !== 'function') {
+        const forProps = props as unknown as ForProps<T>;
+        if (typeof forProps.children !== 'function') {
             throw new Error(
                 'The <For> component must have exactly one child — a function that maps each item.',
             );
         }
-        this.mapFn = typedProps.children;
-        const of = typedProps.of as T[] | ObservableImpl<T[]>;
+        this.mapFn = forProps.children;
+        const of = forProps.of as T[] | ObservableImpl<T[]>;
 
         if (Array.isArray(of)) {
             this.render(of);
@@ -512,8 +522,8 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         }
         this.shown = show;
 
+        this.firstChild = this.lastChild = null;
         if (show) {
-            this.firstChild = this.lastChild = null;
             const children = renderJSX(
                 typeof this.childrenOrFn === 'function'
                     ? this.childrenOrFn()
@@ -523,9 +533,56 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
             this.ref.update(children);
         }
         else {
-            this.firstChild = this.lastChild = null;
             this.ref.update(null);
         }
+    }
+
+    public unmount() {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = null;
+        }
+    }
+}
+
+class VNodeWith<T> implements VNodeBuiltinComponent {
+    public readonly type: 'builtin';
+    public readonly ref: ReactiveNode;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
+
+    private readonly childrenOrFn: WithProps<T>['children'];
+    private subscription: Subscription | null = null;
+
+    public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
+        this.type = 'builtin';
+        this.parent = parent;
+        this.ref = ref;
+
+        const withProps = props as unknown as WithProps<T>;
+        const value = withProps.value as T | ObservableImpl<T>;
+        this.childrenOrFn = withProps.children;
+
+        if (value instanceof ObservableImpl) {
+            this.render(value.value);
+            this.subscription = value.subscribe((value: T) => this.render(value));
+        }
+        else {
+            this.render(value);
+        }
+    }
+
+    public render(value: T) {
+        this.firstChild = this.lastChild = null;
+        const children = renderJSX(
+            typeof this.childrenOrFn === 'function'
+                ? this.childrenOrFn(value)
+                : this.childrenOrFn,
+            this,
+        );
+        this.ref.update(children);
     }
 
     public unmount() {

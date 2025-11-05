@@ -1,5 +1,6 @@
 import { For } from './components/For.esm.js';
 import { Show } from './components/Show.esm.js';
+import { With } from './components/With.esm.js';
 import { patchNode, setProps } from './dom.esm.js';
 import { mountNodes, defineRef, setCurrentFunctionalComponent } from './lifecycle.esm.js';
 import { ObservableImpl, val, ValImpl } from './observable.esm.js';
@@ -105,6 +106,12 @@ function renderJSX(jsxNode, parent, domNodes = []) {
             else if (node.type === Show) {
                 const reactiveNode = new ReactiveNode();
                 const vNode = new VNodeShow(reactiveNode, node.props, parent);
+                appendVNodeChild(parent, vNode);
+                domNodes.push(reactiveNode);
+            }
+            else if (node.type === With) {
+                const reactiveNode = new ReactiveNode();
+                const vNode = new VNodeWith(reactiveNode, node.props, parent);
                 appendVNodeChild(parent, vNode);
                 domNodes.push(reactiveNode);
             }
@@ -305,12 +312,12 @@ class VNodeFor {
         this.type = 'builtin';
         this.parent = parent;
         this.ref = ref;
-        const typedProps = props;
-        if (typeof typedProps.children !== 'function') {
+        const forProps = props;
+        if (typeof forProps.children !== 'function') {
             throw new Error('The <For> component must have exactly one child — a function that maps each item.');
         }
-        this.mapFn = typedProps.children;
-        const of = typedProps.of;
+        this.mapFn = forProps.children;
+        const of = forProps.of;
         if (Array.isArray(of)) {
             this.render(of);
         }
@@ -411,17 +418,54 @@ class VNodeShow {
             return;
         }
         this.shown = show;
+        this.firstChild = this.lastChild = null;
         if (show) {
-            this.firstChild = this.lastChild = null;
             const children = renderJSX(typeof this.childrenOrFn === 'function'
                 ? this.childrenOrFn()
                 : this.childrenOrFn, this);
             this.ref.update(children);
         }
         else {
-            this.firstChild = this.lastChild = null;
             this.ref.update(null);
         }
+    }
+    unmount() {
+        if (this.subscription) {
+            this.subscription.unsubscribe();
+            this.subscription = null;
+        }
+    }
+}
+class VNodeWith {
+    type;
+    ref;
+    parent;
+    next = null;
+    firstChild = null;
+    lastChild = null;
+    childrenOrFn;
+    subscription = null;
+    constructor(ref, props, parent) {
+        this.type = 'builtin';
+        this.parent = parent;
+        this.ref = ref;
+        const withProps = props;
+        const value = withProps.value;
+        this.childrenOrFn = withProps.children;
+        if (value instanceof ObservableImpl) {
+            this.render(value.value);
+            this.subscription = value.subscribe((value) => this.render(value));
+        }
+        else {
+            this.render(value);
+        }
+    }
+    render(value) {
+        this.firstChild = this.lastChild = null;
+        const children = renderJSX(typeof this.childrenOrFn === 'function'
+            ? this.childrenOrFn(value)
+            : this.childrenOrFn, this);
+        this.ref.update(children);
     }
     unmount() {
         if (this.subscription) {

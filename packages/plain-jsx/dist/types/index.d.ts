@@ -5,6 +5,7 @@ export type { JSX } from './core';
 export type { Observable, Ref, Subscription, Val } from './observable';
 export { For } from './components/For';
 export { Show } from './components/Show';
+export { With } from './components/With';
 export { Fragment, render } from './core';
 export { onMount, onUnmount } from './lifecycle';
 export { computed, ref, val } from './observable';
