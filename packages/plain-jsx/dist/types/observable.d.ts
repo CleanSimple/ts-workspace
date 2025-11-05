@@ -14,13 +14,20 @@ export interface Val<T> extends Observable<T> {
     set value(newValue: T);
 }
 export type Ref<T> = Observable<T | null>;
+export type ObservablesOf<T extends readonly unknown[]> = {
+    [K in keyof T]: Observable<T[K]>;
+};
+export type ValueOf<T> = T extends Observable<infer V> ? V : T;
+export type ValuesOf<T> = T extends readonly unknown[] ? {
+    [K in keyof T]: ValueOf<T[K]>;
+} : [ValueOf<T>];
+export interface IDependant {
+    onDependencyUpdated: () => void;
+}
 export declare function val<T>(initialValue: T): Val<T>;
 export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Ref<U>;
 export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
 export declare function subscribe<T extends readonly unknown[]>(observables: ObservablesOf<T>, observer: (...values: T) => void): Subscription;
-interface IDependant {
-    onDependencyUpdated: () => void;
-}
 /**
  * Base class for observables
  */
@@ -50,7 +57,3 @@ export declare class ValImpl<T> extends ObservableImpl<T> {
     get value(): T;
     set value(newValue: T);
 }
-type ObservablesOf<T extends readonly unknown[]> = {
-    [K in keyof T]: Observable<T[K]>;
-};
-export {};

@@ -2,7 +2,7 @@ import type { Action } from '@cleansimple/utils-js';
 import type { ForCallbackProps, ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
-import type { Observable, Subscription, Val } from './observable';
+import type { IDependant, Observable, Subscription, Val, ValuesOf } from './observable';
 import type { IHasUpdates } from './scheduling';
 import type {
     DOMProps,
@@ -553,7 +553,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
     }
 }
 
-class VNodeWith<T> implements VNodeBuiltinComponent {
+class VNodeWith<T> implements VNodeBuiltinComponent, IHasUpdates, IDependant {
     public readonly type: 'builtin';
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
@@ -561,8 +561,10 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly childrenOrFn: WithProps<T>['children'];
-    private subscription: Subscription | null = null;
+    private readonly _mapFn: WithProps<T>['children'];
+    private readonly _values: (T | ObservableImpl<T>)[];
+    private _subscriptions: Subscription[] | null = null;
+    private _pendingUpdates: boolean = false;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
@@ -570,33 +572,50 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
         this.ref = ref;
 
         const withProps = props as unknown as WithProps<T>;
-        const value = withProps.value as T | ObservableImpl<T>;
-        this.childrenOrFn = withProps.children;
+        this._values = Array.isArray(withProps.value) ? withProps.value : [withProps.value];
+        this._mapFn = withProps.children;
 
-        if (value instanceof ObservableImpl) {
-            this.render(value.value);
-            this.subscription = value.subscribe((value: T) => this.render(value));
+        const args: T[] = [];
+        for (let i = 0; i < this._values.length; ++i) {
+            const value = this._values[i];
+            if (value instanceof ObservableImpl) {
+                args.push(value.value);
+                this._subscriptions ??= [];
+                this._subscriptions.push(value.registerDependant(this));
+            }
+            else {
+                args.push(value);
+            }
         }
-        else {
-            this.render(value);
-        }
+        this.render(...args);
     }
 
-    public render(value: T) {
-        this.firstChild = this.lastChild = null;
-        const children = renderJSX(
-            typeof this.childrenOrFn === 'function'
-                ? this.childrenOrFn(value)
-                : this.childrenOrFn,
-            this,
+    public onDependencyUpdated() {
+        if (this._pendingUpdates) return;
+        this._pendingUpdates = true;
+        DeferredUpdatesScheduler.schedule(this);
+    }
+
+    public flushUpdates() {
+        if (!this._pendingUpdates) return;
+        this._pendingUpdates = false;
+        this.render(
+            ...this._values.map(value => value instanceof ObservableImpl ? value.value : value),
         );
+    }
+
+    public render(...values: T[]) {
+        this.firstChild = this.lastChild = null;
+        const children = renderJSX(this._mapFn(...values as ValuesOf<T>), this);
         this.ref.update(children);
     }
 
     public unmount() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
+        if (this._subscriptions) {
+            for (let i = 0; i < this._subscriptions.length; ++i) {
+                this._subscriptions[i].unsubscribe();
+            }
+            this._subscriptions = null;
         }
     }
 }

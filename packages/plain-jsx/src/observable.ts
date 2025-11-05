@@ -19,6 +19,21 @@ export interface Val<T> extends Observable<T> {
 }
 export type Ref<T> = Observable<T | null>;
 
+export type ObservablesOf<T extends readonly unknown[]> = {
+    [K in keyof T]: Observable<T[K]>;
+};
+
+export type ValueOf<T> = T extends Observable<infer V> ? V : T;
+
+export type ValuesOf<T> = T extends readonly unknown[] ? {
+        [K in keyof T]: ValueOf<T[K]>;
+    }
+    : [ValueOf<T>];
+
+export interface IDependant {
+    onDependencyUpdated: () => void;
+}
+
 /* helpers */
 export function val<T>(initialValue: T): Val<T> {
     return new ValImpl<T>(initialValue);
@@ -44,10 +59,6 @@ export function subscribe<T extends readonly unknown[]>(
     observer: (...values: T) => void,
 ): Subscription {
     return new MultiObservableSubscription(observables, observer);
-}
-
-interface IDependant {
-    onDependencyUpdated: () => void;
 }
 
 /**
@@ -177,10 +188,6 @@ class ComputedSingle<TVal, TComputed> extends ObservableImpl<TComputed> implemen
         return this._value;
     }
 }
-
-type ObservablesOf<T extends readonly unknown[]> = {
-    [K in keyof T]: Observable<T[K]>;
-};
 
 class Computed<T extends readonly unknown[], R> extends ObservableImpl<R> implements IDependant {
     private readonly compute: (...values: T) => R;

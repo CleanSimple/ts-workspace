@@ -1141,34 +1141,54 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        childrenOrFn;
-        subscription = null;
+        _mapFn;
+        _values;
+        _subscriptions = null;
+        _pendingUpdates = false;
         constructor(ref, props, parent) {
             this.type = 'builtin';
             this.parent = parent;
             this.ref = ref;
             const withProps = props;
-            const value = withProps.value;
-            this.childrenOrFn = withProps.children;
-            if (value instanceof ObservableImpl) {
-                this.render(value.value);
-                this.subscription = value.subscribe((value) => this.render(value));
+            this._values = Array.isArray(withProps.value) ? withProps.value : [withProps.value];
+            this._mapFn = withProps.children;
+            const args = [];
+            for (let i = 0; i < this._values.length; ++i) {
+                const value = this._values[i];
+                if (value instanceof ObservableImpl) {
+                    args.push(value.value);
+                    this._subscriptions ??= [];
+                    this._subscriptions.push(value.registerDependant(this));
+                }
+                else {
+                    args.push(value);
+                }
             }
-            else {
-                this.render(value);
-            }
+            this.render(...args);
         }
-        render(value) {
+        onDependencyUpdated() {
+            if (this._pendingUpdates)
+                return;
+            this._pendingUpdates = true;
+            DeferredUpdatesScheduler.schedule(this);
+        }
+        flushUpdates() {
+            if (!this._pendingUpdates)
+                return;
+            this._pendingUpdates = false;
+            this.render(...this._values.map(value => value instanceof ObservableImpl ? value.value : value));
+        }
+        render(...values) {
             this.firstChild = this.lastChild = null;
-            const children = renderJSX(typeof this.childrenOrFn === 'function'
-                ? this.childrenOrFn(value)
-                : this.childrenOrFn, this);
+            const children = renderJSX(this._mapFn(...values), this);
             this.ref.update(children);
         }
         unmount() {
-            if (this.subscription) {
-                this.subscription.unsubscribe();
-                this.subscription = null;
+            if (this._subscriptions) {
+                for (let i = 0; i < this._subscriptions.length; ++i) {
+                    this._subscriptions[i].unsubscribe();
+                }
+                this._subscriptions = null;
             }
         }
     }
