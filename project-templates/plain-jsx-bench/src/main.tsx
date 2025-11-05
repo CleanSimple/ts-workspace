@@ -59,7 +59,7 @@ const nouns = [
 const random = (max: number) => Math.round(Math.random() * 1000) % max;
 
 let nextId = 1;
-type RowData = { id: number; label: Val<string> };
+type RowData = { id: number; label: Val<string>; selected: Val<boolean> };
 
 const buildData = (count: number) => {
     let data: RowData[] = new Array(count);
@@ -69,8 +69,9 @@ const buildData = (count: number) => {
                 nouns[random(nouns.length)]
             }`,
         );
+        const selected = val(false);
 
-        data[i] = { id: nextId++, label };
+        data[i] = { id: nextId++, label, selected };
     }
     return data;
 };
@@ -85,7 +86,6 @@ const Button = ({ id, text, fn }: { id: string; text: string; fn: () => void }) 
 
 const Main = () => {
     const data = val<RowData[]>([]);
-    const selected = val<number | null>(null);
     const run = () => data.value = buildData(1_000);
     const runLots = () => data.value = buildData(10_000);
     const add = () => data.value = [...data.value, ...buildData(1_000)];
@@ -105,14 +105,20 @@ const Main = () => {
         }
     };
 
-    // function logRenderTime() {
-    //     console.time('animation frame');
-    //     requestIdleCallback(() => {
-    //         console.timeEnd('animation frame');
-    //         logRenderTime();
-    //     });
-    // }
-    // logRenderTime();
+    let selectedRow: RowData | null = null;
+    const selectRow = (row: RowData) => {
+        if (selectedRow) {
+            selectedRow.selected.value = false;
+        }
+        row.selected.value = true;
+        selectedRow = row;
+    };
+    const removeRow = (row: RowData) => {
+        data.value = data.value.toSpliced(
+            data.value.findIndex((d) => d.id === row.id),
+            1,
+        );
+    };
 
     return (
         <div class='container'>
@@ -136,36 +142,27 @@ const Main = () => {
             <table class='table table-hover table-striped test-data'>
                 <tbody>
                     <For of={data}>
-                        {({ item: row }) => {
-                            let rowId = row.id;
-                            return (
-                                <tr class:danger={selected.computed((id) => id == rowId)}>
-                                    <td class='col-md-1'>
-                                        {rowId}
-                                    </td>
-                                    <td class='col-md-4'>
-                                        <a on:click={() => selected.value = rowId}>
-                                            {row.label}
-                                        </a>
-                                    </td>
-                                    <td class='col-md-1'>
-                                        <a
-                                            on:click={() =>
-                                                data.value = data.value.toSpliced(
-                                                    data.value.findIndex((d) => d.id === rowId),
-                                                    1,
-                                                )}
-                                        >
-                                            <span
-                                                class='glyphicon glyphicon-remove'
-                                                ariaHidden='true'
-                                            />
-                                        </a>
-                                    </td>
-                                    <td class='col-md-6' />
-                                </tr>
-                            );
-                        }}
+                        {({ item: row }) => (
+                            <tr class:danger={row.selected}>
+                                <td class='col-md-1'>
+                                    {row.id}
+                                </td>
+                                <td class='col-md-4'>
+                                    <a on:click={() => selectRow(row)}>
+                                        {row.label}
+                                    </a>
+                                </td>
+                                <td class='col-md-1'>
+                                    <a on:click={() => removeRow(row)}>
+                                        <span
+                                            class='glyphicon glyphicon-remove'
+                                            ariaHidden='true'
+                                        />
+                                    </a>
+                                </td>
+                                <td class='col-md-6' />
+                            </tr>
+                        )}
                     </For>
                 </tbody>
             </table>

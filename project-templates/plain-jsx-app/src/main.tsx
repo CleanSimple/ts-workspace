@@ -4,11 +4,9 @@ import {
     For,
     type FunctionalComponent,
     onMount,
-    onUnmount,
     render,
     Show,
     subscribe,
-    type Subscription,
     val,
     With,
 } from '@cleansimple/plain-jsx';
@@ -54,15 +52,11 @@ const App: FunctionalComponent = () => {
         items2.value = [...items2.value];
     }
 
-    let subscription: Subscription;
     onMount(() => {
-        subscription = subscribe([showDynamicComponent, key], (showDynamicComponent, key) => {
+        const subscription = subscribe([showDynamicComponent, key], (showDynamicComponent, key) => {
             console.log(showDynamicComponent, key);
         });
-    });
-
-    onUnmount(() => {
-        subscription?.unsubscribe();
+        return [subscription];
     });
 
     return (
