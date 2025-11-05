@@ -1,6 +1,6 @@
 import './style.css';
 import viteLogo from '/vite.svg';
-import { For, type FunctionalComponent, render, Show, val } from '@cleansimple/plain-jsx';
+import { For, type FunctionalComponent, render, Show, val, With } from '@cleansimple/plain-jsx';
 import { Counter, type CounterRefType } from './components/Counter';
 import { Fragments } from './components/Fragments';
 import { Input } from './components/Input';
@@ -58,7 +58,6 @@ const App: FunctionalComponent = () => {
                     <Counter ref={counter} />
                     <button on:click={() => counter.value?.increment()}>Increment Counter</button>
                     <Input type='text' focus={true} value='Input with focus' />
-                    <Fragments />
                     <button on:click={toggleDynamicCompetent}>Toggle Dynamic Component</button>
                     <button on:click={() => key.value += 1}>Increment Key</button>
                     <div style={{ display: 'flex', flexFlow: 'row', gap: '0.5rem' }}>
@@ -69,13 +68,12 @@ const App: FunctionalComponent = () => {
                         <button on:click={removeItem1}>Remove Dynamic Child 1</button>
                         <button on:click={removeItem2}>Remove Dynamic Child 2</button>
                     </div>
+
+                    <Fragments />
                 </div>
             </div>
             <div class='card'>
                 <div style={{ display: 'flex', flexFlow: 'column', gap: '0.5rem' }}>
-                    <>
-                        Fragment
-                    </>
                     <span>Dynamic Components:</span>
                     <Show when={showDynamicComponent}>
                         <LifecycleComponent name='Component'>
@@ -90,41 +88,43 @@ const App: FunctionalComponent = () => {
                         )}
                     </Show>
 
-                    <span>
-                        <Show when={key} keyed>
+                    <Show when={key} keyed>
+                        <span>
                             Show Keyed <Timer />
-                        </Show>
-                    </span>
-                    <span>
-                        <Show when={switchValue} is={(value) => value % 3 === 0}>
-                            yay!
-                        </Show>
-                        <Show when={switchValue} is={(value) => value % 3 === 1}>
-                            wow!
-                        </Show>
-                        <Show when={switchValue} is={(value) => value % 3 === 2}>
-                            lol!
-                        </Show>
-                    </span>
+                        </span>
+                    </Show>
+
+                    <With value={switchValue}>
+                        {(value) => {
+                            switch (value % 4) {
+                                case 0:
+                                    return <span>yay!</span>;
+                                case 1:
+                                    return <span>wow!</span>;
+                                case 2:
+                                    return <span>lol!</span>;
+                                default:
+                                    return <span>hmm!</span>;
+                            }
+                        }}
+                    </With>
 
                     <ParentComponent>
                         <ParentComponent>
                             <For of={items1}>
                                 {({ item, index }) => (
                                     <span>
-                                        {index}. Item: {item} <Timer />
+                                        {index}. Item: {item}
                                     </span>
                                 )}
                             </For>
-                            <>
-                                <For of={items2}>
-                                    {({ item, index }) => (
-                                        <span>
-                                            {index}. Item: {item} <Timer />
-                                        </span>
-                                    )}
-                                </For>
-                            </>
+                            <For of={items2}>
+                                {({ item, index }) => (
+                                    <span>
+                                        {index}. Item: {item}
+                                    </span>
+                                )}
+                            </For>
                         </ParentComponent>
                     </ParentComponent>
                 </div>
