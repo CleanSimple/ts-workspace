@@ -1,5 +1,5 @@
-import type { MaybePromise } from '@cleansimple/utils-js';
 import type { DOMNode, HasVNode, VNode, VNodeFunctionalComponent } from './types';
+
 import { findParentComponent } from './utils';
 
 let _CurrentFunctionalComponent: VNodeFunctionalComponent | null = null;
@@ -15,16 +15,22 @@ export function defineRef(ref: object) {
     _CurrentFunctionalComponent.ref = ref;
 }
 
-export function onMount(fn: () => MaybePromise<void>) {
+export function onMount(fn: VNodeFunctionalComponent['onMountCallback']) {
     if (!_CurrentFunctionalComponent) {
         throw new Error('onMount can only be called inside a functional component');
+    }
+    if (_CurrentFunctionalComponent.onMountCallback) {
+        throw new Error('onMount can only be called once');
     }
     _CurrentFunctionalComponent.onMountCallback = fn;
 }
 
-export function onUnmount(fn: () => MaybePromise<void>) {
+export function onUnmount(fn: VNodeFunctionalComponent['onUnmountCallback']) {
     if (!_CurrentFunctionalComponent) {
         throw new Error('onUnmount can only be called inside a functional component');
+    }
+    if (_CurrentFunctionalComponent.onUnmountCallback) {
+        throw new Error('onUnmount can only be called once');
     }
     _CurrentFunctionalComponent.onUnmountCallback = fn;
 }

@@ -1,9 +1,8 @@
-import type { MaybePromise } from '@cleansimple/utils-js';
 import type { DOMNode, VNodeFunctionalComponent } from './types';
 export declare function setCurrentFunctionalComponent(component: VNodeFunctionalComponent | null): void;
 export declare function defineRef(ref: object): void;
-export declare function onMount(fn: () => MaybePromise<void>): void;
-export declare function onUnmount(fn: () => MaybePromise<void>): void;
+export declare function onMount(fn: VNodeFunctionalComponent['onMountCallback']): void;
+export declare function onUnmount(fn: VNodeFunctionalComponent['onUnmountCallback']): void;
 /**
  * The mounting and unmounting process is a bit complex and needs this bit of documentation
  *

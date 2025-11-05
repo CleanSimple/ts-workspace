@@ -14,11 +14,17 @@ function onMount(fn) {
     if (!_CurrentFunctionalComponent) {
         throw new Error('onMount can only be called inside a functional component');
     }
+    if (_CurrentFunctionalComponent.onMountCallback) {
+        throw new Error('onMount can only be called once');
+    }
     _CurrentFunctionalComponent.onMountCallback = fn;
 }
 function onUnmount(fn) {
     if (!_CurrentFunctionalComponent) {
         throw new Error('onUnmount can only be called inside a functional component');
+    }
+    if (_CurrentFunctionalComponent.onUnmountCallback) {
+        throw new Error('onUnmount can only be called once');
     }
     _CurrentFunctionalComponent.onUnmountCallback = fn;
 }

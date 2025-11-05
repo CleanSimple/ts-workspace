@@ -1,4 +1,4 @@
-import type { MaybePromise } from '@cleansimple/utils-js';
+import type { Action } from '@cleansimple/utils-js';
 import type { ForCallbackProps, ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
@@ -27,7 +27,7 @@ import { patchNode, setProps } from './dom';
 import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
 import { ObservableImpl, val, ValImpl } from './observable';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
-import { DeferredUpdatesScheduler, runAsync } from './scheduling';
+import { DeferredUpdatesScheduler } from './scheduling';
 import { findParentComponent, splitNamespace } from './utils';
 
 export const Fragment = 'Fragment';
@@ -227,16 +227,17 @@ class VNodeTextImpl implements VNodeText {
 class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpdates {
     public readonly type: 'component';
     public ref: object | null = null;
-    public isMounted: boolean = false;
-    public mountedChildrenCount: number = 0;
-    public onMountCallback: (() => MaybePromise<void>) | null = null;
-    public onUnmountCallback: (() => MaybePromise<void>) | null = null;
+    public onMountCallback: (() => void | Subscription[]) | null = null;
+    public onUnmountCallback: Action | null = null;
     public parent: VNode | null;
     public next: VNode | null = null;
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly refVal: Val<object | null> | null = null;
+    private readonly _refVal: Val<object | null> | null = null;
+    private _isMounted: boolean = false;
+    private _mountedChildrenCount: number = 0;
+    private _subscriptions: Subscription[] | null = null;
     private _pendingUpdates: boolean = false;
 
     public constructor(props: PropsType, parent: VNode | null) {
@@ -244,12 +245,12 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpda
         this.parent = parent;
 
         if (props.ref instanceof ValImpl) {
-            this.refVal = props.ref;
+            this._refVal = props.ref;
         }
     }
 
     public mount(): void {
-        this.mountedChildrenCount++;
+        this._mountedChildrenCount++;
         if (!this._pendingUpdates) {
             this._pendingUpdates = true;
             DeferredUpdatesScheduler.schedule(this);
@@ -258,13 +259,13 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpda
 
     public unmount(force: boolean): void {
         if (force) {
-            if (this.isMounted) {
+            if (this._isMounted) {
                 this.unmountInternal();
             }
-            this.mountedChildrenCount = 0;
+            this._mountedChildrenCount = 0;
             return;
         }
-        this.mountedChildrenCount--;
+        this._mountedChildrenCount--;
         if (!this._pendingUpdates) {
             this._pendingUpdates = true;
             DeferredUpdatesScheduler.schedule(this);
@@ -274,38 +275,45 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpda
     public flushUpdates() {
         this._pendingUpdates = false;
 
-        if (this.mountedChildrenCount > 0 && !this.isMounted) {
+        if (this._mountedChildrenCount > 0 && !this._isMounted) {
             this.mountInternal();
             findParentComponent(this)?.mount();
         }
-        else if (this.mountedChildrenCount === 0 && this.isMounted) {
+        else if (this._mountedChildrenCount === 0 && this._isMounted) {
             this.unmountInternal();
             findParentComponent(this)?.unmount(false);
         }
     }
 
     private mountInternal(): void {
-        if (this.refVal) {
-            this.refVal.value = this.ref;
+        if (this._refVal) {
+            this._refVal.value = this.ref;
         }
 
         if (this.onMountCallback) {
-            runAsync(this.onMountCallback);
+            const result = this.onMountCallback();
+            this._subscriptions = result ?? null;
         }
 
-        this.isMounted = true;
+        this._isMounted = true;
     }
 
     private unmountInternal(): void {
-        if (this.onUnmountCallback) {
-            runAsync(this.onUnmountCallback);
+        if (this._subscriptions) {
+            const n = this._subscriptions.length;
+            for (let i = 0; i < n; ++i) {
+                this._subscriptions[i].unsubscribe();
+            }
+            this._subscriptions = null;
         }
 
-        if (this.refVal) {
-            this.refVal.value = null;
+        this.onUnmountCallback?.();
+
+        if (this._refVal) {
+            this._refVal.value = null;
         }
 
-        this.isMounted = false;
+        this._isMounted = false;
     }
 }
 

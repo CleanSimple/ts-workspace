@@ -1,4 +1,4 @@
-import type { Action, MaybePromise, MethodsOf, ReadonlyProps } from '@cleansimple/utils-js';
+import type { Action, MethodsOf, ReadonlyProps } from '@cleansimple/utils-js';
 import type { Properties as CSS } from 'csstype';
 import type { Observable, Ref, Subscription } from './observable';
 import type { ReactiveNode } from './reactive-node';
@@ -43,12 +43,10 @@ export interface VNodeElement extends VNodeBase {
 export interface VNodeFunctionalComponent extends VNodeBase {
     type: 'component';
     ref: object | null;
-    isMounted: boolean;
-    mountedChildrenCount: number;
     mount: Action;
     unmount: (force: boolean) => void;
-    onMountCallback: (() => MaybePromise<void>) | null;
-    onUnmountCallback: (() => MaybePromise<void>) | null;
+    onMountCallback: (() => void | Subscription[]) | null;
+    onUnmountCallback: Action | null;
 }
 
 export interface VNodeBuiltinComponent extends VNodeBase {

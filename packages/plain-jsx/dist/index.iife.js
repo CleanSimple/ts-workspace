@@ -65,11 +65,17 @@ var PlainJSX = (function (exports, utilsJs) {
         if (!_CurrentFunctionalComponent) {
             throw new Error('onMount can only be called inside a functional component');
         }
+        if (_CurrentFunctionalComponent.onMountCallback) {
+            throw new Error('onMount can only be called once');
+        }
         _CurrentFunctionalComponent.onMountCallback = fn;
     }
     function onUnmount(fn) {
         if (!_CurrentFunctionalComponent) {
             throw new Error('onUnmount can only be called inside a functional component');
+        }
+        if (_CurrentFunctionalComponent.onUnmountCallback) {
+            throw new Error('onUnmount can only be called once');
         }
         _CurrentFunctionalComponent.onUnmountCallback = fn;
     }
@@ -856,25 +862,26 @@ var PlainJSX = (function (exports, utilsJs) {
     class VNodeFunctionalComponentImpl {
         type;
         ref = null;
-        isMounted = false;
-        mountedChildrenCount = 0;
         onMountCallback = null;
         onUnmountCallback = null;
         parent;
         next = null;
         firstChild = null;
         lastChild = null;
-        refVal = null;
+        _refVal = null;
+        _isMounted = false;
+        _mountedChildrenCount = 0;
+        _subscriptions = null;
         _pendingUpdates = false;
         constructor(props, parent) {
             this.type = 'component';
             this.parent = parent;
             if (props.ref instanceof ValImpl) {
-                this.refVal = props.ref;
+                this._refVal = props.ref;
             }
         }
         mount() {
-            this.mountedChildrenCount++;
+            this._mountedChildrenCount++;
             if (!this._pendingUpdates) {
                 this._pendingUpdates = true;
                 DeferredUpdatesScheduler.schedule(this);
@@ -882,13 +889,13 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         unmount(force) {
             if (force) {
-                if (this.isMounted) {
+                if (this._isMounted) {
                     this.unmountInternal();
                 }
-                this.mountedChildrenCount = 0;
+                this._mountedChildrenCount = 0;
                 return;
             }
-            this.mountedChildrenCount--;
+            this._mountedChildrenCount--;
             if (!this._pendingUpdates) {
                 this._pendingUpdates = true;
                 DeferredUpdatesScheduler.schedule(this);
@@ -896,32 +903,38 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         flushUpdates() {
             this._pendingUpdates = false;
-            if (this.mountedChildrenCount > 0 && !this.isMounted) {
+            if (this._mountedChildrenCount > 0 && !this._isMounted) {
                 this.mountInternal();
                 findParentComponent(this)?.mount();
             }
-            else if (this.mountedChildrenCount === 0 && this.isMounted) {
+            else if (this._mountedChildrenCount === 0 && this._isMounted) {
                 this.unmountInternal();
                 findParentComponent(this)?.unmount(false);
             }
         }
         mountInternal() {
-            if (this.refVal) {
-                this.refVal.value = this.ref;
+            if (this._refVal) {
+                this._refVal.value = this.ref;
             }
             if (this.onMountCallback) {
-                runAsync(this.onMountCallback);
+                const result = this.onMountCallback();
+                this._subscriptions = result ?? null;
             }
-            this.isMounted = true;
+            this._isMounted = true;
         }
         unmountInternal() {
-            if (this.onUnmountCallback) {
-                runAsync(this.onUnmountCallback);
+            if (this._subscriptions) {
+                const n = this._subscriptions.length;
+                for (let i = 0; i < n; ++i) {
+                    this._subscriptions[i].unsubscribe();
+                }
+                this._subscriptions = null;
             }
-            if (this.refVal) {
-                this.refVal.value = null;
+            this.onUnmountCallback?.();
+            if (this._refVal) {
+                this._refVal.value = null;
             }
-            this.isMounted = false;
+            this._isMounted = false;
         }
     }
     class VNodeElementImpl {
