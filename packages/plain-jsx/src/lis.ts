@@ -3,7 +3,7 @@ export function getLIS(arr: number[] | Int32Array): number[] {
     const predecessors = new Int32Array(n);
     const tails: number[] = [];
 
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; ++i) {
         const num = arr[i];
 
         // Binary search in tails

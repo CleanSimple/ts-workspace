@@ -1,6 +1,17 @@
 import './style.css';
 import viteLogo from '/vite.svg';
-import { For, type FunctionalComponent, render, Show, val, With } from '@cleansimple/plain-jsx';
+import {
+    For,
+    type FunctionalComponent,
+    onMount,
+    onUnmount,
+    render,
+    Show,
+    subscribe,
+    type Subscription,
+    val,
+    With,
+} from '@cleansimple/plain-jsx';
 import { Counter, type CounterRefType } from './components/Counter';
 import { Fragments } from './components/Fragments';
 import { Input } from './components/Input';
@@ -42,6 +53,17 @@ const App: FunctionalComponent = () => {
         items2.value.pop();
         items2.value = [...items2.value];
     }
+
+    let subscription: Subscription;
+    onMount(() => {
+        subscription = subscribe([showDynamicComponent, key], (showDynamicComponent, key) => {
+            console.log(showDynamicComponent, key);
+        });
+    });
+
+    onUnmount(() => {
+        subscription?.unsubscribe();
+    });
 
     return (
         <div>
@@ -94,17 +116,17 @@ const App: FunctionalComponent = () => {
                         </span>
                     </Show>
 
-                    <With value={switchValue}>
-                        {(value) => {
+                    <With value={[switchValue, key]}>
+                        {(value, key) => {
                             switch (value % 4) {
                                 case 0:
-                                    return <span>yay!</span>;
+                                    return <span>yay! {key}</span>;
                                 case 1:
-                                    return <span>wow!</span>;
+                                    return <span>wow! {key}</span>;
                                 case 2:
-                                    return <span>lol!</span>;
+                                    return <span>lol! {key}</span>;
                                 default:
-                                    return <span>hmm!</span>;
+                                    return <span>hmm! {key}</span>;
                             }
                         }}
                     </With>

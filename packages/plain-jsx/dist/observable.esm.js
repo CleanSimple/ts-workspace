@@ -17,37 +17,37 @@ function subscribe(observables, observer) {
  * Base class for observables
  */
 class ObservableImpl {
-    subscriptions = null;
-    dependents = null;
+    _subscriptions = null;
+    _dependents = null;
     _nextDependantId = 0;
     _nextSubscriptionId = 0;
     _prevValue = null;
     _pendingUpdates = false;
     registerDependant(dependant) {
-        this.dependents ??= new Map();
+        this._dependents ??= new Map();
         const id = ++this._nextDependantId;
-        this.dependents.set(id, new WeakRef(dependant));
+        this._dependents.set(id, new WeakRef(dependant));
         return {
             unsubscribe: () => {
-                this.dependents.delete(id);
+                this._dependents.delete(id);
             },
         };
     }
     notifyDependents() {
-        if (!this.dependents)
+        if (!this._dependents)
             return;
-        for (const [id, ref] of this.dependents.entries()) {
+        for (const [id, ref] of this._dependents.entries()) {
             const dependant = ref.deref();
             if (dependant) {
                 dependant.onDependencyUpdated();
             }
             else {
-                this.dependents.delete(id);
+                this._dependents.delete(id);
             }
         }
     }
     invalidate() {
-        if (!this.subscriptions)
+        if (!this._subscriptions)
             return;
         if (this._pendingUpdates)
             return;
@@ -65,17 +65,17 @@ class ObservableImpl {
         if (value === prevValue) {
             return;
         }
-        for (const observer of this.subscriptions.values()) {
+        for (const observer of this._subscriptions.values()) {
             observer(value);
         }
     }
     subscribe(observer) {
-        this.subscriptions ??= new Map();
+        this._subscriptions ??= new Map();
         const id = ++this._nextSubscriptionId;
-        this.subscriptions.set(id, observer);
+        this._subscriptions.set(id, observer);
         return {
             unsubscribe: () => {
-                this.subscriptions.delete(id);
+                this._subscriptions.delete(id);
             },
         };
     }
@@ -102,15 +102,15 @@ class ValImpl extends ObservableImpl {
     }
 }
 class ComputedSingle extends ObservableImpl {
-    compute;
-    observable;
+    _compute;
+    _observable;
     _value;
     _shouldReCompute;
     constructor(compute, observable) {
         super();
-        this.compute = compute;
-        this.observable = observable;
-        this._value = this.compute(observable.value);
+        this._compute = compute;
+        this._observable = observable;
+        this._value = this._compute(observable.value);
         this._shouldReCompute = false;
         observable.registerDependant(this);
     }
@@ -122,21 +122,21 @@ class ComputedSingle extends ObservableImpl {
     get value() {
         if (this._shouldReCompute) {
             this._shouldReCompute = false;
-            this._value = this.compute(this.observable.value);
+            this._value = this._compute(this._observable.value);
         }
         return this._value;
     }
 }
 class Computed extends ObservableImpl {
-    compute;
-    observables;
+    _compute;
+    _observables;
     _value;
     _shouldReCompute;
     constructor(observables, compute) {
         super();
-        this.compute = compute;
-        this.observables = observables;
-        this._value = this.compute(...observables.map(observable => observable.value));
+        this._compute = compute;
+        this._observables = observables;
+        this._value = this._compute(...observables.map(observable => observable.value));
         this._shouldReCompute = false;
         for (let i = 0; i < observables.length; ++i) {
             observables[i].registerDependant(this);
@@ -150,22 +150,22 @@ class Computed extends ObservableImpl {
     get value() {
         if (this._shouldReCompute) {
             this._shouldReCompute = false;
-            this._value = this.compute(...this.observables.map(observable => observable.value));
+            this._value = this._compute(...this._observables.map(observable => observable.value));
         }
         return this._value;
     }
 }
 class MultiObservableSubscription {
-    observables;
-    observer;
-    subscriptions;
+    _observables;
+    _observer;
+    _subscriptions;
     _pendingUpdates = false;
     constructor(observables, observer) {
-        this.observer = observer;
-        this.observables = observables;
-        this.subscriptions = [];
+        this._observer = observer;
+        this._observables = observables;
+        this._subscriptions = [];
         for (let i = 0; i < observables.length; ++i) {
-            this.subscriptions.push(observables[i].registerDependant(this));
+            this._subscriptions.push(observables[i].registerDependant(this));
         }
     }
     onDependencyUpdated() {
@@ -178,11 +178,11 @@ class MultiObservableSubscription {
         if (!this._pendingUpdates)
             return;
         this._pendingUpdates = false;
-        this.observer(...this.observables.map(observable => observable.value));
+        this._observer(...this._observables.map(observable => observable.value));
     }
     unsubscribe() {
-        for (let i = 0; i < this.subscriptions.length; ++i) {
-            this.subscriptions[i].unsubscribe();
+        for (let i = 0; i < this._subscriptions.length; ++i) {
+            this._subscriptions[i].unsubscribe();
         }
     }
 }

@@ -324,7 +324,6 @@ class VNodeElementImpl implements VNodeElement {
     public next: VNode | null = null;
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
-
     public subscriptions: Subscription[] | null = null;
 
     public constructor(ref: Element, parent: VNode | null) {
@@ -351,7 +350,7 @@ class VNodeObservableImpl implements VNodeObservable {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private subscription: Subscription | null = null;
+    private _subscription: Subscription | null = null;
     private _renderedChildren: RNode[] | null = null;
 
     public constructor(ref: ReactiveNode, value: Observable<JSXNode>, parent: VNode | null) {
@@ -360,7 +359,7 @@ class VNodeObservableImpl implements VNodeObservable {
         this.ref = ref;
 
         this.render(value.value);
-        this.subscription = value.subscribe((value: JSXNode) => this.render(value));
+        this._subscription = value.subscribe((value: JSXNode) => this.render(value));
     }
 
     public render(jsxNode: JSXNode): void {
@@ -380,9 +379,9 @@ class VNodeObservableImpl implements VNodeObservable {
     }
 
     public unmount(): void {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
+        if (this._subscription) {
+            this._subscription.unsubscribe();
+            this._subscription = null;
         }
     }
 }
@@ -395,10 +394,10 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private subscription: Subscription | null = null;
-    private frontBuffer = new Map<unknown, RenderedItem>();
-    private backBuffer = new Map<unknown, RenderedItem>();
-    private readonly mapFn: (props: ForCallbackProps<T>) => JSXNode;
+    private readonly _mapFn: (props: ForCallbackProps<T>) => JSXNode;
+    private _subscription: Subscription | null = null;
+    private _frontBuffer = new Map<unknown, RenderedItem>();
+    private _backBuffer = new Map<unknown, RenderedItem>();
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
@@ -406,12 +405,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         this.ref = ref;
 
         const forProps = props as unknown as ForProps<T>;
-        if (typeof forProps.children !== 'function') {
-            throw new Error(
-                'The <For> component must have exactly one child — a function that maps each item.',
-            );
-        }
-        this.mapFn = forProps.children;
+        this._mapFn = forProps.children;
         const of = forProps.of as T[] | ObservableImpl<T[]>;
 
         if (Array.isArray(of)) {
@@ -419,7 +413,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         }
         else if (of instanceof ObservableImpl) {
             this.render(of.value);
-            this.subscription = of.subscribe((value: T[]) => this.render(value));
+            this._subscription = of.subscribe((value: T[]) => this.render(value));
         }
         else {
             throw new Error(
@@ -431,9 +425,9 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
     public render(items: T[]) {
         this.firstChild = this.lastChild = null;
         const n = items.length;
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; ++i) {
             const value = items[i];
-            let item = this.frontBuffer.get(value);
+            let item = this._frontBuffer.get(value);
             if (item) {
                 item.index.value = i;
                 this.firstChild ??= item.head;
@@ -447,7 +441,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
             else {
                 const index = val(i);
                 let head = this.lastChild;
-                renderJSX(this.mapFn({ item: value, index }), this);
+                renderJSX(this._mapFn({ item: value, index }), this);
                 let tail = this.lastChild;
 
                 if (head !== tail) {
@@ -459,7 +453,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
                 item = { index, head, tail };
             }
 
-            this.backBuffer.set(value, item);
+            this._backBuffer.set(value, item);
         }
         if (this.lastChild) {
             this.lastChild.next = null;
@@ -467,14 +461,14 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
 
         this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
 
-        [this.frontBuffer, this.backBuffer] = [this.backBuffer, this.frontBuffer];
-        this.backBuffer.clear();
+        [this._frontBuffer, this._backBuffer] = [this._backBuffer, this._frontBuffer];
+        this._backBuffer.clear();
     }
 
     public unmount() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
+        if (this._subscription) {
+            this._subscription.unsubscribe();
+            this._subscription = null;
         }
     }
 }
@@ -487,11 +481,11 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly childrenOrFn: ShowProps<T>['children'];
-    private readonly keyed: boolean;
-    private readonly condition: ShowProps<T>['is'];
-    private subscription: Subscription | null = null;
-    private shown = false;
+    private readonly _childrenOrFn: ShowProps<T>['children'];
+    private readonly _keyed: boolean;
+    private readonly _condition: ShowProps<T>['is'];
+    private _subscription: Subscription | null = null;
+    private _shown = false;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
@@ -500,13 +494,13 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
 
         const showProps = props as unknown as ShowProps<T>;
         const when = showProps.when as T | ObservableImpl<T>;
-        this.condition = showProps.is;
-        this.keyed = showProps.keyed ?? false;
-        this.childrenOrFn = showProps.children;
+        this._condition = showProps.is;
+        this._keyed = showProps.keyed ?? false;
+        this._childrenOrFn = showProps.children;
 
         if (when instanceof ObservableImpl) {
             this.render(when.value);
-            this.subscription = when.subscribe((value: T) => this.render(value));
+            this._subscription = when.subscribe((value: T) => this.render(value));
         }
         else {
             this.render(when);
@@ -515,27 +509,27 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
 
     public render(value: T) {
         let show: boolean;
-        if (this.condition === undefined) {
+        if (this._condition === undefined) {
             show = Boolean(value);
         }
-        else if (typeof this.condition === 'function') {
-            show = (this.condition as (value: T) => boolean)(value);
+        else if (typeof this._condition === 'function') {
+            show = (this._condition as (value: T) => boolean)(value);
         }
         else {
-            show = value === this.condition;
+            show = value === this._condition;
         }
 
-        if (!this.keyed && this.shown === show) {
+        if (!this._keyed && this._shown === show) {
             return;
         }
-        this.shown = show;
+        this._shown = show;
 
         this.firstChild = this.lastChild = null;
         if (show) {
             const children = renderJSX(
-                typeof this.childrenOrFn === 'function'
-                    ? this.childrenOrFn()
-                    : this.childrenOrFn,
+                typeof this._childrenOrFn === 'function'
+                    ? this._childrenOrFn()
+                    : this._childrenOrFn,
                 this,
             );
             this.ref.update(children);
@@ -546,9 +540,9 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
     }
 
     public unmount() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
+        if (this._subscription) {
+            this._subscription.unsubscribe();
+            this._subscription = null;
         }
     }
 }

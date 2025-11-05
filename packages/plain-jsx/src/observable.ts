@@ -65,39 +65,39 @@ export function subscribe<T extends readonly unknown[]>(
  * Base class for observables
  */
 export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
-    private subscriptions: Map<number, Observer<T>> | null = null;
-    private dependents: Map<number, WeakRef<IDependant>> | null = null;
+    private _subscriptions: Map<number, Observer<T>> | null = null;
+    private _dependents: Map<number, WeakRef<IDependant>> | null = null;
     private _nextDependantId = 0;
     private _nextSubscriptionId = 0;
     private _prevValue: T | null = null;
     private _pendingUpdates = false;
 
     public registerDependant(dependant: IDependant) {
-        this.dependents ??= new Map();
+        this._dependents ??= new Map();
         const id = ++this._nextDependantId;
-        this.dependents.set(id, new WeakRef(dependant));
+        this._dependents.set(id, new WeakRef(dependant));
         return {
             unsubscribe: () => {
-                this.dependents!.delete(id);
+                this._dependents!.delete(id);
             },
         };
     }
 
     protected notifyDependents() {
-        if (!this.dependents) return;
-        for (const [id, ref] of this.dependents.entries()) {
+        if (!this._dependents) return;
+        for (const [id, ref] of this._dependents.entries()) {
             const dependant = ref.deref();
             if (dependant) {
                 dependant.onDependencyUpdated();
             }
             else {
-                this.dependents.delete(id);
+                this._dependents.delete(id);
             }
         }
     }
 
     protected invalidate() {
-        if (!this.subscriptions) return;
+        if (!this._subscriptions) return;
         if (this._pendingUpdates) return;
         this._pendingUpdates = true;
         this._prevValue = this.value;
@@ -113,7 +113,7 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
         if (value === prevValue) {
             return;
         }
-        for (const observer of this.subscriptions!.values()) {
+        for (const observer of this._subscriptions!.values()) {
             observer(value);
         }
     }
@@ -121,12 +121,12 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
     public abstract get value(): T;
 
     public subscribe(observer: Observer<T>): Subscription {
-        this.subscriptions ??= new Map();
+        this._subscriptions ??= new Map();
         const id = ++this._nextSubscriptionId;
-        this.subscriptions.set(id, observer);
+        this._subscriptions.set(id, observer);
         return {
             unsubscribe: () => {
-                this.subscriptions!.delete(id);
+                this._subscriptions!.delete(id);
             },
         };
     }
@@ -159,16 +159,16 @@ export class ValImpl<T> extends ObservableImpl<T> {
 }
 
 class ComputedSingle<TVal, TComputed> extends ObservableImpl<TComputed> implements IDependant {
-    private readonly compute: (value: TVal) => TComputed;
-    private readonly observable: Observable<TVal>;
+    private readonly _compute: (value: TVal) => TComputed;
+    private readonly _observable: Observable<TVal>;
     private _value: TComputed;
     private _shouldReCompute: boolean;
 
     public constructor(compute: (value: TVal) => TComputed, observable: Observable<TVal>) {
         super();
-        this.compute = compute;
-        this.observable = observable;
-        this._value = this.compute(observable.value);
+        this._compute = compute;
+        this._observable = observable;
+        this._value = this._compute(observable.value);
         this._shouldReCompute = false;
 
         (observable as ObservableImpl<TVal>).registerDependant(this);
@@ -183,23 +183,23 @@ class ComputedSingle<TVal, TComputed> extends ObservableImpl<TComputed> implemen
     public override get value(): TComputed {
         if (this._shouldReCompute) {
             this._shouldReCompute = false;
-            this._value = this.compute(this.observable.value);
+            this._value = this._compute(this._observable.value);
         }
         return this._value;
     }
 }
 
 class Computed<T extends readonly unknown[], R> extends ObservableImpl<R> implements IDependant {
-    private readonly compute: (...values: T) => R;
-    private readonly observables: ObservablesOf<T>;
+    private readonly _compute: (...values: T) => R;
+    private readonly _observables: ObservablesOf<T>;
     private _value: R;
     private _shouldReCompute: boolean;
 
     public constructor(observables: ObservablesOf<T>, compute: (...values: T) => R) {
         super();
-        this.compute = compute;
-        this.observables = observables;
-        this._value = this.compute(
+        this._compute = compute;
+        this._observables = observables;
+        this._value = this._compute(
             ...observables.map(observable => observable.value) as unknown as T,
         );
         this._shouldReCompute = false;
@@ -218,8 +218,8 @@ class Computed<T extends readonly unknown[], R> extends ObservableImpl<R> implem
     public override get value(): R {
         if (this._shouldReCompute) {
             this._shouldReCompute = false;
-            this._value = this.compute(
-                ...this.observables.map(observable => observable.value) as unknown as T,
+            this._value = this._compute(
+                ...this._observables.map(observable => observable.value) as unknown as T,
             );
         }
         return this._value;
@@ -229,17 +229,17 @@ class Computed<T extends readonly unknown[], R> extends ObservableImpl<R> implem
 class MultiObservableSubscription<T extends readonly unknown[]>
     implements Subscription, IDependant, IHasUpdates
 {
-    private readonly observables: ObservablesOf<T>;
-    private readonly observer: (...values: T) => void;
-    private readonly subscriptions: Subscription[];
+    private readonly _observables: ObservablesOf<T>;
+    private readonly _observer: (...values: T) => void;
+    private readonly _subscriptions: Subscription[];
     private _pendingUpdates: boolean = false;
 
     public constructor(observables: ObservablesOf<T>, observer: (...values: T) => void) {
-        this.observer = observer;
-        this.observables = observables;
-        this.subscriptions = [];
+        this._observer = observer;
+        this._observables = observables;
+        this._subscriptions = [];
         for (let i = 0; i < observables.length; ++i) {
-            this.subscriptions.push(
+            this._subscriptions.push(
                 (observables[i] as ObservableImpl<T>).registerDependant(this),
             );
         }
@@ -254,12 +254,12 @@ class MultiObservableSubscription<T extends readonly unknown[]>
     public flushUpdates() {
         if (!this._pendingUpdates) return;
         this._pendingUpdates = false;
-        this.observer(...this.observables.map(observable => observable.value) as unknown as T);
+        this._observer(...this._observables.map(observable => observable.value) as unknown as T);
     }
 
     public unsubscribe() {
-        for (let i = 0; i < this.subscriptions.length; ++i) {
-            this.subscriptions[i].unsubscribe();
+        for (let i = 0; i < this._subscriptions.length; ++i) {
+            this._subscriptions[i].unsubscribe();
         }
     }
 }

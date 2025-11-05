@@ -275,14 +275,14 @@ class VNodeObservableImpl {
     next = null;
     firstChild = null;
     lastChild = null;
-    subscription = null;
+    _subscription = null;
     _renderedChildren = null;
     constructor(ref, value, parent) {
         this.type = 'observable';
         this.parent = parent;
         this.ref = ref;
         this.render(value.value);
-        this.subscription = value.subscribe((value) => this.render(value));
+        this._subscription = value.subscribe((value) => this.render(value));
     }
     render(jsxNode) {
         if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
@@ -298,9 +298,9 @@ class VNodeObservableImpl {
         }
     }
     unmount() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
+        if (this._subscription) {
+            this._subscription.unsubscribe();
+            this._subscription = null;
         }
     }
 }
@@ -311,26 +311,23 @@ class VNodeFor {
     next = null;
     firstChild = null;
     lastChild = null;
-    subscription = null;
-    frontBuffer = new Map();
-    backBuffer = new Map();
-    mapFn;
+    _mapFn;
+    _subscription = null;
+    _frontBuffer = new Map();
+    _backBuffer = new Map();
     constructor(ref, props, parent) {
         this.type = 'builtin';
         this.parent = parent;
         this.ref = ref;
         const forProps = props;
-        if (typeof forProps.children !== 'function') {
-            throw new Error('The <For> component must have exactly one child — a function that maps each item.');
-        }
-        this.mapFn = forProps.children;
+        this._mapFn = forProps.children;
         const of = forProps.of;
         if (Array.isArray(of)) {
             this.render(of);
         }
         else if (of instanceof ObservableImpl) {
             this.render(of.value);
-            this.subscription = of.subscribe((value) => this.render(value));
+            this._subscription = of.subscribe((value) => this.render(value));
         }
         else {
             throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
@@ -339,9 +336,9 @@ class VNodeFor {
     render(items) {
         this.firstChild = this.lastChild = null;
         const n = items.length;
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; ++i) {
             const value = items[i];
-            let item = this.frontBuffer.get(value);
+            let item = this._frontBuffer.get(value);
             if (item) {
                 item.index.value = i;
                 this.firstChild ??= item.head;
@@ -355,7 +352,7 @@ class VNodeFor {
             else {
                 const index = val(i);
                 let head = this.lastChild;
-                renderJSX(this.mapFn({ item: value, index }), this);
+                renderJSX(this._mapFn({ item: value, index }), this);
                 let tail = this.lastChild;
                 if (head !== tail) {
                     head = head ? head.next : this.firstChild;
@@ -365,19 +362,19 @@ class VNodeFor {
                 }
                 item = { index, head, tail };
             }
-            this.backBuffer.set(value, item);
+            this._backBuffer.set(value, item);
         }
         if (this.lastChild) {
             this.lastChild.next = null;
         }
         this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
-        [this.frontBuffer, this.backBuffer] = [this.backBuffer, this.frontBuffer];
-        this.backBuffer.clear();
+        [this._frontBuffer, this._backBuffer] = [this._backBuffer, this._frontBuffer];
+        this._backBuffer.clear();
     }
     unmount() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
+        if (this._subscription) {
+            this._subscription.unsubscribe();
+            this._subscription = null;
         }
     }
 }
@@ -388,23 +385,23 @@ class VNodeShow {
     next = null;
     firstChild = null;
     lastChild = null;
-    childrenOrFn;
-    keyed;
-    condition;
-    subscription = null;
-    shown = false;
+    _childrenOrFn;
+    _keyed;
+    _condition;
+    _subscription = null;
+    _shown = false;
     constructor(ref, props, parent) {
         this.type = 'builtin';
         this.parent = parent;
         this.ref = ref;
         const showProps = props;
         const when = showProps.when;
-        this.condition = showProps.is;
-        this.keyed = showProps.keyed ?? false;
-        this.childrenOrFn = showProps.children;
+        this._condition = showProps.is;
+        this._keyed = showProps.keyed ?? false;
+        this._childrenOrFn = showProps.children;
         if (when instanceof ObservableImpl) {
             this.render(when.value);
-            this.subscription = when.subscribe((value) => this.render(value));
+            this._subscription = when.subscribe((value) => this.render(value));
         }
         else {
             this.render(when);
@@ -412,24 +409,24 @@ class VNodeShow {
     }
     render(value) {
         let show;
-        if (this.condition === undefined) {
+        if (this._condition === undefined) {
             show = Boolean(value);
         }
-        else if (typeof this.condition === 'function') {
-            show = this.condition(value);
+        else if (typeof this._condition === 'function') {
+            show = this._condition(value);
         }
         else {
-            show = value === this.condition;
+            show = value === this._condition;
         }
-        if (!this.keyed && this.shown === show) {
+        if (!this._keyed && this._shown === show) {
             return;
         }
-        this.shown = show;
+        this._shown = show;
         this.firstChild = this.lastChild = null;
         if (show) {
-            const children = renderJSX(typeof this.childrenOrFn === 'function'
-                ? this.childrenOrFn()
-                : this.childrenOrFn, this);
+            const children = renderJSX(typeof this._childrenOrFn === 'function'
+                ? this._childrenOrFn()
+                : this._childrenOrFn, this);
             this.ref.update(children);
         }
         else {
@@ -437,9 +434,9 @@ class VNodeShow {
         }
     }
     unmount() {
-        if (this.subscription) {
-            this.subscription.unsubscribe();
-            this.subscription = null;
+        if (this._subscription) {
+            this._subscription.unsubscribe();
+            this._subscription = null;
         }
     }
 }

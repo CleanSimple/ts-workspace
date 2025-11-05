@@ -76,7 +76,7 @@ export function mountNodes(nodes: DOMNode[]) {
     const customNodes = nodes as HasVNode<DOMNode>[];
     const n = customNodes.length;
 
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; ++i) {
         const node = customNodes[i];
         // ignore reactive node placeholders
         if (node instanceof Comment) {
@@ -91,7 +91,7 @@ export function unmountNodes(nodes: DOMNode[]) {
     const customNodes = nodes as HasVNode<DOMNode>[];
     const n = customNodes.length;
 
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; ++i) {
         const node = customNodes[i];
         // ignore reactive node placeholders
         if (node instanceof Comment) {

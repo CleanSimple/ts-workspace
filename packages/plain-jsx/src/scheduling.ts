@@ -16,7 +16,7 @@ function flushNextTickCallbacks() {
     _callbacks = [];
     _scheduled = false;
     const n = callbacks.length;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; ++i) {
         runAsync(callbacks[i]);
     }
 }
@@ -36,7 +36,7 @@ export class DeferredUpdatesScheduler {
         queueMicrotask(DeferredUpdatesScheduler.flush);
     }
 
-    public static flush(this: void) {
+    private static flush(this: void) {
         const items = DeferredUpdatesScheduler._items;
         DeferredUpdatesScheduler._items = [];
         DeferredUpdatesScheduler._scheduled = false;

@@ -67,7 +67,7 @@ function onUnmount(fn) {
 function mountNodes(nodes) {
     const customNodes = nodes;
     const n = customNodes.length;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; ++i) {
         const node = customNodes[i];
         // ignore reactive node placeholders
         if (node instanceof Comment) {
@@ -80,7 +80,7 @@ function mountNodes(nodes) {
 function unmountNodes(nodes) {
     const customNodes = nodes;
     const n = customNodes.length;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; ++i) {
         const node = customNodes[i];
         // ignore reactive node placeholders
         if (node instanceof Comment) {

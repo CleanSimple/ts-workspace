@@ -2,7 +2,7 @@ function getLIS(arr) {
     const n = arr.length;
     const predecessors = new Int32Array(n);
     const tails = [];
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n; ++i) {
         const num = arr[i];
         // Binary search in tails
         let lo = 0, hi = tails.length;

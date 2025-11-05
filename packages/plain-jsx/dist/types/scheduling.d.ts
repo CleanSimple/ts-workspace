@@ -8,7 +8,7 @@ export declare class DeferredUpdatesScheduler {
     private static _items;
     private static _scheduled;
     static schedule(item: IHasUpdates): void;
-    static flush(this: void): void;
+    private static flush;
 }
 export declare function runAsync(action: Action): void;
 export {};

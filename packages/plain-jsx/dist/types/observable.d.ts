@@ -32,8 +32,8 @@ export declare function subscribe<T extends readonly unknown[]>(observables: Obs
  * Base class for observables
  */
 export declare abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
-    private subscriptions;
-    private dependents;
+    private _subscriptions;
+    private _dependents;
     private _nextDependantId;
     private _nextSubscriptionId;
     private _prevValue;

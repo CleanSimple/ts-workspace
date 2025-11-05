@@ -3,8 +3,8 @@ import type { DOMNode, RNode } from './types';
 import { updateChildren } from './dom';
 
 export class ReactiveNode {
-    private readonly placeholder = document.createComment('');
-    private _children: RNode[] = [this.placeholder];
+    private readonly _placeholder = document.createComment('');
+    private _children: RNode[] = [this._placeholder];
 
     public get children() {
         return this._children;
@@ -12,11 +12,11 @@ export class ReactiveNode {
 
     public update(rNode: RNode[] | null) {
         if (rNode === null || rNode.length === 0) { // clearing
-            if (this._children[0] === this.placeholder) {
+            if (this._children[0] === this._placeholder) {
                 return; // we are already cleared
             }
 
-            rNode = [this.placeholder];
+            rNode = [this._placeholder];
         }
 
         const children = resolveReactiveNodes(this._children);

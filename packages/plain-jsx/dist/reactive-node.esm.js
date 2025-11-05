@@ -1,17 +1,17 @@
 import { updateChildren } from './dom.esm.js';
 
 class ReactiveNode {
-    placeholder = document.createComment('');
-    _children = [this.placeholder];
+    _placeholder = document.createComment('');
+    _children = [this._placeholder];
     get children() {
         return this._children;
     }
     update(rNode) {
         if (rNode === null || rNode.length === 0) { // clearing
-            if (this._children[0] === this.placeholder) {
+            if (this._children[0] === this._placeholder) {
                 return; // we are already cleared
             }
-            rNode = [this.placeholder];
+            rNode = [this._placeholder];
         }
         const children = resolveReactiveNodes(this._children);
         const parent = children[0].parentNode;

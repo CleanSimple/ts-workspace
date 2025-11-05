@@ -118,7 +118,7 @@ var PlainJSX = (function (exports, utilsJs) {
     function mountNodes(nodes) {
         const customNodes = nodes;
         const n = customNodes.length;
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; ++i) {
             const node = customNodes[i];
             // ignore reactive node placeholders
             if (node instanceof Comment) {
@@ -131,7 +131,7 @@ var PlainJSX = (function (exports, utilsJs) {
     function unmountNodes(nodes) {
         const customNodes = nodes;
         const n = customNodes.length;
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; ++i) {
             const node = customNodes[i];
             // ignore reactive node placeholders
             if (node instanceof Comment) {
@@ -194,7 +194,7 @@ var PlainJSX = (function (exports, utilsJs) {
         const n = arr.length;
         const predecessors = new Int32Array(n);
         const tails = [];
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; ++i) {
             const num = arr[i];
             // Binary search in tails
             let lo = 0, hi = tails.length;
@@ -236,7 +236,7 @@ var PlainJSX = (function (exports, utilsJs) {
         _callbacks = [];
         _scheduled = false;
         const n = callbacks.length;
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n; ++i) {
             runAsync(callbacks[i]);
         }
     }
@@ -289,37 +289,37 @@ var PlainJSX = (function (exports, utilsJs) {
      * Base class for observables
      */
     class ObservableImpl {
-        subscriptions = null;
-        dependents = null;
+        _subscriptions = null;
+        _dependents = null;
         _nextDependantId = 0;
         _nextSubscriptionId = 0;
         _prevValue = null;
         _pendingUpdates = false;
         registerDependant(dependant) {
-            this.dependents ??= new Map();
+            this._dependents ??= new Map();
             const id = ++this._nextDependantId;
-            this.dependents.set(id, new WeakRef(dependant));
+            this._dependents.set(id, new WeakRef(dependant));
             return {
                 unsubscribe: () => {
-                    this.dependents.delete(id);
+                    this._dependents.delete(id);
                 },
             };
         }
         notifyDependents() {
-            if (!this.dependents)
+            if (!this._dependents)
                 return;
-            for (const [id, ref] of this.dependents.entries()) {
+            for (const [id, ref] of this._dependents.entries()) {
                 const dependant = ref.deref();
                 if (dependant) {
                     dependant.onDependencyUpdated();
                 }
                 else {
-                    this.dependents.delete(id);
+                    this._dependents.delete(id);
                 }
             }
         }
         invalidate() {
-            if (!this.subscriptions)
+            if (!this._subscriptions)
                 return;
             if (this._pendingUpdates)
                 return;
@@ -337,17 +337,17 @@ var PlainJSX = (function (exports, utilsJs) {
             if (value === prevValue) {
                 return;
             }
-            for (const observer of this.subscriptions.values()) {
+            for (const observer of this._subscriptions.values()) {
                 observer(value);
             }
         }
         subscribe(observer) {
-            this.subscriptions ??= new Map();
+            this._subscriptions ??= new Map();
             const id = ++this._nextSubscriptionId;
-            this.subscriptions.set(id, observer);
+            this._subscriptions.set(id, observer);
             return {
                 unsubscribe: () => {
-                    this.subscriptions.delete(id);
+                    this._subscriptions.delete(id);
                 },
             };
         }
@@ -374,15 +374,15 @@ var PlainJSX = (function (exports, utilsJs) {
         }
     }
     class ComputedSingle extends ObservableImpl {
-        compute;
-        observable;
+        _compute;
+        _observable;
         _value;
         _shouldReCompute;
         constructor(compute, observable) {
             super();
-            this.compute = compute;
-            this.observable = observable;
-            this._value = this.compute(observable.value);
+            this._compute = compute;
+            this._observable = observable;
+            this._value = this._compute(observable.value);
             this._shouldReCompute = false;
             observable.registerDependant(this);
         }
@@ -394,21 +394,21 @@ var PlainJSX = (function (exports, utilsJs) {
         get value() {
             if (this._shouldReCompute) {
                 this._shouldReCompute = false;
-                this._value = this.compute(this.observable.value);
+                this._value = this._compute(this._observable.value);
             }
             return this._value;
         }
     }
     class Computed extends ObservableImpl {
-        compute;
-        observables;
+        _compute;
+        _observables;
         _value;
         _shouldReCompute;
         constructor(observables, compute) {
             super();
-            this.compute = compute;
-            this.observables = observables;
-            this._value = this.compute(...observables.map(observable => observable.value));
+            this._compute = compute;
+            this._observables = observables;
+            this._value = this._compute(...observables.map(observable => observable.value));
             this._shouldReCompute = false;
             for (let i = 0; i < observables.length; ++i) {
                 observables[i].registerDependant(this);
@@ -422,22 +422,22 @@ var PlainJSX = (function (exports, utilsJs) {
         get value() {
             if (this._shouldReCompute) {
                 this._shouldReCompute = false;
-                this._value = this.compute(...this.observables.map(observable => observable.value));
+                this._value = this._compute(...this._observables.map(observable => observable.value));
             }
             return this._value;
         }
     }
     class MultiObservableSubscription {
-        observables;
-        observer;
-        subscriptions;
+        _observables;
+        _observer;
+        _subscriptions;
         _pendingUpdates = false;
         constructor(observables, observer) {
-            this.observer = observer;
-            this.observables = observables;
-            this.subscriptions = [];
+            this._observer = observer;
+            this._observables = observables;
+            this._subscriptions = [];
             for (let i = 0; i < observables.length; ++i) {
-                this.subscriptions.push(observables[i].registerDependant(this));
+                this._subscriptions.push(observables[i].registerDependant(this));
             }
         }
         onDependencyUpdated() {
@@ -450,11 +450,11 @@ var PlainJSX = (function (exports, utilsJs) {
             if (!this._pendingUpdates)
                 return;
             this._pendingUpdates = false;
-            this.observer(...this.observables.map(observable => observable.value));
+            this._observer(...this._observables.map(observable => observable.value));
         }
         unsubscribe() {
-            for (let i = 0; i < this.subscriptions.length; ++i) {
-                this.subscriptions[i].unsubscribe();
+            for (let i = 0; i < this._subscriptions.length; ++i) {
+                this._subscriptions[i].unsubscribe();
             }
         }
     }
@@ -665,17 +665,17 @@ var PlainJSX = (function (exports, utilsJs) {
     }
 
     class ReactiveNode {
-        placeholder = document.createComment('');
-        _children = [this.placeholder];
+        _placeholder = document.createComment('');
+        _children = [this._placeholder];
         get children() {
             return this._children;
         }
         update(rNode) {
             if (rNode === null || rNode.length === 0) { // clearing
-                if (this._children[0] === this.placeholder) {
+                if (this._children[0] === this._placeholder) {
                     return; // we are already cleared
                 }
-                rNode = [this.placeholder];
+                rNode = [this._placeholder];
             }
             const children = resolveReactiveNodes(this._children);
             const parent = children[0].parentNode;
@@ -966,14 +966,14 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        subscription = null;
+        _subscription = null;
         _renderedChildren = null;
         constructor(ref, value, parent) {
             this.type = 'observable';
             this.parent = parent;
             this.ref = ref;
             this.render(value.value);
-            this.subscription = value.subscribe((value) => this.render(value));
+            this._subscription = value.subscribe((value) => this.render(value));
         }
         render(jsxNode) {
             if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
@@ -989,9 +989,9 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         unmount() {
-            if (this.subscription) {
-                this.subscription.unsubscribe();
-                this.subscription = null;
+            if (this._subscription) {
+                this._subscription.unsubscribe();
+                this._subscription = null;
             }
         }
     }
@@ -1002,26 +1002,23 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        subscription = null;
-        frontBuffer = new Map();
-        backBuffer = new Map();
-        mapFn;
+        _mapFn;
+        _subscription = null;
+        _frontBuffer = new Map();
+        _backBuffer = new Map();
         constructor(ref, props, parent) {
             this.type = 'builtin';
             this.parent = parent;
             this.ref = ref;
             const forProps = props;
-            if (typeof forProps.children !== 'function') {
-                throw new Error('The <For> component must have exactly one child — a function that maps each item.');
-            }
-            this.mapFn = forProps.children;
+            this._mapFn = forProps.children;
             const of = forProps.of;
             if (Array.isArray(of)) {
                 this.render(of);
             }
             else if (of instanceof ObservableImpl) {
                 this.render(of.value);
-                this.subscription = of.subscribe((value) => this.render(value));
+                this._subscription = of.subscribe((value) => this.render(value));
             }
             else {
                 throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
@@ -1030,9 +1027,9 @@ var PlainJSX = (function (exports, utilsJs) {
         render(items) {
             this.firstChild = this.lastChild = null;
             const n = items.length;
-            for (let i = 0; i < n; i++) {
+            for (let i = 0; i < n; ++i) {
                 const value = items[i];
-                let item = this.frontBuffer.get(value);
+                let item = this._frontBuffer.get(value);
                 if (item) {
                     item.index.value = i;
                     this.firstChild ??= item.head;
@@ -1046,7 +1043,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 else {
                     const index = val(i);
                     let head = this.lastChild;
-                    renderJSX(this.mapFn({ item: value, index }), this);
+                    renderJSX(this._mapFn({ item: value, index }), this);
                     let tail = this.lastChild;
                     if (head !== tail) {
                         head = head ? head.next : this.firstChild;
@@ -1056,19 +1053,19 @@ var PlainJSX = (function (exports, utilsJs) {
                     }
                     item = { index, head, tail };
                 }
-                this.backBuffer.set(value, item);
+                this._backBuffer.set(value, item);
             }
             if (this.lastChild) {
                 this.lastChild.next = null;
             }
             this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
-            [this.frontBuffer, this.backBuffer] = [this.backBuffer, this.frontBuffer];
-            this.backBuffer.clear();
+            [this._frontBuffer, this._backBuffer] = [this._backBuffer, this._frontBuffer];
+            this._backBuffer.clear();
         }
         unmount() {
-            if (this.subscription) {
-                this.subscription.unsubscribe();
-                this.subscription = null;
+            if (this._subscription) {
+                this._subscription.unsubscribe();
+                this._subscription = null;
             }
         }
     }
@@ -1079,23 +1076,23 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        childrenOrFn;
-        keyed;
-        condition;
-        subscription = null;
-        shown = false;
+        _childrenOrFn;
+        _keyed;
+        _condition;
+        _subscription = null;
+        _shown = false;
         constructor(ref, props, parent) {
             this.type = 'builtin';
             this.parent = parent;
             this.ref = ref;
             const showProps = props;
             const when = showProps.when;
-            this.condition = showProps.is;
-            this.keyed = showProps.keyed ?? false;
-            this.childrenOrFn = showProps.children;
+            this._condition = showProps.is;
+            this._keyed = showProps.keyed ?? false;
+            this._childrenOrFn = showProps.children;
             if (when instanceof ObservableImpl) {
                 this.render(when.value);
-                this.subscription = when.subscribe((value) => this.render(value));
+                this._subscription = when.subscribe((value) => this.render(value));
             }
             else {
                 this.render(when);
@@ -1103,24 +1100,24 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         render(value) {
             let show;
-            if (this.condition === undefined) {
+            if (this._condition === undefined) {
                 show = Boolean(value);
             }
-            else if (typeof this.condition === 'function') {
-                show = this.condition(value);
+            else if (typeof this._condition === 'function') {
+                show = this._condition(value);
             }
             else {
-                show = value === this.condition;
+                show = value === this._condition;
             }
-            if (!this.keyed && this.shown === show) {
+            if (!this._keyed && this._shown === show) {
                 return;
             }
-            this.shown = show;
+            this._shown = show;
             this.firstChild = this.lastChild = null;
             if (show) {
-                const children = renderJSX(typeof this.childrenOrFn === 'function'
-                    ? this.childrenOrFn()
-                    : this.childrenOrFn, this);
+                const children = renderJSX(typeof this._childrenOrFn === 'function'
+                    ? this._childrenOrFn()
+                    : this._childrenOrFn, this);
                 this.ref.update(children);
             }
             else {
@@ -1128,9 +1125,9 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         unmount() {
-            if (this.subscription) {
-                this.subscription.unsubscribe();
-                this.subscription = null;
+            if (this._subscription) {
+                this._subscription.unsubscribe();
+                this._subscription = null;
             }
         }
     }
