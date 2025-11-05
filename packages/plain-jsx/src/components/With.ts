@@ -1,11 +1,9 @@
-import type { ValuesOf } from '../observable';
+import type { Observable } from '..';
 import type { JSXNode } from '../types';
 
-type TypesOf<T> = { [K in keyof T]: T[K] };
-
 export interface WithProps<T> {
-    value: T | TypesOf<T>;
-    children: (...args: ValuesOf<T>) => JSXNode;
+    value: T | Observable<T>;
+    children: (value: T) => JSXNode;
 }
 
 export function With<T>(_props: WithProps<T>): JSXNode {

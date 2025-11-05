@@ -2,6 +2,7 @@ import type { Action } from '@cleansimple/utils-js';
 import type { ForCallbackProps, ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
+import type { WithManyProps } from './components/WithMany';
 import type { IDependant, Observable, Subscription, Val, ValuesOf } from './observable';
 import type { IHasUpdates } from './scheduling';
 import type {
@@ -23,6 +24,7 @@ import type {
 import { For } from './components/For';
 import { Show } from './components/Show';
 import { With } from './components/With';
+import { WithMany } from './components/WithMany';
 import { patchNode, setProps } from './dom';
 import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
 import { ObservableImpl, val, ValImpl } from './observable';
@@ -153,6 +155,14 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
             else if (node.type === With) {
                 const reactiveNode = new ReactiveNode();
                 const vNode = new VNodeWith(reactiveNode, node.props, parent);
+
+                appendVNodeChild(parent, vNode);
+
+                domNodes.push(reactiveNode);
+            }
+            else if (node.type === WithMany) {
+                const reactiveNode = new ReactiveNode();
+                const vNode = new VNodeWithMany(reactiveNode, node.props, parent);
 
                 appendVNodeChild(parent, vNode);
 
@@ -547,7 +557,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
     }
 }
 
-class VNodeWith<T> implements VNodeBuiltinComponent, IHasUpdates, IDependant {
+class VNodeWith<T> implements VNodeBuiltinComponent {
     public readonly type: 'builtin';
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
@@ -556,7 +566,57 @@ class VNodeWith<T> implements VNodeBuiltinComponent, IHasUpdates, IDependant {
     public lastChild: VNode | null = null;
 
     private readonly _mapFn: WithProps<T>['children'];
-    private readonly _values: (T | ObservableImpl<T>)[];
+    private _subscription: Subscription | null = null;
+
+    public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
+        this.type = 'builtin';
+        this.parent = parent;
+        this.ref = ref;
+
+        const withProps = props as unknown as WithProps<T>;
+        const value = withProps.value as T | ObservableImpl<T>;
+        this._mapFn = withProps.children;
+
+        if (value instanceof ObservableImpl) {
+            this.render(value.value);
+            this._subscription = value.subscribe((value: T) => this.render(value));
+        }
+        else {
+            this.render(value);
+        }
+    }
+
+    public render(value: T) {
+        this.firstChild = this.lastChild = null;
+        const children = renderJSX(
+            typeof this._mapFn === 'function'
+                ? this._mapFn(value)
+                : this._mapFn,
+            this,
+        );
+        this.ref.update(children);
+    }
+
+    public unmount() {
+        if (this._subscription) {
+            this._subscription.unsubscribe();
+            this._subscription = null;
+        }
+    }
+}
+
+class VNodeWithMany<T extends readonly unknown[]>
+    implements VNodeBuiltinComponent, IHasUpdates, IDependant
+{
+    public readonly type: 'builtin';
+    public readonly ref: ReactiveNode;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
+
+    private readonly _mapFn: WithManyProps<T>['children'];
+    private readonly _values: WithManyProps<T>['values'];
     private _subscriptions: Subscription[] | null = null;
     private _pendingUpdates: boolean = false;
 
@@ -565,11 +625,11 @@ class VNodeWith<T> implements VNodeBuiltinComponent, IHasUpdates, IDependant {
         this.parent = parent;
         this.ref = ref;
 
-        const withProps = props as unknown as WithProps<T>;
-        this._values = Array.isArray(withProps.value) ? withProps.value : [withProps.value];
-        this._mapFn = withProps.children;
+        const withManyProps = props as unknown as WithManyProps<T>;
+        this._values = withManyProps.values;
+        this._mapFn = withManyProps.children;
 
-        const args: T[] = [];
+        const args: unknown[] = [];
         for (let i = 0; i < this._values.length; ++i) {
             const value = this._values[i];
             if (value instanceof ObservableImpl) {
@@ -594,11 +654,13 @@ class VNodeWith<T> implements VNodeBuiltinComponent, IHasUpdates, IDependant {
         if (!this._pendingUpdates) return;
         this._pendingUpdates = false;
         this.render(
-            ...this._values.map(value => value instanceof ObservableImpl ? value.value : value),
+            ...this._values.map(value =>
+                value instanceof ObservableImpl ? value.value as unknown : value
+            ),
         );
     }
 
-    public render(...values: T[]) {
+    public render(...values: unknown[]) {
         this.firstChild = this.lastChild = null;
         const children = renderJSX(this._mapFn(...values as ValuesOf<T>), this);
         this.ref.update(children);

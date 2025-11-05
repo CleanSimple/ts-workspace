@@ -13,6 +13,10 @@ var PlainJSX = (function (exports, utilsJs) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
+    function WithMany(_props) {
+        throw new Error('This component cannot be called directly — it must be used through the render function.');
+    }
+
     const XMLNamespaces = {
         'svg': 'http://www.w3.org/2000/svg',
         'xhtml': 'http://www.w3.org/1999/xhtml',
@@ -806,6 +810,12 @@ var PlainJSX = (function (exports, utilsJs) {
                     appendVNodeChild(parent, vNode);
                     domNodes.push(reactiveNode);
                 }
+                else if (node.type === WithMany) {
+                    const reactiveNode = new ReactiveNode();
+                    const vNode = new VNodeWithMany(reactiveNode, node.props, parent);
+                    appendVNodeChild(parent, vNode);
+                    domNodes.push(reactiveNode);
+                }
                 else if (typeof node.type === 'function') {
                     const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
                     setCurrentFunctionalComponent(vNode);
@@ -1139,6 +1149,44 @@ var PlainJSX = (function (exports, utilsJs) {
         firstChild = null;
         lastChild = null;
         _mapFn;
+        _subscription = null;
+        constructor(ref, props, parent) {
+            this.type = 'builtin';
+            this.parent = parent;
+            this.ref = ref;
+            const withProps = props;
+            const value = withProps.value;
+            this._mapFn = withProps.children;
+            if (value instanceof ObservableImpl) {
+                this.render(value.value);
+                this._subscription = value.subscribe((value) => this.render(value));
+            }
+            else {
+                this.render(value);
+            }
+        }
+        render(value) {
+            this.firstChild = this.lastChild = null;
+            const children = renderJSX(typeof this._mapFn === 'function'
+                ? this._mapFn(value)
+                : this._mapFn, this);
+            this.ref.update(children);
+        }
+        unmount() {
+            if (this._subscription) {
+                this._subscription.unsubscribe();
+                this._subscription = null;
+            }
+        }
+    }
+    class VNodeWithMany {
+        type;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        _mapFn;
         _values;
         _subscriptions = null;
         _pendingUpdates = false;
@@ -1146,9 +1194,9 @@ var PlainJSX = (function (exports, utilsJs) {
             this.type = 'builtin';
             this.parent = parent;
             this.ref = ref;
-            const withProps = props;
-            this._values = Array.isArray(withProps.value) ? withProps.value : [withProps.value];
-            this._mapFn = withProps.children;
+            const withManyProps = props;
+            this._values = withManyProps.values;
+            this._mapFn = withManyProps.children;
             const args = [];
             for (let i = 0; i < this._values.length; ++i) {
                 const value = this._values[i];
@@ -1194,6 +1242,7 @@ var PlainJSX = (function (exports, utilsJs) {
     exports.Fragment = Fragment;
     exports.Show = Show;
     exports.With = With;
+    exports.WithMany = WithMany;
     exports.computed = computed;
     exports.nextTick = nextTick;
     exports.onMount = onMount;
