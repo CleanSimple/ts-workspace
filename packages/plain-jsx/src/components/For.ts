@@ -1,7 +1,7 @@
 import type { Observable } from '../observable';
 import type { JSXNode } from '../types';
 
-export interface ForCallbackProps<T> {
+interface ForCallbackProps<T> {
     item: T;
     index: Observable<number>;
 }

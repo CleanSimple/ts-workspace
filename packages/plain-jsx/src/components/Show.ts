@@ -1,10 +1,11 @@
+import type { Predicate } from '@cleansimple/utils-js';
 import type { Observable } from '../observable';
 import type { JSXNode } from '../types';
 
 /* Show */
 export interface ShowProps<T> {
     when: T | Observable<T>;
-    is?: T | ((value: T) => boolean);
+    is?: T | Predicate<T>;
     /**
      * If `true`, the children will be re-rendered when the value changes.
      * @default false

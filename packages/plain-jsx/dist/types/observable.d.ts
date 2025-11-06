@@ -22,7 +22,7 @@ export type ValuesOf<T> = T extends readonly unknown[] ? {
     [K in keyof T]: ValueOf<T[K]>;
 } : [ValueOf<T>];
 export interface IDependant {
-    onDependencyUpdated: () => void;
+    onDependencyUpdated: Action;
 }
 export declare function val<T>(initialValue: T): Val<T>;
 export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Ref<U>;

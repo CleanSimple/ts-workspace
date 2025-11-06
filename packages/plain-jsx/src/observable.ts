@@ -31,7 +31,7 @@ export type ValuesOf<T> = T extends readonly unknown[] ? {
     : [ValueOf<T>];
 
 export interface IDependant {
-    onDependencyUpdated: () => void;
+    onDependencyUpdated: Action;
 }
 
 /* helpers */
@@ -152,6 +152,7 @@ export class ValImpl<T> extends ObservableImpl<T> {
     }
 
     public set value(newValue) {
+        if (newValue === this._value) return;
         this.invalidate();
         this._value = newValue;
         this.notifyDependents();

@@ -1,18 +1,14 @@
-import type { Action } from '@cleansimple/utils-js';
-import type { ForCallbackProps, ForProps } from './components/For';
+import type { Predicate } from '@cleansimple/utils-js';
+import type { ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
 import type { WithManyProps } from './components/WithMany';
 import type { IDependant, Observable, Subscription, Val, ValuesOf } from './observable';
 import type { IHasUpdates } from './scheduling';
 import type {
-    DOMProps,
-    FunctionalComponent,
-    JSXElement,
     JSXNode,
     PropsType,
     RNode,
-    SVGProps,
     VNode,
     VNodeBuiltinComponent,
     VNodeElement,
@@ -22,6 +18,7 @@ import type {
 } from './types';
 
 import { For } from './components/For';
+import { Fragment } from './components/Fragment';
 import { Show } from './components/Show';
 import { With } from './components/With';
 import { WithMany } from './components/WithMany';
@@ -32,29 +29,10 @@ import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
 import { DeferredUpdatesScheduler } from './scheduling';
 import { findParentComponent, splitNamespace } from './utils';
 
-export const Fragment = 'Fragment';
-
-export function jsx(type: string | FunctionalComponent, props: PropsType): JSXElement {
-    return { type, props };
-}
-
-export { jsx as jsxDEV, jsx as jsxs };
-
 export function render(root: Element | DocumentFragment, jsxNode: JSXNode): void {
     const children = resolveReactiveNodes(renderJSX(jsxNode, null));
     root.append(...children);
     mountNodes(children);
-}
-
-function appendVNodeChild(parent: VNode | null, vNode: VNode) {
-    if (!parent) return;
-    if (parent.lastChild) {
-        parent.lastChild.next = vNode;
-        parent.lastChild = vNode;
-    }
-    else {
-        parent.firstChild = parent.lastChild = vNode;
-    }
 }
 
 function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = []): RNode[] {
@@ -136,50 +114,26 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
 
                 domNodes.push(domElement);
             }
-            else if (node.type === For) {
-                const reactiveNode = new ReactiveNode();
-                const vNode = new VNodeFor(reactiveNode, node.props, parent);
-
-                appendVNodeChild(parent, vNode);
-
-                domNodes.push(reactiveNode);
-            }
-            else if (node.type === Show) {
-                const reactiveNode = new ReactiveNode();
-                const vNode = new VNodeShow(reactiveNode, node.props, parent);
-
-                appendVNodeChild(parent, vNode);
-
-                domNodes.push(reactiveNode);
-            }
-            else if (node.type === With) {
-                const reactiveNode = new ReactiveNode();
-                const vNode = new VNodeWith(reactiveNode, node.props, parent);
-
-                appendVNodeChild(parent, vNode);
-
-                domNodes.push(reactiveNode);
-            }
-            else if (node.type === WithMany) {
-                const reactiveNode = new ReactiveNode();
-                const vNode = new VNodeWithMany(reactiveNode, node.props, parent);
-
-                appendVNodeChild(parent, vNode);
-
-                domNodes.push(reactiveNode);
-            }
-            else if (typeof node.type === 'function') {
-                const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
-
-                setCurrentFunctionalComponent(vNode);
-                const jsxNode = node.type(node.props, { defineRef });
-                setCurrentFunctionalComponent(null);
-
-                appendVNodeChild(parent, vNode);
-                renderJSX(jsxNode, vNode, domNodes);
-            }
             else {
-                throw new Error('Invalid JSX node');
+                const VNodeConstructor = BuiltinComponentMap.get(node.type);
+                if (VNodeConstructor) {
+                    const reactiveNode = new ReactiveNode();
+                    const vNode = new VNodeConstructor(reactiveNode, node.props, parent);
+
+                    appendVNodeChild(parent, vNode);
+
+                    domNodes.push(reactiveNode);
+                }
+                else {
+                    const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
+
+                    setCurrentFunctionalComponent(vNode);
+                    const jsxNode = node.type(node.props, { defineRef });
+                    setCurrentFunctionalComponent(null);
+
+                    appendVNodeChild(parent, vNode);
+                    renderJSX(jsxNode, vNode, domNodes);
+                }
             }
         }
         else {
@@ -188,6 +142,17 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
     }
 
     return domNodes;
+}
+
+function appendVNodeChild(parent: VNode | null, vNode: VNode) {
+    if (!parent) return;
+    if (parent.lastChild) {
+        parent.lastChild.next = vNode;
+        parent.lastChild = vNode;
+    }
+    else {
+        parent.firstChild = parent.lastChild = vNode;
+    }
 }
 
 function resolveRenderedVNodes(vNodes: VNode, childNodes: RNode[] = []) {
@@ -234,11 +199,36 @@ class VNodeTextImpl implements VNodeText {
     }
 }
 
+class VNodeElementImpl implements VNodeElement {
+    public readonly type: 'element';
+    public readonly ref: Element;
+    public parent: VNode | null;
+    public next: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
+    public subscriptions: Subscription[] | null = null;
+
+    public constructor(ref: Element, parent: VNode | null) {
+        this.type = 'element';
+        this.parent = parent;
+        this.ref = ref;
+    }
+
+    public unmount(): void {
+        if (this.subscriptions) {
+            for (const subscription of this.subscriptions) {
+                subscription.unsubscribe();
+            }
+            this.subscriptions = null;
+        }
+    }
+}
+
 class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpdates {
     public readonly type: 'component';
     public ref: object | null = null;
-    public onMountCallback: (() => void | Subscription[]) | null = null;
-    public onUnmountCallback: Action | null = null;
+    public onMountCallback: VNodeFunctionalComponent['onMountCallback'] = null;
+    public onUnmountCallback: VNodeFunctionalComponent['onUnmountCallback'] = null;
     public parent: VNode | null;
     public next: VNode | null = null;
     public firstChild: VNode | null = null;
@@ -327,31 +317,6 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpda
     }
 }
 
-class VNodeElementImpl implements VNodeElement {
-    public readonly type: 'element';
-    public readonly ref: Element;
-    public parent: VNode | null;
-    public next: VNode | null = null;
-    public firstChild: VNode | null = null;
-    public lastChild: VNode | null = null;
-    public subscriptions: Subscription[] | null = null;
-
-    public constructor(ref: Element, parent: VNode | null) {
-        this.type = 'element';
-        this.parent = parent;
-        this.ref = ref;
-    }
-
-    public unmount(): void {
-        if (this.subscriptions) {
-            for (const subscription of this.subscriptions) {
-                subscription.unsubscribe();
-            }
-            this.subscriptions = null;
-        }
-    }
-}
-
 class VNodeObservableImpl implements VNodeObservable {
     public readonly type: 'observable';
     public readonly ref: ReactiveNode;
@@ -369,10 +334,10 @@ class VNodeObservableImpl implements VNodeObservable {
         this.ref = ref;
 
         this.render(value.value);
-        this._subscription = value.subscribe((value: JSXNode) => this.render(value));
+        this._subscription = value.subscribe((value) => this.render(value));
     }
 
-    public render(jsxNode: JSXNode): void {
+    private render(jsxNode: JSXNode): void {
         if (
             (typeof jsxNode === 'string' || typeof jsxNode === 'number')
             && this._renderedChildren?.length === 1
@@ -404,7 +369,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _mapFn: (props: ForCallbackProps<T>) => JSXNode;
+    private readonly _children: ForProps<T>['children'];
     private _subscription: Subscription | null = null;
     private _frontBuffer = new Map<unknown, RenderedItem>();
     private _backBuffer = new Map<unknown, RenderedItem>();
@@ -415,7 +380,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         this.ref = ref;
 
         const forProps = props as unknown as ForProps<T>;
-        this._mapFn = forProps.children;
+        this._children = forProps.children;
         const of = forProps.of as T[] | ObservableImpl<T[]>;
 
         if (Array.isArray(of)) {
@@ -423,7 +388,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         }
         else if (of instanceof ObservableImpl) {
             this.render(of.value);
-            this._subscription = of.subscribe((value: T[]) => this.render(value));
+            this._subscription = of.subscribe((value) => this.render(value));
         }
         else {
             throw new Error(
@@ -432,7 +397,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         }
     }
 
-    public render(items: T[]) {
+    private render(items: T[]) {
         this.firstChild = this.lastChild = null;
         const n = items.length;
         for (let i = 0; i < n; ++i) {
@@ -451,7 +416,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
             else {
                 const index = val(i);
                 let head = this.lastChild;
-                renderJSX(this._mapFn({ item: value, index }), this);
+                renderJSX(this._children({ item: value, index }), this);
                 let tail = this.lastChild;
 
                 if (head !== tail) {
@@ -491,9 +456,9 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _childrenOrFn: ShowProps<T>['children'];
-    private readonly _keyed: boolean;
-    private readonly _condition: ShowProps<T>['is'];
+    private readonly _is: ShowProps<T>['is'];
+    private readonly _keyed: ShowProps<T>['keyed'];
+    private readonly _children: ShowProps<T>['children'];
     private _subscription: Subscription | null = null;
     private _shown = false;
 
@@ -504,29 +469,29 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
 
         const showProps = props as unknown as ShowProps<T>;
         const when = showProps.when as T | ObservableImpl<T>;
-        this._condition = showProps.is;
+        this._is = showProps.is;
         this._keyed = showProps.keyed ?? false;
-        this._childrenOrFn = showProps.children;
+        this._children = showProps.children;
 
         if (when instanceof ObservableImpl) {
             this.render(when.value);
-            this._subscription = when.subscribe((value: T) => this.render(value));
+            this._subscription = when.subscribe((value) => this.render(value));
         }
         else {
             this.render(when);
         }
     }
 
-    public render(value: T) {
+    private render(value: T) {
         let show: boolean;
-        if (this._condition === undefined) {
+        if (this._is === undefined) {
             show = Boolean(value);
         }
-        else if (typeof this._condition === 'function') {
-            show = (this._condition as (value: T) => boolean)(value);
+        else if (typeof this._is === 'function') {
+            show = (this._is as Predicate<T>)(value);
         }
         else {
-            show = value === this._condition;
+            show = value === this._is;
         }
 
         if (!this._keyed && this._shown === show) {
@@ -537,9 +502,9 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         this.firstChild = this.lastChild = null;
         if (show) {
             const children = renderJSX(
-                typeof this._childrenOrFn === 'function'
-                    ? this._childrenOrFn()
-                    : this._childrenOrFn,
+                typeof this._children === 'function'
+                    ? this._children()
+                    : this._children,
                 this,
             );
             this.ref.update(children);
@@ -565,7 +530,7 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _mapFn: WithProps<T>['children'];
+    private readonly _children: WithProps<T>['children'];
     private _subscription: Subscription | null = null;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
@@ -575,23 +540,23 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
 
         const withProps = props as unknown as WithProps<T>;
         const value = withProps.value as T | ObservableImpl<T>;
-        this._mapFn = withProps.children;
+        this._children = withProps.children;
 
         if (value instanceof ObservableImpl) {
             this.render(value.value);
-            this._subscription = value.subscribe((value: T) => this.render(value));
+            this._subscription = value.subscribe((value) => this.render(value));
         }
         else {
             this.render(value);
         }
     }
 
-    public render(value: T) {
+    private render(value: T) {
         this.firstChild = this.lastChild = null;
         const children = renderJSX(
-            typeof this._mapFn === 'function'
-                ? this._mapFn(value)
-                : this._mapFn,
+            typeof this._children === 'function'
+                ? this._children(value)
+                : this._children,
             this,
         );
         this.ref.update(children);
@@ -615,8 +580,8 @@ class VNodeWithMany<T extends readonly unknown[]>
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _mapFn: WithManyProps<T>['children'];
     private readonly _values: WithManyProps<T>['values'];
+    private readonly _children: WithManyProps<T>['children'];
     private _subscriptions: Subscription[] | null = null;
     private _pendingUpdates: boolean = false;
 
@@ -627,7 +592,7 @@ class VNodeWithMany<T extends readonly unknown[]>
 
         const withManyProps = props as unknown as WithManyProps<T>;
         this._values = withManyProps.values;
-        this._mapFn = withManyProps.children;
+        this._children = withManyProps.children;
 
         const args: unknown[] = [];
         for (let i = 0; i < this._values.length; ++i) {
@@ -660,9 +625,9 @@ class VNodeWithMany<T extends readonly unknown[]>
         );
     }
 
-    public render(...values: unknown[]) {
+    private render(...values: unknown[]) {
         this.firstChild = this.lastChild = null;
-        const children = renderJSX(this._mapFn(...values as ValuesOf<T>), this);
+        const children = renderJSX(this._children(...values as ValuesOf<T>), this);
         this.ref.update(children);
     }
 
@@ -676,28 +641,17 @@ class VNodeWithMany<T extends readonly unknown[]>
     }
 }
 
-type DOMElement = Element;
+type BuiltinVNodeConstructor = new(
+    ref: ReactiveNode,
+    props: PropsType,
+    parent: VNode | null,
+) => VNodeBuiltinComponent;
 
-// eslint-disable-next-line @typescript-eslint/no-namespace
-export declare namespace JSX {
-    /* utility */
-    type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
-
-    /* jsx defs */
-    type Fragment = typeof Fragment;
-
-    type Element = JSXNode;
-
-    type BaseIntrinsicElements =
-        & {
-            [K in keyof HTMLElementTagNameMap]: DOMProps<HTMLElementTagNameMap[K]>;
-        }
-        & {
-            [K in keyof SVGElementTagNameMap as `svg:${K}`]: SVGProps<SVGElementTagNameMap[K]>;
-        };
-
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    interface IntrinsicElements extends BaseIntrinsicElements {
-        // allow extending the intrinsic elements
-    }
-}
+const BuiltinComponentMap = new Map<unknown, BuiltinVNodeConstructor>(
+    [
+        [For, VNodeFor],
+        [Show, VNodeShow],
+        [With, VNodeWith],
+        [WithMany, VNodeWithMany],
+    ],
+);

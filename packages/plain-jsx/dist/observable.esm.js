@@ -96,6 +96,8 @@ class ValImpl extends ObservableImpl {
         return this._value;
     }
     set value(newValue) {
+        if (newValue === this._value)
+            return;
         this.invalidate();
         this._value = newValue;
         this.notifyDependents();

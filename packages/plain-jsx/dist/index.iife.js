@@ -5,6 +5,8 @@ var PlainJSX = (function (exports, utilsJs) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
+    const Fragment = 'Fragment';
+
     function Show(_props) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
@@ -244,6 +246,17 @@ var PlainJSX = (function (exports, utilsJs) {
             runAsync(callbacks[i]);
         }
     }
+    function runAsync(action) {
+        try {
+            const result = action();
+            if (result instanceof Promise) {
+                result.catch(err => console.error(err));
+            }
+        }
+        catch (err) {
+            console.error(err);
+        }
+    }
     class DeferredUpdatesScheduler {
         static _items = [];
         static _scheduled = false;
@@ -262,17 +275,6 @@ var PlainJSX = (function (exports, utilsJs) {
             for (let i = 0; i < n; ++i) {
                 items[i].flushUpdates();
             }
-        }
-    }
-    function runAsync(action) {
-        try {
-            const result = action();
-            if (result instanceof Promise) {
-                result.catch(err => console.error(err));
-            }
-        }
-        catch (err) {
-            console.error(err);
         }
     }
 
@@ -372,6 +374,8 @@ var PlainJSX = (function (exports, utilsJs) {
             return this._value;
         }
         set value(newValue) {
+            if (newValue === this._value)
+                return;
             this.invalidate();
             this._value = newValue;
             this.notifyDependents();
@@ -706,22 +710,10 @@ var PlainJSX = (function (exports, utilsJs) {
         return childNodes;
     }
 
-    const Fragment = 'Fragment';
     function render(root, jsxNode) {
         const children = resolveReactiveNodes(renderJSX(jsxNode, null));
         root.append(...children);
         mountNodes(children);
-    }
-    function appendVNodeChild(parent, vNode) {
-        if (!parent)
-            return;
-        if (parent.lastChild) {
-            parent.lastChild.next = vNode;
-            parent.lastChild = vNode;
-        }
-        else {
-            parent.firstChild = parent.lastChild = vNode;
-        }
     }
     function renderJSX(jsxNode, parent, domNodes = []) {
         const nodes = [jsxNode];
@@ -792,40 +784,22 @@ var PlainJSX = (function (exports, utilsJs) {
                     }
                     domNodes.push(domElement);
                 }
-                else if (node.type === For) {
-                    const reactiveNode = new ReactiveNode();
-                    const vNode = new VNodeFor(reactiveNode, node.props, parent);
-                    appendVNodeChild(parent, vNode);
-                    domNodes.push(reactiveNode);
-                }
-                else if (node.type === Show) {
-                    const reactiveNode = new ReactiveNode();
-                    const vNode = new VNodeShow(reactiveNode, node.props, parent);
-                    appendVNodeChild(parent, vNode);
-                    domNodes.push(reactiveNode);
-                }
-                else if (node.type === With) {
-                    const reactiveNode = new ReactiveNode();
-                    const vNode = new VNodeWith(reactiveNode, node.props, parent);
-                    appendVNodeChild(parent, vNode);
-                    domNodes.push(reactiveNode);
-                }
-                else if (node.type === WithMany) {
-                    const reactiveNode = new ReactiveNode();
-                    const vNode = new VNodeWithMany(reactiveNode, node.props, parent);
-                    appendVNodeChild(parent, vNode);
-                    domNodes.push(reactiveNode);
-                }
-                else if (typeof node.type === 'function') {
-                    const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
-                    setCurrentFunctionalComponent(vNode);
-                    const jsxNode = node.type(node.props, { defineRef });
-                    setCurrentFunctionalComponent(null);
-                    appendVNodeChild(parent, vNode);
-                    renderJSX(jsxNode, vNode, domNodes);
-                }
                 else {
-                    throw new Error('Invalid JSX node');
+                    const VNodeConstructor = BuiltinComponentMap.get(node.type);
+                    if (VNodeConstructor) {
+                        const reactiveNode = new ReactiveNode();
+                        const vNode = new VNodeConstructor(reactiveNode, node.props, parent);
+                        appendVNodeChild(parent, vNode);
+                        domNodes.push(reactiveNode);
+                    }
+                    else {
+                        const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
+                        setCurrentFunctionalComponent(vNode);
+                        const jsxNode = node.type(node.props, { defineRef });
+                        setCurrentFunctionalComponent(null);
+                        appendVNodeChild(parent, vNode);
+                        renderJSX(jsxNode, vNode, domNodes);
+                    }
                 }
             }
             else {
@@ -833,6 +807,17 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         return domNodes;
+    }
+    function appendVNodeChild(parent, vNode) {
+        if (!parent)
+            return;
+        if (parent.lastChild) {
+            parent.lastChild.next = vNode;
+            parent.lastChild = vNode;
+        }
+        else {
+            parent.firstChild = parent.lastChild = vNode;
+        }
     }
     function resolveRenderedVNodes(vNodes, childNodes = []) {
         let vNode = vNodes;
@@ -867,6 +852,28 @@ var PlainJSX = (function (exports, utilsJs) {
             this.type = 'text';
             this.parent = parent;
             this.ref = ref;
+        }
+    }
+    class VNodeElementImpl {
+        type;
+        ref;
+        parent;
+        next = null;
+        firstChild = null;
+        lastChild = null;
+        subscriptions = null;
+        constructor(ref, parent) {
+            this.type = 'element';
+            this.parent = parent;
+            this.ref = ref;
+        }
+        unmount() {
+            if (this.subscriptions) {
+                for (const subscription of this.subscriptions) {
+                    subscription.unsubscribe();
+                }
+                this.subscriptions = null;
+            }
         }
     }
     class VNodeFunctionalComponentImpl {
@@ -947,28 +954,6 @@ var PlainJSX = (function (exports, utilsJs) {
             this._isMounted = false;
         }
     }
-    class VNodeElementImpl {
-        type;
-        ref;
-        parent;
-        next = null;
-        firstChild = null;
-        lastChild = null;
-        subscriptions = null;
-        constructor(ref, parent) {
-            this.type = 'element';
-            this.parent = parent;
-            this.ref = ref;
-        }
-        unmount() {
-            if (this.subscriptions) {
-                for (const subscription of this.subscriptions) {
-                    subscription.unsubscribe();
-                }
-                this.subscriptions = null;
-            }
-        }
-    }
     class VNodeObservableImpl {
         type;
         ref;
@@ -1012,7 +997,7 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        _mapFn;
+        _children;
         _subscription = null;
         _frontBuffer = new Map();
         _backBuffer = new Map();
@@ -1021,7 +1006,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this.parent = parent;
             this.ref = ref;
             const forProps = props;
-            this._mapFn = forProps.children;
+            this._children = forProps.children;
             const of = forProps.of;
             if (Array.isArray(of)) {
                 this.render(of);
@@ -1053,7 +1038,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 else {
                     const index = val(i);
                     let head = this.lastChild;
-                    renderJSX(this._mapFn({ item: value, index }), this);
+                    renderJSX(this._children({ item: value, index }), this);
                     let tail = this.lastChild;
                     if (head !== tail) {
                         head = head ? head.next : this.firstChild;
@@ -1086,9 +1071,9 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        _childrenOrFn;
+        _is;
         _keyed;
-        _condition;
+        _children;
         _subscription = null;
         _shown = false;
         constructor(ref, props, parent) {
@@ -1097,9 +1082,9 @@ var PlainJSX = (function (exports, utilsJs) {
             this.ref = ref;
             const showProps = props;
             const when = showProps.when;
-            this._condition = showProps.is;
+            this._is = showProps.is;
             this._keyed = showProps.keyed ?? false;
-            this._childrenOrFn = showProps.children;
+            this._children = showProps.children;
             if (when instanceof ObservableImpl) {
                 this.render(when.value);
                 this._subscription = when.subscribe((value) => this.render(value));
@@ -1110,14 +1095,14 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         render(value) {
             let show;
-            if (this._condition === undefined) {
+            if (this._is === undefined) {
                 show = Boolean(value);
             }
-            else if (typeof this._condition === 'function') {
-                show = this._condition(value);
+            else if (typeof this._is === 'function') {
+                show = this._is(value);
             }
             else {
-                show = value === this._condition;
+                show = value === this._is;
             }
             if (!this._keyed && this._shown === show) {
                 return;
@@ -1125,9 +1110,9 @@ var PlainJSX = (function (exports, utilsJs) {
             this._shown = show;
             this.firstChild = this.lastChild = null;
             if (show) {
-                const children = renderJSX(typeof this._childrenOrFn === 'function'
-                    ? this._childrenOrFn()
-                    : this._childrenOrFn, this);
+                const children = renderJSX(typeof this._children === 'function'
+                    ? this._children()
+                    : this._children, this);
                 this.ref.update(children);
             }
             else {
@@ -1148,7 +1133,7 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        _mapFn;
+        _children;
         _subscription = null;
         constructor(ref, props, parent) {
             this.type = 'builtin';
@@ -1156,7 +1141,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this.ref = ref;
             const withProps = props;
             const value = withProps.value;
-            this._mapFn = withProps.children;
+            this._children = withProps.children;
             if (value instanceof ObservableImpl) {
                 this.render(value.value);
                 this._subscription = value.subscribe((value) => this.render(value));
@@ -1167,9 +1152,9 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         render(value) {
             this.firstChild = this.lastChild = null;
-            const children = renderJSX(typeof this._mapFn === 'function'
-                ? this._mapFn(value)
-                : this._mapFn, this);
+            const children = renderJSX(typeof this._children === 'function'
+                ? this._children(value)
+                : this._children, this);
             this.ref.update(children);
         }
         unmount() {
@@ -1186,8 +1171,8 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        _mapFn;
         _values;
+        _children;
         _subscriptions = null;
         _pendingUpdates = false;
         constructor(ref, props, parent) {
@@ -1196,7 +1181,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this.ref = ref;
             const withManyProps = props;
             this._values = withManyProps.values;
-            this._mapFn = withManyProps.children;
+            this._children = withManyProps.children;
             const args = [];
             for (let i = 0; i < this._values.length; ++i) {
                 const value = this._values[i];
@@ -1225,7 +1210,7 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         render(...values) {
             this.firstChild = this.lastChild = null;
-            const children = renderJSX(this._mapFn(...values), this);
+            const children = renderJSX(this._children(...values), this);
             this.ref.update(children);
         }
         unmount() {
@@ -1237,6 +1222,12 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
     }
+    const BuiltinComponentMap = new Map([
+        [For, VNodeFor],
+        [Show, VNodeShow],
+        [With, VNodeWith],
+        [WithMany, VNodeWithMany],
+    ]);
 
     exports.For = For;
     exports.Fragment = Fragment;

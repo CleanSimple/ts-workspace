@@ -1,10 +1,10 @@
-import type { MaybePromise } from '@cleansimple/utils-js';
+import type { Action, MaybePromise } from '@cleansimple/utils-js';
 
-type Action = () => MaybePromise<void>;
-let _callbacks = new Array<Action>();
+type MaybeAsyncAction = () => MaybePromise<void>;
+let _callbacks = new Array<MaybeAsyncAction>();
 let _scheduled = false;
 
-export function nextTick(callback: Action) {
+export function nextTick(callback: MaybeAsyncAction) {
     _callbacks.push(callback);
     if (_scheduled) return;
     _scheduled = true;
@@ -21,8 +21,19 @@ function flushNextTickCallbacks() {
     }
 }
 
+function runAsync(action: MaybeAsyncAction) {
+    try {
+        const result = action();
+        if (result instanceof Promise) {
+            result.catch(err => console.error(err));
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
 export interface IHasUpdates {
-    flushUpdates: () => void;
+    flushUpdates: Action;
 }
 
 export class DeferredUpdatesScheduler {
@@ -44,16 +55,5 @@ export class DeferredUpdatesScheduler {
         for (let i = 0; i < n; ++i) {
             items[i].flushUpdates();
         }
-    }
-}
-
-export function runAsync(action: Action) {
-    try {
-        const result = action();
-        if (result instanceof Promise) {
-            result.catch(err => console.error(err));
-        }
-    } catch (err) {
-        console.error(err);
     }
 }

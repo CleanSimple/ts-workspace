@@ -50,8 +50,7 @@ export type PropsType = Record<string, unknown> & {
     ref?: unknown;
     children?: JSXNode;
 };
-type ClassProp = `class:${string}`;
-type Classes = Record<ClassProp, boolean | Observable<boolean>>;
+type Classes = Record<`class:${string}`, boolean | Observable<boolean>>;
 type CommonProps<T extends Element> = Classes & {
     ref?: Ref<T>;
     children?: JSXNode;
@@ -59,16 +58,13 @@ type CommonProps<T extends Element> = Classes & {
     style?: CSS | string;
     dataset?: DOMStringMap;
 };
+type SettableProps<T extends Element> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers) & 'className' & 'classList'>;
 type TypedEvent<TElement extends Element, TEvent extends Event = Event> = TEvent & {
     currentTarget: TElement;
 };
 type DOMEvents<T extends Element> = {
     [K in keyof GlobalEventHandlersEventMap as `on:${K}`]?: (this: T, ev: TypedEvent<T, GlobalEventHandlersEventMap[K]>) => unknown;
 };
-type SettableProps<T extends Element> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers & {
-    className: never;
-    classList: never;
-})>;
 type AcceptsObservable<T> = (T extends infer U ? Observable<U> : never) | Observable<T>;
 type AsAcceptsObservable<T> = {
     [K in keyof T]: T[K] | AcceptsObservable<T[K]>;

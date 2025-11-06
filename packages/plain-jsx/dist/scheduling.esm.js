@@ -16,6 +16,17 @@ function flushNextTickCallbacks() {
         runAsync(callbacks[i]);
     }
 }
+function runAsync(action) {
+    try {
+        const result = action();
+        if (result instanceof Promise) {
+            result.catch(err => console.error(err));
+        }
+    }
+    catch (err) {
+        console.error(err);
+    }
+}
 class DeferredUpdatesScheduler {
     static _items = [];
     static _scheduled = false;
@@ -36,16 +47,5 @@ class DeferredUpdatesScheduler {
         }
     }
 }
-function runAsync(action) {
-    try {
-        const result = action();
-        if (result instanceof Promise) {
-            result.catch(err => console.error(err));
-        }
-    }
-    catch (err) {
-        console.error(err);
-    }
-}
 
-export { DeferredUpdatesScheduler, nextTick, runAsync };
+export { DeferredUpdatesScheduler, nextTick };
