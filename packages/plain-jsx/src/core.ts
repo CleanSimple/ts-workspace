@@ -459,8 +459,9 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
     private readonly _is: ShowProps<T>['is'];
     private readonly _keyed: ShowProps<T>['keyed'];
     private readonly _children: ShowProps<T>['children'];
+    private readonly _fallback: ShowProps<T>['fallback'] | null;
     private _subscription: Subscription | null = null;
-    private _shown = false;
+    private _shown: boolean | null = null;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
@@ -472,6 +473,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         this._is = showProps.is;
         this._keyed = showProps.keyed ?? false;
         this._children = showProps.children;
+        this._fallback = showProps.fallback ?? null;
 
         if (when instanceof ObservableImpl) {
             this.render(when.value);
@@ -500,11 +502,10 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         this._shown = show;
 
         this.firstChild = this.lastChild = null;
-        if (show) {
+        const jsxNode = show ? this._children : this._fallback;
+        if (jsxNode) {
             const children = renderJSX(
-                typeof this._children === 'function'
-                    ? this._children()
-                    : this._children,
+                typeof jsxNode === 'function' ? jsxNode() : jsxNode,
                 this,
             );
             this.ref.update(children);

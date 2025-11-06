@@ -1074,8 +1074,9 @@ var PlainJSX = (function (exports, utilsJs) {
         _is;
         _keyed;
         _children;
+        _fallback;
         _subscription = null;
-        _shown = false;
+        _shown = null;
         constructor(ref, props, parent) {
             this.type = 'builtin';
             this.parent = parent;
@@ -1085,6 +1086,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this._is = showProps.is;
             this._keyed = showProps.keyed ?? false;
             this._children = showProps.children;
+            this._fallback = showProps.fallback ?? null;
             if (when instanceof ObservableImpl) {
                 this.render(when.value);
                 this._subscription = when.subscribe((value) => this.render(value));
@@ -1109,10 +1111,9 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             this._shown = show;
             this.firstChild = this.lastChild = null;
-            if (show) {
-                const children = renderJSX(typeof this._children === 'function'
-                    ? this._children()
-                    : this._children, this);
+            const jsxNode = show ? this._children : this._fallback;
+            if (jsxNode) {
+                const children = renderJSX(typeof jsxNode === 'function' ? jsxNode() : jsxNode, this);
                 this.ref.update(children);
             }
             else {

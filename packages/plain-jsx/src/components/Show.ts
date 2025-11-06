@@ -11,6 +11,7 @@ export interface ShowProps<T> {
      * @default false
      */
     keyed?: boolean;
+    fallback?: JSXNode | (() => JSXNode);
     children: JSXNode | (() => JSXNode);
 }
 

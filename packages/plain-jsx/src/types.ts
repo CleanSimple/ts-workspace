@@ -99,14 +99,14 @@ type CommonProps<T extends Element> =
 
 type SettableProps<T extends Element> = Omit<
     T,
-    & keyof (
+    | keyof (
         & ReadonlyProps<T>
         & MethodsOf<T>
         & CommonProps<T>
         & GlobalEventHandlers
     )
-    & 'className'
-    & 'classList'
+    | 'className'
+    | 'classList'
 >;
 
 /* event types */

@@ -20,7 +20,7 @@ import { Timer } from './components/Timer';
 import typescriptLogo from './typescript.svg';
 
 const App: FunctionalComponent = () => {
-    const showDynamicComponent = val(false);
+    const showDynamicComponents = val(false);
     const items1 = val([1, 2, 3]);
     const items2 = val(['Test1']);
     const counter = val<CounterRefType | null>(null);
@@ -31,8 +31,8 @@ const App: FunctionalComponent = () => {
         switchValue.value += 1;
     }, 1000);
 
-    function toggleDynamicCompetent() {
-        showDynamicComponent.value = !showDynamicComponent.value;
+    function toggleDynamicComponents() {
+        showDynamicComponents.value = !showDynamicComponents.value;
     }
 
     function addItem1() {
@@ -54,9 +54,12 @@ const App: FunctionalComponent = () => {
     }
 
     onMount(() => {
-        const subscription = subscribe([showDynamicComponent, key], (showDynamicComponent, key) => {
-            console.log(showDynamicComponent, key);
-        });
+        const subscription = subscribe(
+            [showDynamicComponents, key],
+            (showDynamicComponents, key) => {
+                console.log(showDynamicComponents, key);
+            },
+        );
         return [subscription];
     });
 
@@ -75,7 +78,7 @@ const App: FunctionalComponent = () => {
                     <Counter ref={counter} />
                     <button on:click={() => counter.value?.increment()}>Increment Counter</button>
                     <Input type='text' focus={true} value='Input with focus' />
-                    <button on:click={toggleDynamicCompetent}>Toggle Dynamic Component</button>
+                    <button on:click={toggleDynamicComponents}>Toggle Dynamic Components</button>
                     <button on:click={() => key.value += 1}>Increment Key</button>
                     <div style={{ display: 'flex', flexFlow: 'row', gap: '0.5rem' }}>
                         <button on:click={addItem1}>Add Dynamic Child 1</button>
@@ -92,17 +95,20 @@ const App: FunctionalComponent = () => {
             <div class='card'>
                 <div style={{ display: 'flex', flexFlow: 'column', gap: '0.5rem' }}>
                     <span>Dynamic Components:</span>
-                    <Show when={showDynamicComponent}>
+                    <Show when={showDynamicComponents}>
                         <LifecycleComponent name='Component'>
                             Component <Timer />
                         </LifecycleComponent>
                     </Show>
-                    <Show when={showDynamicComponent}>
+                    <Show when={showDynamicComponents}>
                         {() => (
                             <LifecycleComponent name='Callback'>
                                 Callback <Timer />
                             </LifecycleComponent>
                         )}
+                    </Show>
+                    <Show when={showDynamicComponents} fallback={<span>Fallback</span>}>
+                        <span>Shown</span>
                     </Show>
 
                     <Show when={key} keyed>
@@ -126,11 +132,11 @@ const App: FunctionalComponent = () => {
                         }}
                     </With>
 
-                    <WithMany values={[showDynamicComponent, key]}>
-                        {(showDynamicComponent, key) => (
-                            showDynamicComponent && key && (
+                    <WithMany values={[showDynamicComponents, key]}>
+                        {(showDynamicComponents, key) => (
+                            showDynamicComponents && key && (
                                 <span>
-                                    showDynamicComponent: {String(showDynamicComponent)}, key: {key}
+                                    showDynamicComponents: {String(showDynamicComponents)}, key: {key}
                                 </span>
                             )
                         )}

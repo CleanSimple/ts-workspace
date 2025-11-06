@@ -9,6 +9,7 @@ export interface ShowProps<T> {
      * @default false
      */
     keyed?: boolean;
+    fallback?: JSXNode | (() => JSXNode);
     children: JSXNode | (() => JSXNode);
 }
 export declare function Show<T>(_props: ShowProps<T>): JSXNode;

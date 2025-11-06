@@ -58,7 +58,7 @@ type CommonProps<T extends Element> = Classes & {
     style?: CSS | string;
     dataset?: DOMStringMap;
 };
-type SettableProps<T extends Element> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers) & 'className' & 'classList'>;
+type SettableProps<T extends Element> = Omit<T, keyof (ReadonlyProps<T> & MethodsOf<T> & CommonProps<T> & GlobalEventHandlers) | 'className' | 'classList'>;
 type TypedEvent<TElement extends Element, TEvent extends Event = Event> = TEvent & {
     currentTarget: TElement;
 };
