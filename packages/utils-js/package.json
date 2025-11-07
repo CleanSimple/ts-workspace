@@ -10,10 +10,10 @@
         }
     },
     "scripts": {
-        "build": "yarn clean ./dist && yarn rollup -c && yarn jsdocify",
-        "dev": "yarn rollup -c -w",
-        "lint": "yarn eslint ./src",
-        "fmt": "yarn dprint fmt ./src/*",
+        "build": "clean ./dist && rollup -c && yarn jsdocify",
+        "dev": "rollup -c -w",
+        "lint": "eslint ./src",
+        "fmt": "dprint fmt ./src/**",
         "jsdocify": "yarn pnpify ts-to-jsdoc --project tsconfig.jsdocify.json"
     },
     "devDependencies": {

@@ -18,10 +18,10 @@
         }
     },
     "scripts": {
-        "build": "yarn clean ./dist && yarn rollup -c",
-        "dev": "yarn rollup -c -w",
-        "lint": "yarn eslint ./src",
-        "fmt": "yarn dprint fmt ./src/*"
+        "build": "clean ./dist && rollup -c",
+        "dev": "rollup -c -w",
+        "lint": "eslint ./src",
+        "fmt": "dprint fmt ./src/**"
     },
     "dependencies": {
         "@cleansimple/utils-js": "workspace:^",
