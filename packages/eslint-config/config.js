@@ -2,6 +2,7 @@ import { defineConfig } from 'eslint/config';
 import eslint from '@eslint/js';
 import onlyWarn from 'eslint-plugin-only-warn';
 import tseslint from 'typescript-eslint';
+import importPlugin from 'eslint-plugin-import';
 
 export default defineConfig([
     eslint.configs.recommended,
@@ -14,6 +15,8 @@ export default defineConfig([
     {
         plugins: {
             onlyWarn,
+            "import": importPlugin,
+
         },
     },
     {
@@ -26,7 +29,11 @@ export default defineConfig([
         // additional rules
         rules: {
             '@typescript-eslint/no-import-type-side-effects': 'warn',
-            '@typescript-eslint/consistent-type-imports': 'warn',
+            '@typescript-eslint/consistent-type-imports': ['warn', {
+                prefer: 'type-imports',
+                fixStyle: 'separate-type-imports',
+                disallowTypeAnnotations: true,
+            }],
             '@typescript-eslint/consistent-type-exports': 'warn',
             '@typescript-eslint/method-signature-style': 'warn',
 
@@ -40,6 +47,14 @@ export default defineConfig([
             '@typescript-eslint/no-inferrable-types': 'off',
             '@typescript-eslint/prefer-regexp-exec': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+            // import rules
+            'import/order': ['warn', {
+                groups: [
+                    'type',
+                ],
+                'newlines-between': 'always',
+            }],
+            'import/consistent-type-specifier-style': ['warn', 'prefer-top-level'],
         },
     },
 ]);

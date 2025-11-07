@@ -33,7 +33,7 @@
         "@cleansimple/rollup-config": "workspace:^",
         "@cleansimple/typescript-config": "workspace:^",
         "dprint": "0.50.2",
-        "eslint": "9.36.0",
+        "eslint": "9.39.1",
         "rollup": "4.52.4",
         "typescript": "5.9.3"
     }

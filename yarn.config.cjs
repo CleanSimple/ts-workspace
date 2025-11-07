@@ -1,8 +1,6 @@
 /** @type {import('@yarnpkg/types')} */
 const { defineConfig } = require('@yarnpkg/types');
 
-
-
 module.exports = defineConfig({
     async constraints({ Yarn }) {
 
@@ -17,7 +15,7 @@ module.exports = defineConfig({
         }
 
         enforce_version("dprint", "0.50.2");
-        enforce_version("eslint", "9.36.0");
+        enforce_version("eslint", "9.39.1");
         enforce_version("rollup", "4.52.4");
         enforce_version("typescript", "5.9.3");
     },
