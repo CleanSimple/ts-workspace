@@ -1,5 +1,6 @@
-import { PlayerWrapper } from './player-wrapper';
 import type { VideoContext } from './types';
+
+import { PlayerWrapper } from './player-wrapper';
 
 export class VideoContextManager {
     private static readonly _ContextCache = new WeakMap<HTMLVideoElement, VideoContext>();

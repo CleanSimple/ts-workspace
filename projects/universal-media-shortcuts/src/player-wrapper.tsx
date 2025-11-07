@@ -1,4 +1,6 @@
-import { type JSX, ref, render, val } from '@cleansimple/plain-jsx';
+import type { JSX } from '@cleansimple/plain-jsx';
+
+import { ref, render, val } from '@cleansimple/plain-jsx';
 import { PlayersSelector } from './players';
 import { SkipDlg } from './UI/SkipDlg';
 

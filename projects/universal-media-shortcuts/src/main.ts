@@ -1,9 +1,10 @@
+import type { Hotkey, VideoContext } from './types';
+
 import { sleep } from '@cleansimple/utils-js';
 import { Hotkeys } from './hotkeys';
 import skipDlgStyles from './styles/skip-dlg.css';
 import styles from './styles/styles.css';
 import upDownControlStyles from './styles/up-down-control.css';
-import type { Hotkey, VideoContext } from './types';
 import { VideoContextManager } from './video-context-manager';
 
 type LogType = typeof console.info;

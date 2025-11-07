@@ -1,5 +1,7 @@
-import { type FunctionalComponent, val } from '@cleansimple/plain-jsx';
+import type { FunctionalComponent } from '@cleansimple/plain-jsx';
 import type { Action } from '@cleansimple/utils-js';
+
+import { val } from '@cleansimple/plain-jsx';
 import { UpDown } from './UpDown';
 
 export interface SkipDlg {
