@@ -4,7 +4,9 @@ export default {
     "newLineKind": "lf",
     "typescript": {
         "quoteStyle": "preferSingle",
-        "nextControlFlowPosition": "maintain"
+        "nextControlFlowPosition": "maintain",
+        "importDeclaration.sortTypeOnlyImports": "last",
+        "exportDeclaration.sortTypeOnlyExports": "last",
     },
     "json": {
     },

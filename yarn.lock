@@ -64,6 +64,7 @@ __metadata:
     rollup: "npm:4.52.4"
     rollup-plugin-header: "npm:^1.0.0"
     rollup-plugin-string-import: "npm:^1.2.6"
+    rollup-plugin-tsconfig-paths: "npm:^1.5.2"
     tslib: "npm:^2.8.1"
     typescript: "npm:5.9.3"
   peerDependencies:
@@ -3233,6 +3234,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"rollup-plugin-tsconfig-paths@npm:^1.5.2":
+  version: 1.5.2
+  resolution: "rollup-plugin-tsconfig-paths@npm:1.5.2"
+  dependencies:
+    typescript-paths: "npm:^1.5.1"
+  peerDependencies:
+    rollup: ^2 || ^3 || ^4
+  checksum: 10c0/14b0e60b2a6b32a7581a52bfa4dabfc71a5e15a68107f12a1b7e7986343676a869e454d43283c758cb45770369be661bf3df43f8c03d0944a09804e53b281333
+  languageName: node
+  linkType: hard
+
 "rollup-plugin-typescript2@npm:^0.36.0":
   version: 0.36.0
   resolution: "rollup-plugin-typescript2@npm:0.36.0"
@@ -3714,6 +3726,15 @@ __metadata:
     eslint: ^8.57.0 || ^9.0.0
     typescript: ">=4.8.4 <6.0.0"
   checksum: 10c0/2342b0bffe6f719711adbb42116f90cb1fe1670e2e74dde2739482c9d61c2a975ee16e2d560684613050544b543342ec1b11b46e158a48ecc605f5882d2d5da7
+  languageName: node
+  linkType: hard
+
+"typescript-paths@npm:^1.5.1":
+  version: 1.5.1
+  resolution: "typescript-paths@npm:1.5.1"
+  peerDependencies:
+    typescript: ^4.7.2 || ^5
+  checksum: 10c0/68b7cdf0c8a11e4555e172ccec85fb342d1e19029cce761979087b3509a1b320ccbce4be666cea7acac03ecdce23cc69b2afb8a4847f1bfc25bb49201fdbe5ad
   languageName: node
   linkType: hard
 
