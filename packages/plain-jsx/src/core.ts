@@ -505,7 +505,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         const jsxNode = show ? this._children : this._fallback;
         if (jsxNode) {
             const children = renderJSX(
-                typeof jsxNode === 'function' ? jsxNode() : jsxNode,
+                typeof jsxNode === 'function' ? jsxNode(value) : jsxNode,
                 this,
             );
             this.ref.update(children);
