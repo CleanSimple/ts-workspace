@@ -168,9 +168,9 @@ function setProps(elem, props) {
                             e.preventDefault();
                             e.target[key] = value.value;
                         };
-                    elem.addEventListener('change', handler);
+                    elem.addEventListener('input', handler);
                     subscriptions.push({
-                        unsubscribe: () => elem.removeEventListener('change', handler),
+                        unsubscribe: () => elem.removeEventListener('input', handler),
                     });
                 }
             }

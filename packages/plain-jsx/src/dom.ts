@@ -189,9 +189,9 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
                             e.preventDefault();
                             (e.target as unknown as Record<string, unknown>)[key] = value.value;
                         };
-                    elem.addEventListener('change', handler);
+                    elem.addEventListener('input', handler);
                     subscriptions.push({
-                        unsubscribe: () => elem.removeEventListener('change', handler),
+                        unsubscribe: () => elem.removeEventListener('input', handler),
                     });
                 }
             }
