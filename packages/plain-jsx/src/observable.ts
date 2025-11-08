@@ -19,6 +19,21 @@ export interface Val<T> extends Observable<T> {
 }
 export type Ref<T> = Observable<T | null>;
 
+type TaskStatus = 'Running' | 'Success' | 'Error';
+
+export interface Task<T> {
+    value: Observable<T | undefined>;
+    status: Observable<TaskStatus>;
+    isRunning: Observable<boolean>;
+    isCompleted: Observable<boolean>;
+    isSuccess: Observable<boolean>;
+    isError: Observable<boolean>;
+    error: Observable<unknown>;
+    rerun: Action;
+}
+
+type TaskAction<T> = (params: { signal: AbortSignal }) => Promise<T>;
+
 export type ObservablesOf<T extends readonly unknown[]> = {
     [K in keyof T]: Observable<T[K]>;
 };
@@ -59,6 +74,40 @@ export function subscribe<T extends readonly unknown[]>(
     observer: (...values: T) => void,
 ): Subscription {
     return new MultiObservableSubscription(observables, observer);
+}
+
+const TaskAborted = Symbol('TaskAborted');
+
+export function task<T>(action: TaskAction<T>): Task<T> {
+    const value = val<T | undefined>(undefined);
+    const error = val<unknown>(undefined);
+    const status = val<TaskStatus>('Running');
+    const isRunning = status.computed(status => status === 'Running');
+    const isCompleted = status.computed(status => status !== 'Running');
+    const isSuccess = status.computed(status => status === 'Success');
+    const isError = status.computed(status => status === 'Error');
+    let abortController: AbortController | null = null;
+
+    const run = () => {
+        if (abortController) {
+            abortController.abort(TaskAborted);
+        }
+        abortController = new AbortController();
+
+        status.value = 'Running';
+        error.value = undefined;
+        action({ signal: abortController.signal }).then((result) => {
+            value.value = result;
+            status.value = 'Success';
+        }).catch(err => {
+            if (err === TaskAborted) return;
+            error.value = err;
+            status.value = 'Error';
+        });
+    };
+
+    run();
+    return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
 }
 
 /**

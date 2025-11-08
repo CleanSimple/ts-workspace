@@ -14,6 +14,20 @@ export interface Val<T> extends Observable<T> {
     set value(newValue: T);
 }
 export type Ref<T> = Observable<T | null>;
+type TaskStatus = 'Running' | 'Success' | 'Error';
+export interface Task<T> {
+    value: Observable<T | undefined>;
+    status: Observable<TaskStatus>;
+    isRunning: Observable<boolean>;
+    isCompleted: Observable<boolean>;
+    isSuccess: Observable<boolean>;
+    isError: Observable<boolean>;
+    error: Observable<unknown>;
+    rerun: Action;
+}
+type TaskAction<T> = (params: {
+    signal: AbortSignal;
+}) => Promise<T>;
 export type ObservablesOf<T extends readonly unknown[]> = {
     [K in keyof T]: Observable<T[K]>;
 };
@@ -28,6 +42,7 @@ export declare function val<T>(initialValue: T): Val<T>;
 export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Ref<U>;
 export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
 export declare function subscribe<T extends readonly unknown[]>(observables: ObservablesOf<T>, observer: (...values: T) => void): Subscription;
+export declare function task<T>(action: TaskAction<T>): Task<T>;
 /**
  * Base class for observables
  */
@@ -57,3 +72,4 @@ export declare class ValImpl<T> extends ObservableImpl<T> {
     get value(): T;
     set value(newValue: T);
 }
+export {};
