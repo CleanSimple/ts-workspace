@@ -5,7 +5,7 @@ import { With } from './components/With.esm.js';
 import { WithMany } from './components/WithMany.esm.js';
 import { setProps } from './dom.esm.js';
 import { mountVNodes, defineRef, unmountVNodes, setCurrentFunctionalComponent } from './lifecycle.esm.js';
-import { ObservableImpl, ValImpl, val } from './observable.esm.js';
+import { ObservableImpl, ValImpl, val } from './reactive.esm.js';
 import { resolveReactiveNodes, ReactiveNode } from './reactive-node.esm.js';
 import { DeferredUpdatesScheduler } from './scheduling.esm.js';
 import { splitNamespace } from './utils.esm.js';

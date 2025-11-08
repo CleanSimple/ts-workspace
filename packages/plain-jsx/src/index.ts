@@ -1,9 +1,9 @@
 import type { Setter } from '@cleansimple/utils-js';
-import type { Observable } from './observable';
+import type { Observable } from './reactive';
 import type { JSXNode } from './types';
 
 export type { JSX } from './jsx';
-export type { Observable, Ref, Subscription, Task, Val } from './observable';
+export type { Observable, Ref, Subscription, Task, Val } from './reactive';
 
 export { For } from './components/For';
 export { Fragment } from './components/Fragment';
@@ -12,7 +12,7 @@ export { With } from './components/With';
 export { WithMany } from './components/WithMany';
 export { render } from './core';
 export { onMount, onUnmount, watch, watchMany } from './lifecycle';
-export { computed, ref, subscribe, task, val } from './observable';
+export { computed, ref, subscribe, task, val } from './reactive';
 export { nextTick } from './scheduling';
 
 export interface Helpers<TRef> {

@@ -1,5 +1,5 @@
 import type { Observable } from '.';
-import type { ObservablesOf, Observer } from './observable';
+import type { ObservablesOf, Observer } from './reactive';
 import type { VNode, VNodeFunctionalComponent } from './types';
 export declare function setCurrentFunctionalComponent(component: VNodeFunctionalComponent | null): void;
 export declare function defineRef(ref: object): void;

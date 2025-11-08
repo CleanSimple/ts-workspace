@@ -1,8 +1,8 @@
 import type { Observable } from '.';
-import type { ObservablesOf, Observer } from './observable';
+import type { ObservablesOf, Observer } from './reactive';
 import type { VNode, VNodeFunctionalComponent } from './types';
 
-import { subscribe } from './observable';
+import { subscribe } from './reactive';
 
 let _CurrentFunctionalComponent: VNodeFunctionalComponent | null = null;
 

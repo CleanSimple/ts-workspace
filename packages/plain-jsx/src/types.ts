@@ -1,6 +1,6 @@
 import type { Action, MethodsOf, ReadonlyProps } from '@cleansimple/utils-js';
 import type { Properties as CSS } from 'csstype';
-import type { Observable, Ref, Subscription } from './observable';
+import type { Observable, Ref, Subscription } from './reactive';
 import type { ReactiveNode } from './reactive-node';
 
 /* JSX Node */

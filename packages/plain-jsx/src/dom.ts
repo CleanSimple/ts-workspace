@@ -1,9 +1,9 @@
-import type { Subscription } from './observable';
+import type { Subscription } from './reactive';
 import type { DOMNode, PropsType } from './types';
 
 import { isObject } from '@cleansimple/utils-js';
 import { getLIS } from './lis';
-import { ObservableImpl, ValImpl } from './observable';
+import { ObservableImpl, ValImpl } from './reactive';
 import { isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();

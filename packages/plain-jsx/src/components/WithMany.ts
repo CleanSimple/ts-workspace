@@ -1,4 +1,4 @@
-import type { ValuesOf } from '../observable';
+import type { ValuesOf } from '../reactive';
 import type { JSXNode } from '../types';
 
 type TypesOf<T> = { [K in keyof T]: T[K] };

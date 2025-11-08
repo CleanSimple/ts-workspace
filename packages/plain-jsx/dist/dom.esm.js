@@ -1,6 +1,6 @@
 import { isObject } from '@cleansimple/utils-js';
 import { getLIS } from './lis.esm.js';
-import { ValImpl, ObservableImpl } from './observable.esm.js';
+import { ValImpl, ObservableImpl } from './reactive.esm.js';
 import { isReadonlyProp, splitNamespace } from './utils.esm.js';
 
 const _Fragment = document.createDocumentFragment();

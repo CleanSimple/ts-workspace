@@ -3,7 +3,7 @@ import type { ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
 import type { WithManyProps } from './components/WithMany';
-import type { IDependant, Observable, Subscription, Val, ValuesOf } from './observable';
+import type { IDependant, Observable, Subscription, Val, ValuesOf } from './reactive';
 import type { IHasUpdates } from './scheduling';
 import type {
     JSXNode,
@@ -25,7 +25,7 @@ import { With } from './components/With';
 import { WithMany } from './components/WithMany';
 import { setProps } from './dom';
 import { defineRef, mountVNodes, setCurrentFunctionalComponent, unmountVNodes } from './lifecycle';
-import { ObservableImpl, val, ValImpl } from './observable';
+import { ObservableImpl, val, ValImpl } from './reactive';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
 import { DeferredUpdatesScheduler } from './scheduling';
 import { splitNamespace } from './utils';

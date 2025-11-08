@@ -1,5 +1,5 @@
 import type { Predicate } from '@cleansimple/utils-js';
-import type { Observable } from '../observable';
+import type { Observable } from '../reactive';
 import type { JSXNode } from '../types';
 
 type Truthy<T> = Exclude<T, 0 | '' | null | false | undefined>;

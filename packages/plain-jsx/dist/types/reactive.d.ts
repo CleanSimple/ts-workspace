@@ -47,7 +47,7 @@ export declare function task<T>(action: TaskAction<T>): Task<T>;
  * Base class for observables
  */
 export declare abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
-    private _subscriptions;
+    private _observers;
     private _dependents;
     private _nextDependantId;
     private _nextSubscriptionId;

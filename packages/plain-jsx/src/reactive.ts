@@ -114,7 +114,7 @@ export function task<T>(action: TaskAction<T>): Task<T> {
  * Base class for observables
  */
 export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
-    private _subscriptions: Map<number, Observer<T>> | null = null;
+    private _observers: Map<number, Observer<T>> | null = null;
     private _dependents: Map<number, WeakRef<IDependant>> | null = null;
     private _nextDependantId = 0;
     private _nextSubscriptionId = 0;
@@ -146,7 +146,7 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
     }
 
     protected invalidate() {
-        if (!this._subscriptions) return;
+        if (!this._observers) return;
         if (this._pendingUpdates) return;
         this._pendingUpdates = true;
         this._prevValue = this.value;
@@ -162,7 +162,7 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
         if (value === prevValue) {
             return;
         }
-        for (const observer of this._subscriptions!.values()) {
+        for (const observer of this._observers!.values()) {
             observer(value);
         }
     }
@@ -170,12 +170,12 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
     public abstract get value(): T;
 
     public subscribe(observer: Observer<T>): Subscription {
-        this._subscriptions ??= new Map();
+        this._observers ??= new Map();
         const id = ++this._nextSubscriptionId;
-        this._subscriptions.set(id, observer);
+        this._observers.set(id, observer);
         return {
             unsubscribe: () => {
-                this._subscriptions!.delete(id);
+                this._observers!.delete(id);
             },
         };
     }

@@ -1,4 +1,4 @@
-import { subscribe } from './observable.esm.js';
+import { subscribe } from './reactive.esm.js';
 
 let _CurrentFunctionalComponent = null;
 function setCurrentFunctionalComponent(component) {

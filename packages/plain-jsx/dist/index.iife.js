@@ -148,7 +148,7 @@ var PlainJSX = (function (exports, utilsJs) {
      * Base class for observables
      */
     class ObservableImpl {
-        _subscriptions = null;
+        _observers = null;
         _dependents = null;
         _nextDependantId = 0;
         _nextSubscriptionId = 0;
@@ -178,7 +178,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
         }
         invalidate() {
-            if (!this._subscriptions)
+            if (!this._observers)
                 return;
             if (this._pendingUpdates)
                 return;
@@ -196,17 +196,17 @@ var PlainJSX = (function (exports, utilsJs) {
             if (value === prevValue) {
                 return;
             }
-            for (const observer of this._subscriptions.values()) {
+            for (const observer of this._observers.values()) {
                 observer(value);
             }
         }
         subscribe(observer) {
-            this._subscriptions ??= new Map();
+            this._observers ??= new Map();
             const id = ++this._nextSubscriptionId;
-            this._subscriptions.set(id, observer);
+            this._observers.set(id, observer);
             return {
                 unsubscribe: () => {
-                    this._subscriptions.delete(id);
+                    this._observers.delete(id);
                 },
             };
         }
