@@ -9,7 +9,7 @@ export { Show } from './components/Show';
 export { With } from './components/With';
 export { WithMany } from './components/WithMany';
 export { render } from './core';
-export { onMount, onUnmount } from './lifecycle';
+export { onMount, onUnmount, watch, watchMany } from './lifecycle';
 export { computed, ref, subscribe, val } from './observable';
 export { nextTick } from './scheduling';
 export interface Helpers<TRef> {

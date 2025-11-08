@@ -21,11 +21,15 @@ export interface JSXElement {
 
 /* VNode */
 export interface VNodeBase {
-    type: 'text' | 'element' | 'component' | 'builtin' | 'observable';
+    type: 'root' | 'text' | 'element' | 'component' | 'builtin' | 'observable';
     parent: VNode | null;
     firstChild: VNode | null; // head
     lastChild: VNode | null; // tail
     next: VNode | null;
+}
+
+export interface VNodeRoot extends VNodeBase {
+    type: 'root';
 }
 
 export interface VNodeText extends VNodeBase {
@@ -36,16 +40,17 @@ export interface VNodeText extends VNodeBase {
 export interface VNodeElement extends VNodeBase {
     type: 'element';
     ref: Element;
-    subscriptions: Subscription[] | null;
+    addSubscriptions: (subscriptions: Subscription[]) => void;
     unmount: Action;
 }
 
 export interface VNodeFunctionalComponent extends VNodeBase {
     type: 'component';
     ref: object | null;
+    addSubscription: (subscription: Subscription) => void;
     mount: Action;
-    unmount: (force: boolean) => void;
-    onMountCallback: (() => void | Subscription[]) | null;
+    unmount: Action;
+    onMountCallback: Action | null;
     onUnmountCallback: Action | null;
 }
 
@@ -62,6 +67,7 @@ export interface VNodeObservable extends VNodeBase {
 }
 
 export type VNode =
+    | VNodeRoot
     | VNodeText
     | VNodeElement
     | VNodeFunctionalComponent

@@ -14,6 +14,7 @@ import type {
     VNodeElement,
     VNodeFunctionalComponent,
     VNodeObservable,
+    VNodeRoot,
     VNodeText,
 } from './types';
 
@@ -22,17 +23,20 @@ import { Fragment } from './components/Fragment';
 import { Show } from './components/Show';
 import { With } from './components/With';
 import { WithMany } from './components/WithMany';
-import { patchNode, setProps } from './dom';
-import { defineRef, mountNodes, setCurrentFunctionalComponent } from './lifecycle';
+import { setProps } from './dom';
+import { defineRef, mountVNodes, setCurrentFunctionalComponent, unmountVNodes } from './lifecycle';
 import { ObservableImpl, val, ValImpl } from './observable';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
 import { DeferredUpdatesScheduler } from './scheduling';
-import { findParentComponent, splitNamespace } from './utils';
+import { splitNamespace } from './utils';
 
 export function render(root: Element | DocumentFragment, jsxNode: JSXNode): void {
-    const children = resolveReactiveNodes(renderJSX(jsxNode, null));
+    const rootVNode = new VNodeRootImpl();
+    const children = resolveReactiveNodes(renderJSX(jsxNode, rootVNode));
     root.append(...children);
-    mountNodes(children);
+    if (rootVNode.firstChild) {
+        mountVNodes(rootVNode.firstChild);
+    }
 }
 
 function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = []): RNode[] {
@@ -64,7 +68,6 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
             const textNode = document.createTextNode(String(node));
             if (parent?.type !== 'element') {
                 const vNode = new VNodeTextImpl(textNode, parent);
-                patchNode(textNode, vNode);
                 appendVNodeChild(parent, vNode);
             }
             domNodes.push(textNode);
@@ -72,7 +75,6 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
         else if (node instanceof ObservableImpl) {
             const reactiveNode = new ReactiveNode();
             const vNode = new VNodeObservableImpl(reactiveNode, node, parent);
-
             appendVNodeChild(parent, vNode);
 
             domNodes.push(reactiveNode);
@@ -87,30 +89,23 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
 
                 const subscriptions = setProps(domElement as HTMLElement, node.props);
 
+                let vNode: VNodeElement;
                 if (parent?.type === 'element') {
-                    // VNodes are only used to track children of components and reactive nodes
-                    // if the parent is an element, we can append the dom element directly and add the subscriptions
-                    if (subscriptions) {
-                        if (parent.subscriptions) {
-                            parent.subscriptions.push(...subscriptions);
-                        }
-                        else {
-                            parent.subscriptions = subscriptions;
-                        }
-                    }
-
-                    const children = renderJSX(node.props.children, parent);
-                    domElement.append(...resolveReactiveNodes(children));
+                    // as a memory optimization we don't create vNodes for descendants of an element that are also elements
+                    // we have no use for them anyway
+                    vNode = parent;
                 }
                 else {
-                    const vNode = new VNodeElementImpl(domElement, parent);
-                    vNode.subscriptions = subscriptions;
-                    patchNode(domElement, vNode);
+                    vNode = new VNodeElementImpl(domElement, parent);
                     appendVNodeChild(parent, vNode);
-
-                    const children = renderJSX(node.props.children, vNode);
-                    domElement.append(...resolveReactiveNodes(children));
                 }
+
+                if (subscriptions) {
+                    vNode.addSubscriptions(subscriptions);
+                }
+
+                const children = renderJSX(node.props.children, vNode);
+                domElement.append(...resolveReactiveNodes(children));
 
                 domNodes.push(domElement);
             }
@@ -119,7 +114,6 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
                 if (VNodeConstructor) {
                     const reactiveNode = new ReactiveNode();
                     const vNode = new VNodeConstructor(reactiveNode, node.props, parent);
-
                     appendVNodeChild(parent, vNode);
 
                     domNodes.push(reactiveNode);
@@ -184,6 +178,14 @@ interface RenderedItem {
     tail: VNode | null;
 }
 
+class VNodeRootImpl implements VNodeRoot {
+    public readonly type = 'root';
+    public readonly parent: VNode | null = null;
+    public firstChild: VNode | null = null;
+    public lastChild: VNode | null = null;
+    public readonly next: VNode | null = null;
+}
+
 class VNodeTextImpl implements VNodeText {
     public readonly type: 'text';
     public readonly ref: Text;
@@ -206,7 +208,8 @@ class VNodeElementImpl implements VNodeElement {
     public next: VNode | null = null;
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
-    public subscriptions: Subscription[] | null = null;
+
+    private _subscriptions: Subscription[] | null = null;
 
     public constructor(ref: Element, parent: VNode | null) {
         this.type = 'element';
@@ -214,17 +217,22 @@ class VNodeElementImpl implements VNodeElement {
         this.ref = ref;
     }
 
+    public addSubscriptions(subscriptions: Subscription[]): void {
+        this._subscriptions ??= [];
+        this._subscriptions.push(...subscriptions);
+    }
+
     public unmount(): void {
-        if (this.subscriptions) {
-            for (const subscription of this.subscriptions) {
+        if (this._subscriptions) {
+            for (const subscription of this._subscriptions) {
                 subscription.unsubscribe();
             }
-            this.subscriptions = null;
+            this._subscriptions = null;
         }
     }
 }
 
-class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpdates {
+class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
     public readonly type: 'component';
     public ref: object | null = null;
     public onMountCallback: VNodeFunctionalComponent['onMountCallback'] = null;
@@ -234,71 +242,32 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpda
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _refVal: Val<object | null> | null = null;
-    private _isMounted: boolean = false;
-    private _mountedChildrenCount: number = 0;
+    private readonly _refProp: Val<object | null> | null = null;
     private _subscriptions: Subscription[] | null = null;
-    private _pendingUpdates: boolean = false;
 
     public constructor(props: PropsType, parent: VNode | null) {
         this.type = 'component';
         this.parent = parent;
 
         if (props.ref instanceof ValImpl) {
-            this._refVal = props.ref;
+            this._refProp = props.ref;
         }
     }
 
-    public mount(): void {
-        this._mountedChildrenCount++;
-        if (!this._pendingUpdates) {
-            this._pendingUpdates = true;
-            DeferredUpdatesScheduler.schedule(this);
-        }
+    public addSubscription(subscription: Subscription) {
+        this._subscriptions ??= [];
+        this._subscriptions.push(subscription);
     }
 
-    public unmount(force: boolean): void {
-        if (force) {
-            if (this._isMounted) {
-                this.unmountInternal();
-            }
-            this._mountedChildrenCount = 0;
-            return;
+    public mount() {
+        if (this._refProp) {
+            this._refProp.value = this.ref;
         }
-        this._mountedChildrenCount--;
-        if (!this._pendingUpdates) {
-            this._pendingUpdates = true;
-            DeferredUpdatesScheduler.schedule(this);
-        }
+
+        this.onMountCallback?.();
     }
 
-    public flushUpdates() {
-        this._pendingUpdates = false;
-
-        if (this._mountedChildrenCount > 0 && !this._isMounted) {
-            this.mountInternal();
-            findParentComponent(this)?.mount();
-        }
-        else if (this._mountedChildrenCount === 0 && this._isMounted) {
-            this.unmountInternal();
-            findParentComponent(this)?.unmount(false);
-        }
-    }
-
-    private mountInternal(): void {
-        if (this._refVal) {
-            this._refVal.value = this.ref;
-        }
-
-        if (this.onMountCallback) {
-            const result = this.onMountCallback();
-            this._subscriptions = result ?? null;
-        }
-
-        this._isMounted = true;
-    }
-
-    private unmountInternal(): void {
+    public unmount() {
         if (this._subscriptions) {
             const n = this._subscriptions.length;
             for (let i = 0; i < n; ++i) {
@@ -309,11 +278,9 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent, IHasUpda
 
         this.onUnmountCallback?.();
 
-        if (this._refVal) {
-            this._refVal.value = null;
+        if (this._refProp) {
+            this._refProp.value = null;
         }
-
-        this._isMounted = false;
     }
 }
 
@@ -326,30 +293,39 @@ class VNodeObservableImpl implements VNodeObservable {
     public lastChild: VNode | null = null;
 
     private _subscription: Subscription | null = null;
-    private _renderedChildren: RNode[] | null = null;
+    private _textNode: Text | null = null;
 
     public constructor(ref: ReactiveNode, value: Observable<JSXNode>, parent: VNode | null) {
         this.type = 'observable';
         this.parent = parent;
         this.ref = ref;
 
-        this.render(value.value);
+        this.render(value.value, true);
         this._subscription = value.subscribe((value) => this.render(value));
     }
 
-    private render(jsxNode: JSXNode): void {
+    private render(jsxNode: JSXNode, initialRender: boolean = false): void {
         if (
             (typeof jsxNode === 'string' || typeof jsxNode === 'number')
-            && this._renderedChildren?.length === 1
-            && this._renderedChildren[0] instanceof Text
+            && this._textNode
         ) {
             // optimized update path for text nodes
-            this._renderedChildren[0].textContent = jsxNode.toString();
+            this._textNode.textContent = String(jsxNode);
         }
         else {
+            if (!initialRender && this.firstChild) {
+                unmountVNodes(this.firstChild);
+            }
             this.firstChild = this.lastChild = null;
-            this._renderedChildren = renderJSX(jsxNode, this);
-            this.ref.update(this._renderedChildren);
+            this._textNode = null;
+            const children = renderJSX(jsxNode, this);
+            if (children.length === 1 && children[0] instanceof Text) {
+                this._textNode = children[0];
+            }
+            this.ref.update(children);
+            if (!initialRender && this.firstChild) {
+                mountVNodes(this.firstChild);
+            }
         }
     }
 
@@ -384,10 +360,10 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         const of = forProps.of as T[] | ObservableImpl<T[]>;
 
         if (Array.isArray(of)) {
-            this.render(of);
+            this.render(of, true);
         }
         else if (of instanceof ObservableImpl) {
-            this.render(of.value);
+            this.render(of.value, true);
             this._subscription = of.subscribe((value) => this.render(value));
         }
         else {
@@ -397,20 +373,25 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         }
     }
 
-    private render(items: T[]) {
-        this.firstChild = this.lastChild = null;
+    private render(items: T[], initialRender: boolean = false): void {
+        this.firstChild = this.lastChild = null as VNode | null;
+        const newItems: RenderedItem[] = [];
         const n = items.length;
         for (let i = 0; i < n; ++i) {
             const value = items[i];
             let item = this._frontBuffer.get(value);
             if (item) {
+                this._frontBuffer.delete(value);
                 item.index.value = i;
-                this.firstChild ??= item.head;
-                if (item.tail) {
+                if (item.head) {
                     if (this.lastChild) {
                         this.lastChild.next = item.head;
+                        this.lastChild = item.tail;
                     }
-                    this.lastChild = item.tail;
+                    else {
+                        this.firstChild = item.head;
+                        this.lastChild = item.tail;
+                    }
                 }
             }
             else {
@@ -418,14 +399,15 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
                 let head = this.lastChild;
                 renderJSX(this._children({ item: value, index }), this);
                 let tail = this.lastChild;
-
                 if (head !== tail) {
                     head = head ? head.next : this.firstChild;
                 }
                 else {
                     head = tail = null;
                 }
+
                 item = { index, head, tail };
+                newItems.push(item);
             }
 
             this._backBuffer.set(value, item);
@@ -434,7 +416,25 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
             this.lastChild.next = null;
         }
 
+        if (!initialRender) {
+            for (const item of this._frontBuffer.values()) {
+                if (item.head) {
+                    unmountVNodes(item.head, item.tail);
+                }
+            }
+        }
+
         this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
+
+        if (!initialRender) {
+            const nNewItems = newItems.length;
+            for (let i = 0; i < nNewItems; ++i) {
+                const item = newItems[i];
+                if (item.head) {
+                    mountVNodes(item.head, item.tail);
+                }
+            }
+        }
 
         [this._frontBuffer, this._backBuffer] = [this._backBuffer, this._frontBuffer];
         this._backBuffer.clear();
@@ -476,7 +476,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         this._fallback = showProps.fallback ?? null;
 
         if (when instanceof ObservableImpl) {
-            this.render(when.value);
+            this.render(when.value, true);
             this._subscription = when.subscribe((value) => this.render(value));
         }
         else {
@@ -484,7 +484,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         }
     }
 
-    private render(value: T) {
+    private render(value: T, initialRender: boolean = false) {
         let show: boolean;
         if (this._is === undefined) {
             show = Boolean(value);
@@ -501,6 +501,9 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         }
         this._shown = show;
 
+        if (!initialRender && this.firstChild) {
+            unmountVNodes(this.firstChild);
+        }
         this.firstChild = this.lastChild = null;
         const jsxNode = show ? this._children : this._fallback;
         if (jsxNode) {
@@ -509,6 +512,9 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
                 this,
             );
             this.ref.update(children);
+            if (!initialRender && this.firstChild) {
+                mountVNodes(this.firstChild);
+            }
         }
         else {
             this.ref.update(null);
@@ -544,7 +550,7 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
         this._children = withProps.children;
 
         if (value instanceof ObservableImpl) {
-            this.render(value.value);
+            this.render(value.value, true);
             this._subscription = value.subscribe((value) => this.render(value));
         }
         else {
@@ -552,15 +558,16 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
         }
     }
 
-    private render(value: T) {
+    private render(value: T, initialRender: boolean = false) {
+        if (!initialRender && this.firstChild) {
+            unmountVNodes(this.firstChild);
+        }
         this.firstChild = this.lastChild = null;
-        const children = renderJSX(
-            typeof this._children === 'function'
-                ? this._children(value)
-                : this._children,
-            this,
-        );
+        const children = renderJSX(this._children(value), this);
         this.ref.update(children);
+        if (!initialRender && this.firstChild) {
+            mountVNodes(this.firstChild);
+        }
     }
 
     public unmount() {
@@ -607,7 +614,7 @@ class VNodeWithMany<T extends readonly unknown[]>
                 args.push(value);
             }
         }
-        this.render(...args);
+        this.render(true, ...args);
     }
 
     public onDependencyUpdated() {
@@ -619,17 +626,22 @@ class VNodeWithMany<T extends readonly unknown[]>
     public flushUpdates() {
         if (!this._pendingUpdates) return;
         this._pendingUpdates = false;
-        this.render(
-            ...this._values.map(value =>
-                value instanceof ObservableImpl ? value.value as unknown : value
-            ),
+        const values = this._values.map(value =>
+            value instanceof ObservableImpl ? value.value as unknown : value
         );
+        this.render(false, ...values);
     }
 
-    private render(...values: unknown[]) {
+    private render(initialRender: boolean, ...values: unknown[]) {
+        if (!initialRender && this.firstChild) {
+            unmountVNodes(this.firstChild);
+        }
         this.firstChild = this.lastChild = null;
         const children = renderJSX(this._children(...values as ValuesOf<T>), this);
         this.ref.update(children);
+        if (!initialRender && this.firstChild) {
+            mountVNodes(this.firstChild);
+        }
     }
 
     public unmount() {

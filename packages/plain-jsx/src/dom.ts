@@ -1,8 +1,7 @@
 import type { Subscription } from './observable';
-import type { DOMNode, HasVNode, PropsType, VNode } from './types';
+import type { DOMNode, PropsType } from './types';
 
 import { isObject } from '@cleansimple/utils-js';
-import { mountNodes, unmountNodes } from './lifecycle';
 import { getLIS } from './lis';
 import { ObservableImpl, ValImpl } from './observable';
 import { isReadonlyProp, splitNamespace } from './utils';
@@ -50,7 +49,6 @@ export function updateChildren(parent: ParentNode, current: DOMNode[], target: D
 
     // remove old nodes
     if (toRemove.length) {
-        unmountNodes(toRemove);
         _Fragment.append(...toRemove);
         _Fragment.textContent = null;
     }
@@ -103,15 +101,7 @@ export function updateChildren(parent: ParentNode, current: DOMNode[], target: D
         else {
             parent.append(...op.nodes.reverse());
         }
-
-        if (op.type === 'insert') {
-            mountNodes(op.nodes);
-        }
     }
-}
-
-export function patchNode(node: DOMNode, vNode: VNode) {
-    (node as HasVNode<DOMNode>).__vNode = vNode;
 }
 
 export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | null {

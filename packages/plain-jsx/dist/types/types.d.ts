@@ -8,11 +8,14 @@ export interface JSXElement {
     props: PropsType;
 }
 export interface VNodeBase {
-    type: 'text' | 'element' | 'component' | 'builtin' | 'observable';
+    type: 'root' | 'text' | 'element' | 'component' | 'builtin' | 'observable';
     parent: VNode | null;
     firstChild: VNode | null;
     lastChild: VNode | null;
     next: VNode | null;
+}
+export interface VNodeRoot extends VNodeBase {
+    type: 'root';
 }
 export interface VNodeText extends VNodeBase {
     type: 'text';
@@ -21,15 +24,16 @@ export interface VNodeText extends VNodeBase {
 export interface VNodeElement extends VNodeBase {
     type: 'element';
     ref: Element;
-    subscriptions: Subscription[] | null;
+    addSubscriptions: (subscriptions: Subscription[]) => void;
     unmount: Action;
 }
 export interface VNodeFunctionalComponent extends VNodeBase {
     type: 'component';
     ref: object | null;
+    addSubscription: (subscription: Subscription) => void;
     mount: Action;
-    unmount: (force: boolean) => void;
-    onMountCallback: (() => void | Subscription[]) | null;
+    unmount: Action;
+    onMountCallback: Action | null;
     onUnmountCallback: Action | null;
 }
 export interface VNodeBuiltinComponent extends VNodeBase {
@@ -42,7 +46,7 @@ export interface VNodeObservable extends VNodeBase {
     ref: ReactiveNode;
     unmount: Action;
 }
-export type VNode = VNodeText | VNodeElement | VNodeFunctionalComponent | VNodeBuiltinComponent | VNodeObservable;
+export type VNode = VNodeRoot | VNodeText | VNodeElement | VNodeFunctionalComponent | VNodeBuiltinComponent | VNodeObservable;
 export type RNode = ChildNode | ReactiveNode;
 export type DOMNode = ChildNode;
 export type FunctionalComponent = (...args: unknown[]) => JSXNode;

@@ -19,183 +19,6 @@ var PlainJSX = (function (exports, utilsJs) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
-    const XMLNamespaces = {
-        'svg': 'http://www.w3.org/2000/svg',
-        'xhtml': 'http://www.w3.org/1999/xhtml',
-    };
-    function splitNamespace(tagNS) {
-        const [ns, tag] = tagNS.split(':', 2);
-        if (ns in XMLNamespaces) {
-            return [XMLNamespaces[ns], tag];
-        }
-        else {
-            throw new Error('Invalid namespace');
-        }
-    }
-    function isReadonlyProp(obj, key) {
-        let currentObj = obj;
-        while (currentObj !== null) {
-            const desc = Object.getOwnPropertyDescriptor(currentObj, key);
-            if (desc) {
-                return desc.writable === false || desc.set === undefined;
-            }
-            currentObj = Object.getPrototypeOf(currentObj);
-        }
-        return true;
-    }
-    function findParentComponent(vNode) {
-        let parent = vNode.parent;
-        while (parent) {
-            if (parent.type === 'component') {
-                break;
-            }
-            else if (parent.type === 'element') {
-                return;
-            }
-            parent = parent.parent;
-        }
-        return parent;
-    }
-
-    let _CurrentFunctionalComponent = null;
-    function setCurrentFunctionalComponent(component) {
-        _CurrentFunctionalComponent = component;
-    }
-    function defineRef(ref) {
-        if (!_CurrentFunctionalComponent) {
-            throw new Error('defineRef can only be called inside a functional component');
-        }
-        _CurrentFunctionalComponent.ref = ref;
-    }
-    function onMount(fn) {
-        if (!_CurrentFunctionalComponent) {
-            throw new Error('onMount can only be called inside a functional component');
-        }
-        if (_CurrentFunctionalComponent.onMountCallback) {
-            throw new Error('onMount can only be called once');
-        }
-        _CurrentFunctionalComponent.onMountCallback = fn;
-    }
-    function onUnmount(fn) {
-        if (!_CurrentFunctionalComponent) {
-            throw new Error('onUnmount can only be called inside a functional component');
-        }
-        if (_CurrentFunctionalComponent.onUnmountCallback) {
-            throw new Error('onUnmount can only be called once');
-        }
-        _CurrentFunctionalComponent.onUnmountCallback = fn;
-    }
-    /**
-     * The mounting and unmounting process is a bit complex and needs this bit of documentation
-     *
-     * We have 3 main groups of VNodes that represent:
-     * 1. DOM Nodes ('text', 'element')
-     * 2. Functional Components ('component')
-     * 3. Reactive Nodes ('builtin', 'observable')
-     *
-     * Each of these 3 groups has a different mounting and unmounting logic.
-     *
-     * When is a VNode considered mounted?
-     *  DOM Nodes: When they are a descendant of a connected DOM Node
-     *  Functional Components: When they contain at least one DOM Node that is mounted
-     *  Reactive Nodes: When they are a descendant of a connected DOM Node
-     *
-     *  Note: 'connected' here means the node is connected to the active DOM which is not the same as 'mounted'.
-     *
-     * Mounting logic:
-     *  DOM Nodes: The call to mount will always mount the DOM Node and signal the closest functional component to be mounted.
-     *  Functional Components: The call to mount does nothing, instead the functional component relies on mount signals from its children.
-     *      Each child will give a mount signal and those are counted, when the count is greater than 0 the functional component gets mounted.
-     *      Functional components will also signal parent functional components to be mounted.
-     *  Reactive Nodes: The call to mount will always mount the reactive node but no signals are sent.
-     *
-     *  This can present an interesting situation where a functional component is not mounted, but it has reactive nodes that are mounted.
-     *  Because a functional component is mounted when it has at least one DOM Node that is mounted, and a reactive node is mounted when it is a descendant of a connected DOM Node.
-     *  If a mounted but empty reactive node is the only direct child of a functional component, then the functional component will not be mounted.
-     *  This is a bit confusing, but it is valid.
-     *
-     * Unmounting logic:
-     *  DOM Nodes: The call to unmount will always unmount the DOM Node and signal the closest functional component to be unmounted.
-     *  Functional Components: The call to unmount does nothing, instead the functional component relies on unmount signals from its children.
-     *      Each child will give an unmount signal that will decrements the count of mounted children, when the count is 0 the functional component gets unmounted.
-     *      Functional components will also signal parent functional components to be unmounted.
-     *  Reactive Nodes: The call to unmount will always unmount the reactive node but no signals are sent.
-     */
-    function mountNodes(nodes) {
-        const customNodes = nodes;
-        const n = customNodes.length;
-        for (let i = 0; i < n; ++i) {
-            const node = customNodes[i];
-            // ignore reactive node placeholders
-            if (node instanceof Comment) {
-                continue;
-            }
-            mountVNode(node.__vNode);
-            findParentComponent(node.__vNode)?.mount();
-        }
-    }
-    function unmountNodes(nodes) {
-        const customNodes = nodes;
-        const n = customNodes.length;
-        for (let i = 0; i < n; ++i) {
-            const node = customNodes[i];
-            // ignore reactive node placeholders
-            if (node instanceof Comment) {
-                continue;
-            }
-            unmountVNode(node.__vNode);
-            findParentComponent(node.__vNode)?.unmount(false);
-        }
-    }
-    function mountVNode(vNode, parentComponent = null) {
-        let nextParentComponent;
-        if (vNode.type === 'component') {
-            nextParentComponent = vNode;
-        }
-        else if (vNode.type === 'element') {
-            nextParentComponent = null;
-        }
-        else {
-            nextParentComponent = parentComponent;
-        }
-        // mount children
-        let child = vNode.firstChild;
-        while (child) {
-            mountVNode(child, nextParentComponent);
-            child = child.next;
-        }
-        // mount self
-        if (vNode.type === 'element') {
-            parentComponent?.mount();
-        }
-        else if (vNode.type === 'text') {
-            parentComponent?.mount();
-        }
-    }
-    function unmountVNode(vNode) {
-        // unmount children
-        let child = vNode.firstChild;
-        while (child) {
-            unmountVNode(child);
-            child = child.next;
-        }
-        // unmount self
-        if (vNode.type === 'element') {
-            vNode.unmount();
-        }
-        // else if (vNode.type === 'text') {
-        // }
-        else if (vNode.type === 'builtin') {
-            vNode.unmount();
-        }
-        else if (vNode.type === 'observable') {
-            vNode.unmount();
-        }
-        else if (vNode.type === 'component') {
-            vNode.unmount(true);
-        }
-    }
-
     function getLIS(arr) {
         const n = arr.length;
         const predecessors = new Int32Array(n);
@@ -467,6 +290,31 @@ var PlainJSX = (function (exports, utilsJs) {
         }
     }
 
+    const XMLNamespaces = {
+        'svg': 'http://www.w3.org/2000/svg',
+        'xhtml': 'http://www.w3.org/1999/xhtml',
+    };
+    function splitNamespace(tagNS) {
+        const [ns, tag] = tagNS.split(':', 2);
+        if (ns in XMLNamespaces) {
+            return [XMLNamespaces[ns], tag];
+        }
+        else {
+            throw new Error('Invalid namespace');
+        }
+    }
+    function isReadonlyProp(obj, key) {
+        let currentObj = obj;
+        while (currentObj !== null) {
+            const desc = Object.getOwnPropertyDescriptor(currentObj, key);
+            if (desc) {
+                return desc.writable === false || desc.set === undefined;
+            }
+            currentObj = Object.getPrototypeOf(currentObj);
+        }
+        return true;
+    }
+
     const _Fragment = document.createDocumentFragment();
     const _HandledEvents = new Map();
     const InputTwoWayProps = {
@@ -508,7 +356,6 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         // remove old nodes
         if (toRemove.length) {
-            unmountNodes(toRemove);
             _Fragment.append(...toRemove);
             _Fragment.textContent = null;
         }
@@ -554,13 +401,7 @@ var PlainJSX = (function (exports, utilsJs) {
             else {
                 parent.append(...op.nodes.reverse());
             }
-            if (op.type === 'insert') {
-                mountNodes(op.nodes);
-            }
         }
-    }
-    function patchNode(node, vNode) {
-        node.__vNode = vNode;
     }
     function setProps(elem, props) {
         const subscriptions = [];
@@ -672,6 +513,102 @@ var PlainJSX = (function (exports, utilsJs) {
         }
     }
 
+    let _CurrentFunctionalComponent = null;
+    function setCurrentFunctionalComponent(component) {
+        _CurrentFunctionalComponent = component;
+    }
+    function defineRef(ref) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('defineRef can only be called inside a functional component');
+        }
+        _CurrentFunctionalComponent.ref = ref;
+    }
+    function onMount(fn) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('onMount can only be called inside a functional component');
+        }
+        if (_CurrentFunctionalComponent.onMountCallback) {
+            throw new Error('onMount can only be called once');
+        }
+        _CurrentFunctionalComponent.onMountCallback = fn;
+    }
+    function onUnmount(fn) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('onUnmount can only be called inside a functional component');
+        }
+        if (_CurrentFunctionalComponent.onUnmountCallback) {
+            throw new Error('onUnmount can only be called once');
+        }
+        _CurrentFunctionalComponent.onUnmountCallback = fn;
+    }
+    function watch(observable, observer) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('watch can only be called inside a functional component');
+        }
+        _CurrentFunctionalComponent.addSubscription(observable.subscribe(observer));
+    }
+    function watchMany(observables, observer) {
+        if (!_CurrentFunctionalComponent) {
+            throw new Error('watchMany can only be called inside a functional component');
+        }
+        _CurrentFunctionalComponent.addSubscription(subscribe(observables, observer));
+    }
+    function mountVNodes(head, tail = null) {
+        let node = head;
+        while (node) {
+            mountVNode(node);
+            if (node === tail) {
+                break;
+            }
+            node = node.next;
+        }
+    }
+    function unmountVNodes(head, tail = null) {
+        let node = head;
+        while (node) {
+            unmountVNode(node);
+            if (node === tail) {
+                break;
+            }
+            node = node.next;
+        }
+    }
+    function mountVNode(vNode) {
+        // mount children
+        let child = vNode.firstChild;
+        while (child) {
+            mountVNode(child);
+            child = child.next;
+        }
+        // mount self
+        if (vNode.type === 'component') {
+            vNode.mount();
+        }
+    }
+    function unmountVNode(vNode) {
+        // unmount children
+        let child = vNode.firstChild;
+        while (child) {
+            unmountVNode(child);
+            child = child.next;
+        }
+        // unmount self
+        if (vNode.type === 'element') {
+            vNode.unmount();
+        }
+        // else if (vNode.type === 'text') {
+        // }
+        else if (vNode.type === 'builtin') {
+            vNode.unmount();
+        }
+        else if (vNode.type === 'observable') {
+            vNode.unmount();
+        }
+        else if (vNode.type === 'component') {
+            vNode.unmount();
+        }
+    }
+
     class ReactiveNode {
         _placeholder = document.createComment('');
         _children = [this._placeholder];
@@ -711,9 +648,12 @@ var PlainJSX = (function (exports, utilsJs) {
     }
 
     function render(root, jsxNode) {
-        const children = resolveReactiveNodes(renderJSX(jsxNode, null));
+        const rootVNode = new VNodeRootImpl();
+        const children = resolveReactiveNodes(renderJSX(jsxNode, rootVNode));
         root.append(...children);
-        mountNodes(children);
+        if (rootVNode.firstChild) {
+            mountVNodes(rootVNode.firstChild);
+        }
     }
     function renderJSX(jsxNode, parent, domNodes = []) {
         const nodes = [jsxNode];
@@ -742,7 +682,6 @@ var PlainJSX = (function (exports, utilsJs) {
                 const textNode = document.createTextNode(String(node));
                 if (parent?.type !== 'element') {
                     const vNode = new VNodeTextImpl(textNode, parent);
-                    patchNode(textNode, vNode);
                     appendVNodeChild(parent, vNode);
                 }
                 domNodes.push(textNode);
@@ -760,28 +699,21 @@ var PlainJSX = (function (exports, utilsJs) {
                         ? document.createElementNS(...splitNamespace(node.type))
                         : document.createElement(node.type);
                     const subscriptions = setProps(domElement, node.props);
+                    let vNode;
                     if (parent?.type === 'element') {
-                        // VNodes are only used to track children of components and reactive nodes
-                        // if the parent is an element, we can append the dom element directly and add the subscriptions
-                        if (subscriptions) {
-                            if (parent.subscriptions) {
-                                parent.subscriptions.push(...subscriptions);
-                            }
-                            else {
-                                parent.subscriptions = subscriptions;
-                            }
-                        }
-                        const children = renderJSX(node.props.children, parent);
-                        domElement.append(...resolveReactiveNodes(children));
+                        // as a memory optimization we don't create vNodes for descendants of an element that are also elements
+                        // we have no use for them anyway
+                        vNode = parent;
                     }
                     else {
-                        const vNode = new VNodeElementImpl(domElement, parent);
-                        vNode.subscriptions = subscriptions;
-                        patchNode(domElement, vNode);
+                        vNode = new VNodeElementImpl(domElement, parent);
                         appendVNodeChild(parent, vNode);
-                        const children = renderJSX(node.props.children, vNode);
-                        domElement.append(...resolveReactiveNodes(children));
                     }
+                    if (subscriptions) {
+                        vNode.addSubscriptions(subscriptions);
+                    }
+                    const children = renderJSX(node.props.children, vNode);
+                    domElement.append(...resolveReactiveNodes(children));
                     domNodes.push(domElement);
                 }
                 else {
@@ -841,6 +773,13 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         return childNodes;
     }
+    class VNodeRootImpl {
+        type = 'root';
+        parent = null;
+        firstChild = null;
+        lastChild = null;
+        next = null;
+    }
     class VNodeTextImpl {
         type;
         ref;
@@ -861,18 +800,22 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        subscriptions = null;
+        _subscriptions = null;
         constructor(ref, parent) {
             this.type = 'element';
             this.parent = parent;
             this.ref = ref;
         }
+        addSubscriptions(subscriptions) {
+            this._subscriptions ??= [];
+            this._subscriptions.push(...subscriptions);
+        }
         unmount() {
-            if (this.subscriptions) {
-                for (const subscription of this.subscriptions) {
+            if (this._subscriptions) {
+                for (const subscription of this._subscriptions) {
                     subscription.unsubscribe();
                 }
-                this.subscriptions = null;
+                this._subscriptions = null;
             }
         }
     }
@@ -885,61 +828,26 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        _refVal = null;
-        _isMounted = false;
-        _mountedChildrenCount = 0;
+        _refProp = null;
         _subscriptions = null;
-        _pendingUpdates = false;
         constructor(props, parent) {
             this.type = 'component';
             this.parent = parent;
             if (props.ref instanceof ValImpl) {
-                this._refVal = props.ref;
+                this._refProp = props.ref;
             }
+        }
+        addSubscription(subscription) {
+            this._subscriptions ??= [];
+            this._subscriptions.push(subscription);
         }
         mount() {
-            this._mountedChildrenCount++;
-            if (!this._pendingUpdates) {
-                this._pendingUpdates = true;
-                DeferredUpdatesScheduler.schedule(this);
+            if (this._refProp) {
+                this._refProp.value = this.ref;
             }
+            this.onMountCallback?.();
         }
-        unmount(force) {
-            if (force) {
-                if (this._isMounted) {
-                    this.unmountInternal();
-                }
-                this._mountedChildrenCount = 0;
-                return;
-            }
-            this._mountedChildrenCount--;
-            if (!this._pendingUpdates) {
-                this._pendingUpdates = true;
-                DeferredUpdatesScheduler.schedule(this);
-            }
-        }
-        flushUpdates() {
-            this._pendingUpdates = false;
-            if (this._mountedChildrenCount > 0 && !this._isMounted) {
-                this.mountInternal();
-                findParentComponent(this)?.mount();
-            }
-            else if (this._mountedChildrenCount === 0 && this._isMounted) {
-                this.unmountInternal();
-                findParentComponent(this)?.unmount(false);
-            }
-        }
-        mountInternal() {
-            if (this._refVal) {
-                this._refVal.value = this.ref;
-            }
-            if (this.onMountCallback) {
-                const result = this.onMountCallback();
-                this._subscriptions = result ?? null;
-            }
-            this._isMounted = true;
-        }
-        unmountInternal() {
+        unmount() {
             if (this._subscriptions) {
                 const n = this._subscriptions.length;
                 for (let i = 0; i < n; ++i) {
@@ -948,10 +856,9 @@ var PlainJSX = (function (exports, utilsJs) {
                 this._subscriptions = null;
             }
             this.onUnmountCallback?.();
-            if (this._refVal) {
-                this._refVal.value = null;
+            if (this._refProp) {
+                this._refProp.value = null;
             }
-            this._isMounted = false;
         }
     }
     class VNodeObservableImpl {
@@ -962,25 +869,34 @@ var PlainJSX = (function (exports, utilsJs) {
         firstChild = null;
         lastChild = null;
         _subscription = null;
-        _renderedChildren = null;
+        _textNode = null;
         constructor(ref, value, parent) {
             this.type = 'observable';
             this.parent = parent;
             this.ref = ref;
-            this.render(value.value);
+            this.render(value.value, true);
             this._subscription = value.subscribe((value) => this.render(value));
         }
-        render(jsxNode) {
+        render(jsxNode, initialRender = false) {
             if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
-                && this._renderedChildren?.length === 1
-                && this._renderedChildren[0] instanceof Text) {
+                && this._textNode) {
                 // optimized update path for text nodes
-                this._renderedChildren[0].textContent = jsxNode.toString();
+                this._textNode.textContent = String(jsxNode);
             }
             else {
+                if (!initialRender && this.firstChild) {
+                    unmountVNodes(this.firstChild);
+                }
                 this.firstChild = this.lastChild = null;
-                this._renderedChildren = renderJSX(jsxNode, this);
-                this.ref.update(this._renderedChildren);
+                this._textNode = null;
+                const children = renderJSX(jsxNode, this);
+                if (children.length === 1 && children[0] instanceof Text) {
+                    this._textNode = children[0];
+                }
+                this.ref.update(children);
+                if (!initialRender && this.firstChild) {
+                    mountVNodes(this.firstChild);
+                }
             }
         }
         unmount() {
@@ -1009,30 +925,35 @@ var PlainJSX = (function (exports, utilsJs) {
             this._children = forProps.children;
             const of = forProps.of;
             if (Array.isArray(of)) {
-                this.render(of);
+                this.render(of, true);
             }
             else if (of instanceof ObservableImpl) {
-                this.render(of.value);
+                this.render(of.value, true);
                 this._subscription = of.subscribe((value) => this.render(value));
             }
             else {
                 throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
             }
         }
-        render(items) {
+        render(items, initialRender = false) {
             this.firstChild = this.lastChild = null;
+            const newItems = [];
             const n = items.length;
             for (let i = 0; i < n; ++i) {
                 const value = items[i];
                 let item = this._frontBuffer.get(value);
                 if (item) {
+                    this._frontBuffer.delete(value);
                     item.index.value = i;
-                    this.firstChild ??= item.head;
-                    if (item.tail) {
+                    if (item.head) {
                         if (this.lastChild) {
                             this.lastChild.next = item.head;
+                            this.lastChild = item.tail;
                         }
-                        this.lastChild = item.tail;
+                        else {
+                            this.firstChild = item.head;
+                            this.lastChild = item.tail;
+                        }
                     }
                 }
                 else {
@@ -1047,13 +968,30 @@ var PlainJSX = (function (exports, utilsJs) {
                         head = tail = null;
                     }
                     item = { index, head, tail };
+                    newItems.push(item);
                 }
                 this._backBuffer.set(value, item);
             }
             if (this.lastChild) {
                 this.lastChild.next = null;
             }
+            if (!initialRender) {
+                for (const item of this._frontBuffer.values()) {
+                    if (item.head) {
+                        unmountVNodes(item.head, item.tail);
+                    }
+                }
+            }
             this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
+            if (!initialRender) {
+                const nNewItems = newItems.length;
+                for (let i = 0; i < nNewItems; ++i) {
+                    const item = newItems[i];
+                    if (item.head) {
+                        mountVNodes(item.head, item.tail);
+                    }
+                }
+            }
             [this._frontBuffer, this._backBuffer] = [this._backBuffer, this._frontBuffer];
             this._backBuffer.clear();
         }
@@ -1088,14 +1026,14 @@ var PlainJSX = (function (exports, utilsJs) {
             this._children = showProps.children;
             this._fallback = showProps.fallback ?? null;
             if (when instanceof ObservableImpl) {
-                this.render(when.value);
+                this.render(when.value, true);
                 this._subscription = when.subscribe((value) => this.render(value));
             }
             else {
                 this.render(when);
             }
         }
-        render(value) {
+        render(value, initialRender = false) {
             let show;
             if (this._is === undefined) {
                 show = Boolean(value);
@@ -1110,11 +1048,17 @@ var PlainJSX = (function (exports, utilsJs) {
                 return;
             }
             this._shown = show;
+            if (!initialRender && this.firstChild) {
+                unmountVNodes(this.firstChild);
+            }
             this.firstChild = this.lastChild = null;
             const jsxNode = show ? this._children : this._fallback;
             if (jsxNode) {
                 const children = renderJSX(typeof jsxNode === 'function' ? jsxNode(value) : jsxNode, this);
                 this.ref.update(children);
+                if (!initialRender && this.firstChild) {
+                    mountVNodes(this.firstChild);
+                }
             }
             else {
                 this.ref.update(null);
@@ -1144,19 +1088,23 @@ var PlainJSX = (function (exports, utilsJs) {
             const value = withProps.value;
             this._children = withProps.children;
             if (value instanceof ObservableImpl) {
-                this.render(value.value);
+                this.render(value.value, true);
                 this._subscription = value.subscribe((value) => this.render(value));
             }
             else {
                 this.render(value);
             }
         }
-        render(value) {
+        render(value, initialRender = false) {
+            if (!initialRender && this.firstChild) {
+                unmountVNodes(this.firstChild);
+            }
             this.firstChild = this.lastChild = null;
-            const children = renderJSX(typeof this._children === 'function'
-                ? this._children(value)
-                : this._children, this);
+            const children = renderJSX(this._children(value), this);
             this.ref.update(children);
+            if (!initialRender && this.firstChild) {
+                mountVNodes(this.firstChild);
+            }
         }
         unmount() {
             if (this._subscription) {
@@ -1195,7 +1143,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     args.push(value);
                 }
             }
-            this.render(...args);
+            this.render(true, ...args);
         }
         onDependencyUpdated() {
             if (this._pendingUpdates)
@@ -1207,12 +1155,19 @@ var PlainJSX = (function (exports, utilsJs) {
             if (!this._pendingUpdates)
                 return;
             this._pendingUpdates = false;
-            this.render(...this._values.map(value => value instanceof ObservableImpl ? value.value : value));
+            const values = this._values.map(value => value instanceof ObservableImpl ? value.value : value);
+            this.render(false, ...values);
         }
-        render(...values) {
+        render(initialRender, ...values) {
+            if (!initialRender && this.firstChild) {
+                unmountVNodes(this.firstChild);
+            }
             this.firstChild = this.lastChild = null;
             const children = renderJSX(this._children(...values), this);
             this.ref.update(children);
+            if (!initialRender && this.firstChild) {
+                mountVNodes(this.firstChild);
+            }
         }
         unmount() {
             if (this._subscriptions) {
@@ -1243,6 +1198,8 @@ var PlainJSX = (function (exports, utilsJs) {
     exports.render = render;
     exports.subscribe = subscribe;
     exports.val = val;
+    exports.watch = watch;
+    exports.watchMany = watchMany;
 
     return exports;
 

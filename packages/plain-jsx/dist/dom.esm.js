@@ -1,5 +1,4 @@
 import { isObject } from '@cleansimple/utils-js';
-import { unmountNodes, mountNodes } from './lifecycle.esm.js';
 import { getLIS } from './lis.esm.js';
 import { ValImpl, ObservableImpl } from './observable.esm.js';
 import { isReadonlyProp, splitNamespace } from './utils.esm.js';
@@ -45,7 +44,6 @@ function updateChildren(parent, current, target) {
     }
     // remove old nodes
     if (toRemove.length) {
-        unmountNodes(toRemove);
         _Fragment.append(...toRemove);
         _Fragment.textContent = null;
     }
@@ -91,13 +89,7 @@ function updateChildren(parent, current, target) {
         else {
             parent.append(...op.nodes.reverse());
         }
-        if (op.type === 'insert') {
-            mountNodes(op.nodes);
-        }
     }
-}
-function patchNode(node, vNode) {
-    node.__vNode = vNode;
 }
 function setProps(elem, props) {
     const subscriptions = [];
@@ -209,4 +201,4 @@ function globalEventHandler(evt) {
     }
 }
 
-export { patchNode, setProps, updateChildren };
+export { setProps, updateChildren };
