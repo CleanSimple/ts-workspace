@@ -36,12 +36,9 @@ export type ObservablesOf<T extends readonly unknown[]> = {
     [K in keyof T]: Observable<T[K]>;
 };
 
-export type ValueOf<T> = T extends Observable<infer V> ? V : T;
-
-export type ValuesOf<T> = T extends readonly unknown[] ? {
-        [K in keyof T]: ValueOf<T[K]>;
-    }
-    : [ValueOf<T>];
+export type ValuesOf<T extends readonly unknown[]> = {
+    [K in keyof T]: T extends Observable<infer V> ? V : T;
+};
 
 export interface IDependant {
     onDependencyUpdated: Action;
