@@ -1,99 +1,77 @@
 import { subscribe } from './reactive.esm.js';
 
-let _CurrentFunctionalComponent = null;
-function setCurrentFunctionalComponent(component) {
-    _CurrentFunctionalComponent = component;
+let _LifecycleContext = null;
+function setLifecycleContext(lifecycleContext) {
+    _LifecycleContext = lifecycleContext;
 }
 function defineRef(ref) {
-    if (!_CurrentFunctionalComponent) {
+    if (!_LifecycleContext) {
         throw new Error('defineRef can only be called inside a functional component');
     }
-    _CurrentFunctionalComponent.ref = ref;
+    _LifecycleContext.ref = ref;
 }
 function onMount(fn) {
-    if (!_CurrentFunctionalComponent) {
+    if (!_LifecycleContext) {
         throw new Error('onMount can only be called inside a functional component');
     }
-    if (_CurrentFunctionalComponent.onMountCallback) {
+    if (_LifecycleContext.onMountCallback) {
         throw new Error('onMount can only be called once');
     }
-    _CurrentFunctionalComponent.onMountCallback = fn;
+    _LifecycleContext.onMountCallback = fn;
 }
-function onUnmount(fn) {
-    if (!_CurrentFunctionalComponent) {
-        throw new Error('onUnmount can only be called inside a functional component');
+function onCleanup(fn) {
+    if (!_LifecycleContext) {
+        throw new Error('onCleanup can only be called inside a functional component');
     }
-    if (_CurrentFunctionalComponent.onUnmountCallback) {
-        throw new Error('onUnmount can only be called once');
+    if (_LifecycleContext.onCleanupCallback) {
+        throw new Error('onCleanup can only be called once');
     }
-    _CurrentFunctionalComponent.onUnmountCallback = fn;
+    _LifecycleContext.onCleanupCallback = fn;
 }
 function watch(observable, observer) {
-    if (!_CurrentFunctionalComponent) {
+    if (!_LifecycleContext) {
         throw new Error('watch can only be called inside a functional component');
     }
-    _CurrentFunctionalComponent.addSubscription(observable.subscribe(observer));
+    _LifecycleContext.subscriptions ??= [];
+    _LifecycleContext.subscriptions.push(observable.subscribe(observer));
 }
 function watchMany(observables, observer) {
-    if (!_CurrentFunctionalComponent) {
+    if (!_LifecycleContext) {
         throw new Error('watchMany can only be called inside a functional component');
     }
-    _CurrentFunctionalComponent.addSubscription(subscribe(observables, observer));
+    _LifecycleContext.subscriptions ??= [];
+    _LifecycleContext.subscriptions.push(subscribe(observables, observer));
 }
-function mountVNodes(head, tail = null) {
+function cleanupVNodes(head, tail = null) {
     let node = head;
     while (node) {
-        mountVNode(node);
+        cleanupVNode(node);
         if (node === tail) {
             break;
         }
         node = node.next;
     }
 }
-function unmountVNodes(head, tail = null) {
-    let node = head;
-    while (node) {
-        unmountVNode(node);
-        if (node === tail) {
-            break;
-        }
-        node = node.next;
-    }
-}
-function mountVNode(vNode) {
-    // mount children
+function cleanupVNode(vNode) {
     let child = vNode.firstChild;
     while (child) {
-        mountVNode(child);
+        cleanupVNode(child);
         child = child.next;
     }
-    // mount self
-    if (vNode.type === 'component') {
-        vNode.mount();
-    }
-}
-function unmountVNode(vNode) {
-    // unmount children
-    let child = vNode.firstChild;
-    while (child) {
-        unmountVNode(child);
-        child = child.next;
-    }
-    // unmount self
     if (vNode.type === 'element') {
-        vNode.unmount();
+        vNode.cleanup();
     }
     // else if (vNode.type === 'text') {
     // }
     else if (vNode.type === 'builtin') {
-        vNode.unmount();
+        vNode.cleanup();
     }
     else if (vNode.type === 'observable') {
-        vNode.unmount();
+        vNode.cleanup();
     }
     else if (vNode.type === 'component') {
-        vNode.unmount();
+        vNode.cleanup();
     }
 }
 
-export { defineRef, mountVNodes, onMount, onUnmount, setCurrentFunctionalComponent, unmountVNodes, watch, watchMany };
+export { cleanupVNodes, defineRef, onCleanup, onMount, setLifecycleContext, watch, watchMany };

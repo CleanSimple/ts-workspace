@@ -1,4 +1,4 @@
-let _callbacks = new Array();
+let _callbacks = [];
 let _scheduled = false;
 function nextTick(callback) {
     _callbacks.push(callback);

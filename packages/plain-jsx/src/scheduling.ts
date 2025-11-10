@@ -1,7 +1,7 @@
 import type { Action, MaybePromise } from '@cleansimple/utils-js';
 
 type MaybeAsyncAction = () => MaybePromise<void>;
-let _callbacks = new Array<MaybeAsyncAction>();
+let _callbacks: MaybeAsyncAction[] = [];
 let _scheduled = false;
 
 export function nextTick(callback: MaybeAsyncAction) {

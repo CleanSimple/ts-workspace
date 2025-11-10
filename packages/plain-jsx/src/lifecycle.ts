@@ -1,73 +1,73 @@
+import type { Action } from '@cleansimple/utils-js';
 import type { Observable } from '.';
-import type { ObservablesOf, Observer } from './reactive';
-import type { VNode, VNodeFunctionalComponent } from './types';
+import type { ObservablesOf, Observer, Subscription } from './reactive';
+import type { VNode } from './types';
 
 import { subscribe } from './reactive';
 
-let _CurrentFunctionalComponent: VNodeFunctionalComponent | null = null;
+export interface LifecycleContext {
+    ref: object | null;
+    subscriptions: Subscription[] | null;
+    onMountCallback: Action | null;
+    onCleanupCallback: Action | null;
+}
 
-export function setCurrentFunctionalComponent(component: VNodeFunctionalComponent | null) {
-    _CurrentFunctionalComponent = component;
+let _LifecycleContext: LifecycleContext | null = null;
+
+export function setLifecycleContext(lifecycleContext: LifecycleContext | null) {
+    _LifecycleContext = lifecycleContext;
 }
 
 export function defineRef(ref: object) {
-    if (!_CurrentFunctionalComponent) {
+    if (!_LifecycleContext) {
         throw new Error('defineRef can only be called inside a functional component');
     }
-    _CurrentFunctionalComponent.ref = ref;
+    _LifecycleContext.ref = ref;
 }
 
-export function onMount(fn: VNodeFunctionalComponent['onMountCallback']) {
-    if (!_CurrentFunctionalComponent) {
+export function onMount(fn: Action) {
+    if (!_LifecycleContext) {
         throw new Error('onMount can only be called inside a functional component');
     }
-    if (_CurrentFunctionalComponent.onMountCallback) {
+    if (_LifecycleContext.onMountCallback) {
         throw new Error('onMount can only be called once');
     }
-    _CurrentFunctionalComponent.onMountCallback = fn;
+    _LifecycleContext.onMountCallback = fn;
 }
 
-export function onUnmount(fn: VNodeFunctionalComponent['onUnmountCallback']) {
-    if (!_CurrentFunctionalComponent) {
-        throw new Error('onUnmount can only be called inside a functional component');
+export function onCleanup(fn: Action) {
+    if (!_LifecycleContext) {
+        throw new Error('onCleanup can only be called inside a functional component');
     }
-    if (_CurrentFunctionalComponent.onUnmountCallback) {
-        throw new Error('onUnmount can only be called once');
+    if (_LifecycleContext.onCleanupCallback) {
+        throw new Error('onCleanup can only be called once');
     }
-    _CurrentFunctionalComponent.onUnmountCallback = fn;
+    _LifecycleContext.onCleanupCallback = fn;
 }
 
 export function watch<T>(observable: Observable<T>, observer: Observer<T>) {
-    if (!_CurrentFunctionalComponent) {
+    if (!_LifecycleContext) {
         throw new Error('watch can only be called inside a functional component');
     }
-    _CurrentFunctionalComponent.addSubscription(observable.subscribe(observer));
+    _LifecycleContext.subscriptions ??= [];
+    _LifecycleContext.subscriptions.push(observable.subscribe(observer));
 }
 
 export function watchMany<T extends readonly unknown[]>(
     observables: ObservablesOf<T>,
     observer: (...values: T) => void,
 ) {
-    if (!_CurrentFunctionalComponent) {
+    if (!_LifecycleContext) {
         throw new Error('watchMany can only be called inside a functional component');
     }
-    _CurrentFunctionalComponent.addSubscription(subscribe(observables, observer));
+    _LifecycleContext.subscriptions ??= [];
+    _LifecycleContext.subscriptions.push(subscribe(observables, observer));
 }
 
-export function mountVNodes(head: VNode, tail: VNode | null = null) {
+export function cleanupVNodes(head: VNode, tail: VNode | null = null) {
     let node: VNode | null = head;
     while (node) {
-        mountVNode(node);
-        if (node === tail) {
-            break;
-        }
-        node = node.next;
-    }
-}
-export function unmountVNodes(head: VNode, tail: VNode | null = null) {
-    let node: VNode | null = head;
-    while (node) {
-        unmountVNode(node);
+        cleanupVNode(node);
         if (node === tail) {
             break;
         }
@@ -75,41 +75,25 @@ export function unmountVNodes(head: VNode, tail: VNode | null = null) {
     }
 }
 
-function mountVNode(vNode: VNode) {
-    // mount children
+function cleanupVNode(vNode: VNode) {
     let child = vNode.firstChild;
     while (child) {
-        mountVNode(child);
+        cleanupVNode(child);
         child = child.next;
     }
 
-    // mount self
-    if (vNode.type === 'component') {
-        vNode.mount();
-    }
-}
-
-function unmountVNode(vNode: VNode) {
-    // unmount children
-    let child = vNode.firstChild;
-    while (child) {
-        unmountVNode(child);
-        child = child.next;
-    }
-
-    // unmount self
     if (vNode.type === 'element') {
-        vNode.unmount();
+        vNode.cleanup();
     }
     // else if (vNode.type === 'text') {
     // }
     else if (vNode.type === 'builtin') {
-        vNode.unmount();
+        vNode.cleanup();
     }
     else if (vNode.type === 'observable') {
-        vNode.unmount();
+        vNode.cleanup();
     }
     else if (vNode.type === 'component') {
-        vNode.unmount();
+        vNode.cleanup();
     }
 }

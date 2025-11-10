@@ -4,20 +4,23 @@ import { Show } from './components/Show.esm.js';
 import { With } from './components/With.esm.js';
 import { WithMany } from './components/WithMany.esm.js';
 import { setProps } from './dom.esm.js';
-import { mountVNodes, defineRef, unmountVNodes, setCurrentFunctionalComponent } from './lifecycle.esm.js';
+import { defineRef, cleanupVNodes, setLifecycleContext } from './lifecycle.esm.js';
 import { ObservableImpl, val } from './reactive.esm.js';
 import { resolveReactiveNodes, ReactiveNode } from './reactive-node.esm.js';
-import { Ref, RefValue } from './ref.esm.js';
-import { DeferredUpdatesScheduler } from './scheduling.esm.js';
+import { RefImpl, RefValue } from './ref.esm.js';
+import { nextTick, DeferredUpdatesScheduler } from './scheduling.esm.js';
 import { splitNamespace } from './utils.esm.js';
 
+const _lifecycleContext = {
+    ref: null,
+    subscriptions: null,
+    onMountCallback: null,
+    onCleanupCallback: null,
+};
 function render(root, jsxNode) {
     const rootVNode = new VNodeRootImpl();
     const children = resolveReactiveNodes(renderJSX(jsxNode, rootVNode));
     root.append(...children);
-    if (rootVNode.firstChild) {
-        mountVNodes(rootVNode.firstChild);
-    }
 }
 function renderJSX(jsxNode, parent, domNodes = []) {
     const nodes = [jsxNode];
@@ -89,11 +92,16 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                     domNodes.push(reactiveNode);
                 }
                 else {
-                    const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
-                    setCurrentFunctionalComponent(vNode);
+                    setLifecycleContext(_lifecycleContext);
                     const jsxNode = node.type(node.props, { defineRef });
-                    setCurrentFunctionalComponent(null);
+                    setLifecycleContext(null);
+                    const vNode = new VNodeFunctionalComponentImpl(node.props, _lifecycleContext, parent);
                     appendVNodeChild(parent, vNode);
+                    // reset the lifecycle context
+                    _lifecycleContext.ref = null;
+                    _lifecycleContext.subscriptions = null;
+                    _lifecycleContext.onMountCallback = null;
+                    _lifecycleContext.onCleanupCallback = null;
                     renderJSX(jsxNode, vNode, domNodes);
                 }
             }
@@ -174,7 +182,7 @@ class VNodeElementImpl {
         this._subscriptions ??= [];
         this._subscriptions.push(...subscriptions);
     }
-    unmount() {
+    cleanup() {
         if (this._subscriptions) {
             for (const subscription of this._subscriptions) {
                 subscription.unsubscribe();
@@ -185,41 +193,36 @@ class VNodeElementImpl {
 }
 class VNodeFunctionalComponentImpl {
     type;
-    ref = null;
-    onMountCallback = null;
-    onUnmountCallback = null;
+    ref;
     parent;
     next = null;
     firstChild = null;
     lastChild = null;
     _refProp = null;
-    _subscriptions = null;
-    constructor(props, parent) {
+    _onCleanupCallback;
+    _subscriptions;
+    constructor(props, lifecycleContext, parent) {
         this.type = 'component';
         this.parent = parent;
-        if (props.ref instanceof Ref) {
+        this.ref = lifecycleContext.ref;
+        this._onCleanupCallback = lifecycleContext.onCleanupCallback;
+        this._subscriptions = lifecycleContext.subscriptions;
+        if (props.ref instanceof RefImpl) {
             this._refProp = props.ref;
-        }
-    }
-    addSubscription(subscription) {
-        this._subscriptions ??= [];
-        this._subscriptions.push(subscription);
-    }
-    mount() {
-        if (this._refProp) {
             this._refProp[RefValue] = this.ref;
         }
-        this.onMountCallback?.();
+        if (lifecycleContext.onMountCallback) {
+            nextTick(lifecycleContext.onMountCallback);
+        }
     }
-    unmount() {
+    cleanup() {
         if (this._subscriptions) {
             const n = this._subscriptions.length;
             for (let i = 0; i < n; ++i) {
                 this._subscriptions[i].unsubscribe();
             }
-            this._subscriptions = null;
         }
-        this.onUnmountCallback?.();
+        this._onCleanupCallback?.();
         if (this._refProp) {
             this._refProp[RefValue] = null;
         }
@@ -238,18 +241,18 @@ class VNodeObservableImpl {
         this.type = 'observable';
         this.parent = parent;
         this.ref = ref;
-        this.render(value.value, true);
+        this.render(value.value);
         this._subscription = value.subscribe((value) => this.render(value));
     }
-    render(jsxNode, initialRender = false) {
+    render(jsxNode) {
         if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
             && this._textNode) {
             // optimized update path for text nodes
             this._textNode.textContent = String(jsxNode);
         }
         else {
-            if (!initialRender && this.firstChild) {
-                unmountVNodes(this.firstChild);
+            if (this.firstChild) {
+                cleanupVNodes(this.firstChild);
             }
             this.firstChild = this.lastChild = null;
             this._textNode = null;
@@ -258,16 +261,10 @@ class VNodeObservableImpl {
                 this._textNode = children[0];
             }
             this.ref.update(children);
-            if (!initialRender && this.firstChild) {
-                mountVNodes(this.firstChild);
-            }
         }
     }
-    unmount() {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    cleanup() {
+        this._subscription?.unsubscribe();
     }
 }
 class VNodeFor {
@@ -289,19 +286,18 @@ class VNodeFor {
         this._children = forProps.children;
         const of = forProps.of;
         if (Array.isArray(of)) {
-            this.render(of, true);
+            this.render(of);
         }
         else if (of instanceof ObservableImpl) {
-            this.render(of.value, true);
+            this.render(of.value);
             this._subscription = of.subscribe((value) => this.render(value));
         }
         else {
             throw new Error("The 'of' prop on <For> is required and must be an array or an observable array.");
         }
     }
-    render(items, initialRender = false) {
+    render(items) {
         this.firstChild = this.lastChild = null;
-        const newItems = [];
         const n = items.length;
         for (let i = 0; i < n; ++i) {
             const value = items[i];
@@ -332,38 +328,23 @@ class VNodeFor {
                     head = tail = null;
                 }
                 item = { index, head, tail };
-                newItems.push(item);
             }
             this._backBuffer.set(value, item);
         }
         if (this.lastChild) {
             this.lastChild.next = null;
         }
-        if (!initialRender) {
-            for (const item of this._frontBuffer.values()) {
-                if (item.head) {
-                    unmountVNodes(item.head, item.tail);
-                }
+        for (const item of this._frontBuffer.values()) {
+            if (item.head) {
+                cleanupVNodes(item.head, item.tail);
             }
         }
         this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
-        if (!initialRender) {
-            const nNewItems = newItems.length;
-            for (let i = 0; i < nNewItems; ++i) {
-                const item = newItems[i];
-                if (item.head) {
-                    mountVNodes(item.head, item.tail);
-                }
-            }
-        }
         [this._frontBuffer, this._backBuffer] = [this._backBuffer, this._frontBuffer];
         this._backBuffer.clear();
     }
-    unmount() {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    cleanup() {
+        this._subscription?.unsubscribe();
     }
 }
 class VNodeShow {
@@ -390,14 +371,14 @@ class VNodeShow {
         this._children = showProps.children;
         this._fallback = showProps.fallback ?? null;
         if (when instanceof ObservableImpl) {
-            this.render(when.value, true);
+            this.render(when.value);
             this._subscription = when.subscribe((value) => this.render(value));
         }
         else {
             this.render(when);
         }
     }
-    render(value, initialRender = false) {
+    render(value) {
         let show;
         if (this._is === undefined) {
             show = Boolean(value);
@@ -412,27 +393,21 @@ class VNodeShow {
             return;
         }
         this._shown = show;
-        if (!initialRender && this.firstChild) {
-            unmountVNodes(this.firstChild);
+        if (this.firstChild) {
+            cleanupVNodes(this.firstChild);
         }
         this.firstChild = this.lastChild = null;
         const jsxNode = show ? this._children : this._fallback;
         if (jsxNode) {
             const children = renderJSX(typeof jsxNode === 'function' ? jsxNode(value) : jsxNode, this);
             this.ref.update(children);
-            if (!initialRender && this.firstChild) {
-                mountVNodes(this.firstChild);
-            }
         }
         else {
             this.ref.update(null);
         }
     }
-    unmount() {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    cleanup() {
+        this._subscription?.unsubscribe();
     }
 }
 class VNodeWith {
@@ -452,29 +427,23 @@ class VNodeWith {
         const value = withProps.value;
         this._children = withProps.children;
         if (value instanceof ObservableImpl) {
-            this.render(value.value, true);
+            this.render(value.value);
             this._subscription = value.subscribe((value) => this.render(value));
         }
         else {
             this.render(value);
         }
     }
-    render(value, initialRender = false) {
-        if (!initialRender && this.firstChild) {
-            unmountVNodes(this.firstChild);
+    render(value) {
+        if (this.firstChild) {
+            cleanupVNodes(this.firstChild);
         }
         this.firstChild = this.lastChild = null;
         const children = renderJSX(this._children(value), this);
         this.ref.update(children);
-        if (!initialRender && this.firstChild) {
-            mountVNodes(this.firstChild);
-        }
     }
-    unmount() {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    cleanup() {
+        this._subscription?.unsubscribe();
     }
 }
 class VNodeWithMany {
@@ -507,7 +476,7 @@ class VNodeWithMany {
                 args.push(value);
             }
         }
-        this.render(true, ...args);
+        this.render(...args);
     }
     onDependencyUpdated() {
         if (this._pendingUpdates)
@@ -520,25 +489,21 @@ class VNodeWithMany {
             return;
         this._pendingUpdates = false;
         const values = this._values.map(value => value instanceof ObservableImpl ? value.value : value);
-        this.render(false, ...values);
+        this.render(...values);
     }
-    render(initialRender, ...values) {
-        if (!initialRender && this.firstChild) {
-            unmountVNodes(this.firstChild);
+    render(...values) {
+        if (this.firstChild) {
+            cleanupVNodes(this.firstChild);
         }
         this.firstChild = this.lastChild = null;
         const children = renderJSX(this._children(...values), this);
         this.ref.update(children);
-        if (!initialRender && this.firstChild) {
-            mountVNodes(this.firstChild);
-        }
     }
-    unmount() {
+    cleanup() {
         if (this._subscriptions) {
             for (let i = 0; i < this._subscriptions.length; ++i) {
                 this._subscriptions[i].unsubscribe();
             }
-            this._subscriptions = null;
         }
     }
 }

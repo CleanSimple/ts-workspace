@@ -1,12 +1,12 @@
 const RefValue = Symbol('RefValue');
 function ref() {
-    return new Ref();
+    return new RefImpl();
 }
-class Ref {
+class RefImpl {
     [RefValue] = null;
     get current() {
         return this[RefValue];
     }
 }
 
-export { Ref, RefValue, ref };
+export { RefImpl, RefValue, ref };

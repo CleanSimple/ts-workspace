@@ -1,8 +1,9 @@
-import type { Predicate } from '@cleansimple/utils-js';
+import type { Action, Predicate } from '@cleansimple/utils-js';
 import type { ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
 import type { WithManyProps } from './components/WithMany';
+import type { LifecycleContext } from './lifecycle';
 import type { IDependant, Observable, Subscription, Val, ValuesOf } from './reactive';
 import type { IHasUpdates } from './scheduling';
 import type {
@@ -24,20 +25,24 @@ import { Show } from './components/Show';
 import { With } from './components/With';
 import { WithMany } from './components/WithMany';
 import { setProps } from './dom';
-import { defineRef, mountVNodes, setCurrentFunctionalComponent, unmountVNodes } from './lifecycle';
+import { cleanupVNodes, defineRef, setLifecycleContext } from './lifecycle';
 import { ObservableImpl, val } from './reactive';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
-import { Ref, RefValue } from './ref';
-import { DeferredUpdatesScheduler } from './scheduling';
+import { RefImpl, RefValue } from './ref';
+import { DeferredUpdatesScheduler, nextTick } from './scheduling';
 import { splitNamespace } from './utils';
+
+const _lifecycleContext: LifecycleContext = {
+    ref: null,
+    subscriptions: null,
+    onMountCallback: null,
+    onCleanupCallback: null,
+};
 
 export function render(root: Element | DocumentFragment, jsxNode: JSXNode): void {
     const rootVNode = new VNodeRootImpl();
     const children = resolveReactiveNodes(renderJSX(jsxNode, rootVNode));
     root.append(...children);
-    if (rootVNode.firstChild) {
-        mountVNodes(rootVNode.firstChild);
-    }
 }
 
 function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = []): RNode[] {
@@ -120,13 +125,23 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
                     domNodes.push(reactiveNode);
                 }
                 else {
-                    const vNode = new VNodeFunctionalComponentImpl(node.props, parent);
-
-                    setCurrentFunctionalComponent(vNode);
+                    setLifecycleContext(_lifecycleContext);
                     const jsxNode = node.type(node.props, { defineRef });
-                    setCurrentFunctionalComponent(null);
+                    setLifecycleContext(null);
 
+                    const vNode = new VNodeFunctionalComponentImpl(
+                        node.props,
+                        _lifecycleContext,
+                        parent,
+                    );
                     appendVNodeChild(parent, vNode);
+
+                    // reset the lifecycle context
+                    _lifecycleContext.ref = null;
+                    _lifecycleContext.subscriptions = null;
+                    _lifecycleContext.onMountCallback = null;
+                    _lifecycleContext.onCleanupCallback = null;
+
                     renderJSX(jsxNode, vNode, domNodes);
                 }
             }
@@ -223,7 +238,7 @@ class VNodeElementImpl implements VNodeElement {
         this._subscriptions.push(...subscriptions);
     }
 
-    public unmount(): void {
+    public cleanup(): void {
         if (this._subscriptions) {
             for (const subscription of this._subscriptions) {
                 subscription.unsubscribe();
@@ -235,49 +250,45 @@ class VNodeElementImpl implements VNodeElement {
 
 class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
     public readonly type: 'component';
-    public ref: object | null = null;
-    public onMountCallback: VNodeFunctionalComponent['onMountCallback'] = null;
-    public onUnmountCallback: VNodeFunctionalComponent['onUnmountCallback'] = null;
+    public readonly ref: object | null;
     public parent: VNode | null;
     public next: VNode | null = null;
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _refProp: Ref<object | null> | null = null;
-    private _subscriptions: Subscription[] | null = null;
+    private readonly _refProp: RefImpl<object> | null = null;
+    private readonly _onCleanupCallback: Action | null;
+    private readonly _subscriptions: Subscription[] | null;
 
-    public constructor(props: PropsType, parent: VNode | null) {
+    public constructor(
+        props: PropsType,
+        lifecycleContext: LifecycleContext,
+        parent: VNode | null,
+    ) {
         this.type = 'component';
         this.parent = parent;
+        this.ref = lifecycleContext.ref;
+        this._onCleanupCallback = lifecycleContext.onCleanupCallback;
+        this._subscriptions = lifecycleContext.subscriptions;
 
-        if (props.ref instanceof Ref) {
+        if (props.ref instanceof RefImpl) {
             this._refProp = props.ref;
-        }
-    }
-
-    public addSubscription(subscription: Subscription) {
-        this._subscriptions ??= [];
-        this._subscriptions.push(subscription);
-    }
-
-    public mount() {
-        if (this._refProp) {
             this._refProp[RefValue] = this.ref;
         }
-
-        this.onMountCallback?.();
+        if (lifecycleContext.onMountCallback) {
+            nextTick(lifecycleContext.onMountCallback);
+        }
     }
 
-    public unmount() {
+    public cleanup() {
         if (this._subscriptions) {
             const n = this._subscriptions.length;
             for (let i = 0; i < n; ++i) {
                 this._subscriptions[i].unsubscribe();
             }
-            this._subscriptions = null;
         }
 
-        this.onUnmountCallback?.();
+        this._onCleanupCallback?.();
 
         if (this._refProp) {
             this._refProp[RefValue] = null;
@@ -293,7 +304,7 @@ class VNodeObservableImpl implements VNodeObservable {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private _subscription: Subscription | null = null;
+    private readonly _subscription: Subscription | null = null;
     private _textNode: Text | null = null;
 
     public constructor(ref: ReactiveNode, value: Observable<JSXNode>, parent: VNode | null) {
@@ -301,11 +312,11 @@ class VNodeObservableImpl implements VNodeObservable {
         this.parent = parent;
         this.ref = ref;
 
-        this.render(value.value, true);
+        this.render(value.value);
         this._subscription = value.subscribe((value) => this.render(value));
     }
 
-    private render(jsxNode: JSXNode, initialRender: boolean = false): void {
+    private render(jsxNode: JSXNode): void {
         if (
             (typeof jsxNode === 'string' || typeof jsxNode === 'number')
             && this._textNode
@@ -314,8 +325,8 @@ class VNodeObservableImpl implements VNodeObservable {
             this._textNode.textContent = String(jsxNode);
         }
         else {
-            if (!initialRender && this.firstChild) {
-                unmountVNodes(this.firstChild);
+            if (this.firstChild) {
+                cleanupVNodes(this.firstChild);
             }
             this.firstChild = this.lastChild = null;
             this._textNode = null;
@@ -324,17 +335,11 @@ class VNodeObservableImpl implements VNodeObservable {
                 this._textNode = children[0];
             }
             this.ref.update(children);
-            if (!initialRender && this.firstChild) {
-                mountVNodes(this.firstChild);
-            }
         }
     }
 
-    public unmount(): void {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    public cleanup(): void {
+        this._subscription?.unsubscribe();
     }
 }
 
@@ -347,7 +352,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
     public lastChild: VNode | null = null;
 
     private readonly _children: ForProps<T>['children'];
-    private _subscription: Subscription | null = null;
+    private readonly _subscription: Subscription | null = null;
     private _frontBuffer = new Map<unknown, RenderedItem>();
     private _backBuffer = new Map<unknown, RenderedItem>();
 
@@ -361,10 +366,10 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         const of = forProps.of as T[] | ObservableImpl<T[]>;
 
         if (Array.isArray(of)) {
-            this.render(of, true);
+            this.render(of);
         }
         else if (of instanceof ObservableImpl) {
-            this.render(of.value, true);
+            this.render(of.value);
             this._subscription = of.subscribe((value) => this.render(value));
         }
         else {
@@ -374,7 +379,7 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
         }
     }
 
-    private render(items: T[], initialRender: boolean = false): void {
+    private render(items: T[]): void {
         this.firstChild = this.lastChild = null as VNode | null;
         const newItems: RenderedItem[] = [];
         const n = items.length;
@@ -417,35 +422,20 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
             this.lastChild.next = null;
         }
 
-        if (!initialRender) {
-            for (const item of this._frontBuffer.values()) {
-                if (item.head) {
-                    unmountVNodes(item.head, item.tail);
-                }
+        for (const item of this._frontBuffer.values()) {
+            if (item.head) {
+                cleanupVNodes(item.head, item.tail);
             }
         }
 
         this.ref.update(this.firstChild ? resolveRenderedVNodes(this.firstChild) : null);
 
-        if (!initialRender) {
-            const nNewItems = newItems.length;
-            for (let i = 0; i < nNewItems; ++i) {
-                const item = newItems[i];
-                if (item.head) {
-                    mountVNodes(item.head, item.tail);
-                }
-            }
-        }
-
         [this._frontBuffer, this._backBuffer] = [this._backBuffer, this._frontBuffer];
         this._backBuffer.clear();
     }
 
-    public unmount() {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    public cleanup() {
+        this._subscription?.unsubscribe();
     }
 }
 
@@ -461,7 +451,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
     private readonly _keyed: ShowProps<T>['keyed'];
     private readonly _children: ShowProps<T>['children'];
     private readonly _fallback: ShowProps<T>['fallback'] | null;
-    private _subscription: Subscription | null = null;
+    private readonly _subscription: Subscription | null = null;
     private _shown: boolean | null = null;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
@@ -477,7 +467,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         this._fallback = showProps.fallback ?? null;
 
         if (when instanceof ObservableImpl) {
-            this.render(when.value, true);
+            this.render(when.value);
             this._subscription = when.subscribe((value) => this.render(value));
         }
         else {
@@ -485,7 +475,7 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         }
     }
 
-    private render(value: T, initialRender: boolean = false) {
+    private render(value: T) {
         let show: boolean;
         if (this._is === undefined) {
             show = Boolean(value);
@@ -502,8 +492,8 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         }
         this._shown = show;
 
-        if (!initialRender && this.firstChild) {
-            unmountVNodes(this.firstChild);
+        if (this.firstChild) {
+            cleanupVNodes(this.firstChild);
         }
         this.firstChild = this.lastChild = null;
         const jsxNode = show ? this._children : this._fallback;
@@ -513,20 +503,14 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
                 this,
             );
             this.ref.update(children);
-            if (!initialRender && this.firstChild) {
-                mountVNodes(this.firstChild);
-            }
         }
         else {
             this.ref.update(null);
         }
     }
 
-    public unmount() {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    public cleanup() {
+        this._subscription?.unsubscribe();
     }
 }
 
@@ -539,7 +523,7 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
     public lastChild: VNode | null = null;
 
     private readonly _children: WithProps<T>['children'];
-    private _subscription: Subscription | null = null;
+    private readonly _subscription: Subscription | null = null;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
@@ -551,7 +535,7 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
         this._children = withProps.children;
 
         if (value instanceof ObservableImpl) {
-            this.render(value.value, true);
+            this.render(value.value);
             this._subscription = value.subscribe((value) => this.render(value));
         }
         else {
@@ -559,23 +543,17 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
         }
     }
 
-    private render(value: T, initialRender: boolean = false) {
-        if (!initialRender && this.firstChild) {
-            unmountVNodes(this.firstChild);
+    private render(value: T) {
+        if (this.firstChild) {
+            cleanupVNodes(this.firstChild);
         }
         this.firstChild = this.lastChild = null;
         const children = renderJSX(this._children(value), this);
         this.ref.update(children);
-        if (!initialRender && this.firstChild) {
-            mountVNodes(this.firstChild);
-        }
     }
 
-    public unmount() {
-        if (this._subscription) {
-            this._subscription.unsubscribe();
-            this._subscription = null;
-        }
+    public cleanup() {
+        this._subscription?.unsubscribe();
     }
 }
 
@@ -591,7 +569,7 @@ class VNodeWithMany<T extends readonly unknown[]>
 
     private readonly _values: WithManyProps<T>['values'];
     private readonly _children: WithManyProps<T>['children'];
-    private _subscriptions: Subscription[] | null = null;
+    private readonly _subscriptions: Subscription[] | null = null;
     private _pendingUpdates: boolean = false;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
@@ -615,7 +593,7 @@ class VNodeWithMany<T extends readonly unknown[]>
                 args.push(value);
             }
         }
-        this.render(true, ...args);
+        this.render(...args);
     }
 
     public onDependencyUpdated() {
@@ -630,27 +608,23 @@ class VNodeWithMany<T extends readonly unknown[]>
         const values = this._values.map(value =>
             value instanceof ObservableImpl ? value.value as unknown : value
         );
-        this.render(false, ...values);
+        this.render(...values);
     }
 
-    private render(initialRender: boolean, ...values: unknown[]) {
-        if (!initialRender && this.firstChild) {
-            unmountVNodes(this.firstChild);
+    private render(...values: unknown[]) {
+        if (this.firstChild) {
+            cleanupVNodes(this.firstChild);
         }
         this.firstChild = this.lastChild = null;
         const children = renderJSX(this._children(...values as ValuesOf<T>), this);
         this.ref.update(children);
-        if (!initialRender && this.firstChild) {
-            mountVNodes(this.firstChild);
-        }
     }
 
-    public unmount() {
+    public cleanup() {
         if (this._subscriptions) {
             for (let i = 0; i < this._subscriptions.length; ++i) {
                 this._subscriptions[i].unsubscribe();
             }
-            this._subscriptions = null;
         }
     }
 }

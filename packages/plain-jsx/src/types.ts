@@ -42,29 +42,25 @@ export interface VNodeElement extends VNodeBase {
     type: 'element';
     ref: Element;
     addSubscriptions: (subscriptions: Subscription[]) => void;
-    unmount: Action;
+    cleanup: Action;
 }
 
 export interface VNodeFunctionalComponent extends VNodeBase {
     type: 'component';
     ref: object | null;
-    addSubscription: (subscription: Subscription) => void;
-    mount: Action;
-    unmount: Action;
-    onMountCallback: Action | null;
-    onUnmountCallback: Action | null;
+    cleanup: Action;
 }
 
 export interface VNodeBuiltinComponent extends VNodeBase {
     type: 'builtin';
     ref: ReactiveNode;
-    unmount: Action;
+    cleanup: Action;
 }
 
 export interface VNodeObservable extends VNodeBase {
     type: 'observable';
     ref: ReactiveNode;
-    unmount: Action;
+    cleanup: Action;
 }
 
 export type VNode =

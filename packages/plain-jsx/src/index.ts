@@ -11,7 +11,7 @@ export { Show } from './components/Show';
 export { With } from './components/With';
 export { WithMany } from './components/WithMany';
 export { render } from './core';
-export { onMount, onUnmount, watch, watchMany } from './lifecycle';
+export { onCleanup, onMount, watch, watchMany } from './lifecycle';
 export { computed, subscribe, task, val } from './reactive';
 export { ref } from './ref';
 export { nextTick } from './scheduling';
