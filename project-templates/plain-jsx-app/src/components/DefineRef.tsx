@@ -34,8 +34,8 @@ const DefineRef: FunctionalComponent = () => {
         <Card>
             <Header>Define Ref</Header>
             <Stack orientation='horizontal'>
-                <Button onClick={() => counterRef.value?.increment()}>Increment</Button>
-                <Button onClick={() => counterRef.value?.decrement()}>Decrement</Button>
+                <Button onClick={() => counterRef.current?.increment()}>Increment</Button>
+                <Button onClick={() => counterRef.current?.decrement()}>Decrement</Button>
             </Stack>
             <Divider />
             <Counter ref={counterRef} />

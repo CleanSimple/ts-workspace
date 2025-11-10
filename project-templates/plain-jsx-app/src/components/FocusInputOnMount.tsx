@@ -7,7 +7,7 @@ const FocusInputOnMount: FunctionalComponent = () => {
     const inputRef = ref<HTMLInputElement>();
 
     onMount(() => {
-        inputRef.value?.focus();
+        inputRef.current?.focus();
     });
 
     return (

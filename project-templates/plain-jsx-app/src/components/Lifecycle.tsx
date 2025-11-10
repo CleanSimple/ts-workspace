@@ -1,6 +1,6 @@
 import {
     onMount,
-    onUnmount,
+    onCleanup,
     Show,
     val,
     type FunctionalComponent,
@@ -25,7 +25,7 @@ const Component: FunctionalComponent<ComponentProps> = ({ show, state }) => {
         state.value = 'Mounted';
     });
 
-    onUnmount(() => {
+    onCleanup(() => {
         state.value = 'Unmounted';
     });
 
