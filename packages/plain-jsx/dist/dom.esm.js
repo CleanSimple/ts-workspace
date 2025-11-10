@@ -1,6 +1,7 @@
 import { isObject } from '@cleansimple/utils-js';
 import { getLIS } from './lis.esm.js';
-import { ValImpl, ObservableImpl } from './reactive.esm.js';
+import { ObservableImpl, ValImpl } from './reactive.esm.js';
+import { Ref, RefValue } from './ref.esm.js';
 import { isReadonlyProp, splitNamespace } from './utils.esm.js';
 
 const _Fragment = document.createDocumentFragment();
@@ -103,11 +104,11 @@ function setProps(elem, props) {
         }
         const value = props[key];
         if (key === 'ref') {
-            if (value instanceof ValImpl) {
-                value.value = elem;
+            if (value instanceof Ref) {
+                value[RefValue] = elem;
                 subscriptions.push({
                     unsubscribe: () => {
-                        value.value = null;
+                        value[RefValue] = null;
                     },
                 });
             }

@@ -1,5 +1,4 @@
 import type { Action } from '@cleansimple/utils-js';
-import type { FunctionalComponent } from '.';
 import type { IHasUpdates } from './scheduling';
 export interface Subscription {
     unsubscribe: Action;
@@ -13,7 +12,6 @@ export interface Observable<T> {
 export interface Val<T> extends Observable<T> {
     set value(newValue: T);
 }
-export type Ref<T> = Observable<T | null>;
 type TaskStatus = 'Running' | 'Success' | 'Error';
 export interface Task<T> {
     value: Observable<T | undefined>;
@@ -39,7 +37,6 @@ export interface IDependant {
     onDependencyUpdated: Action;
 }
 export declare function val<T>(initialValue: T): Val<T>;
-export declare function ref<T extends Element | FunctionalComponent<never, any>, U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never>(): Ref<U>;
 export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
 export declare function subscribe<T extends readonly unknown[]>(observables: ObservablesOf<T>, observer: (...values: T) => void): Subscription;
 export declare function task<T>(action: TaskAction<T>): Task<T>;

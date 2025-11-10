@@ -1,7 +1,8 @@
-import type { Action, MethodsOf, ReadonlyProps } from '@cleansimple/utils-js';
+import type { Action, MethodsOf, ReadonlyProps, Setter } from '@cleansimple/utils-js';
 import type { Properties as CSS } from 'csstype';
-import type { Observable, Ref, Subscription } from './reactive';
+import type { Observable, Subscription } from './reactive';
 import type { ReactiveNode } from './reactive-node';
+import type { Ref } from './ref';
 
 /* JSX Node */
 export type JSXNode =
@@ -81,13 +82,36 @@ export type RNode = ChildNode | ReactiveNode;
 export type DOMNode = ChildNode;
 
 // component types
-export type FunctionalComponent = (...args: unknown[]) => JSXNode;
+export type FunctionalComponent<TProps = object, TRef extends object = object> = (
+    props: TProps & { ref?: Ref<TRef> },
+    helpers: {
+        /**
+         * A helper function to define the component's ref interface.
+         * @example
+         * interface CounterRef {
+         *     increment(): void;
+         *     decrement(): void;
+         * }
+         * interface CounterProps {
+         * }
+         * const Counter: FunctionalComponent<CounterProps, CounterRef> = (props, { defineRef }) => {
+         *     const count = val(0);
+         *     defineRef({
+         *         increment() { count.value += 1; },
+         *         decrement() { count.value -= 1; },
+         *     });
+         *     return <span>{count}</span>;
+         * };
+         */
+        defineRef: Setter<TRef>;
+    },
+) => JSXNode;
 
 /* props */
 
 // generic props type for the render engine
 export type PropsType = Record<string, unknown> & {
-    ref?: unknown;
+    ref?: Ref<object>;
     children?: JSXNode;
 };
 
@@ -147,8 +171,3 @@ export type DOMProps<T extends Element> =
 export type SVGProps<T extends SVGElement> =
     & DOMProps<T>
     & Record<string, unknown>; // no validation for svg props for now.
-
-/* helpers */
-export type HasVNode<T extends Node> = T & {
-    __vNode: VNode;
-};

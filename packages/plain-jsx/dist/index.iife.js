@@ -105,9 +105,6 @@ var PlainJSX = (function (exports, utilsJs) {
     function val(initialValue) {
         return new ValImpl(initialValue);
     }
-    function ref() {
-        return new ValImpl(null);
-    }
     function computed(observables, compute) {
         return new Computed(observables, compute);
     }
@@ -320,6 +317,17 @@ var PlainJSX = (function (exports, utilsJs) {
         }
     }
 
+    const RefValue = Symbol('RefValue');
+    function ref() {
+        return new Ref();
+    }
+    class Ref {
+        [RefValue] = null;
+        get current() {
+            return this[RefValue];
+        }
+    }
+
     const XMLNamespaces = {
         'svg': 'http://www.w3.org/2000/svg',
         'xhtml': 'http://www.w3.org/1999/xhtml',
@@ -445,11 +453,11 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             const value = props[key];
             if (key === 'ref') {
-                if (value instanceof ValImpl) {
-                    value.value = elem;
+                if (value instanceof Ref) {
+                    value[RefValue] = elem;
                     subscriptions.push({
                         unsubscribe: () => {
-                            value.value = null;
+                            value[RefValue] = null;
                         },
                     });
                 }
@@ -863,7 +871,7 @@ var PlainJSX = (function (exports, utilsJs) {
         constructor(props, parent) {
             this.type = 'component';
             this.parent = parent;
-            if (props.ref instanceof ValImpl) {
+            if (props.ref instanceof Ref) {
                 this._refProp = props.ref;
             }
         }
@@ -873,7 +881,7 @@ var PlainJSX = (function (exports, utilsJs) {
         }
         mount() {
             if (this._refProp) {
-                this._refProp.value = this.ref;
+                this._refProp[RefValue] = this.ref;
             }
             this.onMountCallback?.();
         }
@@ -887,7 +895,7 @@ var PlainJSX = (function (exports, utilsJs) {
             }
             this.onUnmountCallback?.();
             if (this._refProp) {
-                this._refProp.value = null;
+                this._refProp[RefValue] = null;
             }
         }
     }

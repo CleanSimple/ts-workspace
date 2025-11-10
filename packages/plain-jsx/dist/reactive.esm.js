@@ -4,9 +4,6 @@ import { DeferredUpdatesScheduler } from './scheduling.esm.js';
 function val(initialValue) {
     return new ValImpl(initialValue);
 }
-function ref() {
-    return new ValImpl(null);
-}
 function computed(observables, compute) {
     return new Computed(observables, compute);
 }
@@ -219,4 +216,4 @@ class MultiObservableSubscription {
     }
 }
 
-export { ObservableImpl, ValImpl, computed, ref, subscribe, task, val };
+export { ObservableImpl, ValImpl, computed, subscribe, task, val };

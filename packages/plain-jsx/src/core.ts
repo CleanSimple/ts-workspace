@@ -25,8 +25,9 @@ import { With } from './components/With';
 import { WithMany } from './components/WithMany';
 import { setProps } from './dom';
 import { defineRef, mountVNodes, setCurrentFunctionalComponent, unmountVNodes } from './lifecycle';
-import { ObservableImpl, val, ValImpl } from './reactive';
+import { ObservableImpl, val } from './reactive';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
+import { Ref, RefValue } from './ref';
 import { DeferredUpdatesScheduler } from './scheduling';
 import { splitNamespace } from './utils';
 
@@ -242,14 +243,14 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _refProp: Val<object | null> | null = null;
+    private readonly _refProp: Ref<object | null> | null = null;
     private _subscriptions: Subscription[] | null = null;
 
     public constructor(props: PropsType, parent: VNode | null) {
         this.type = 'component';
         this.parent = parent;
 
-        if (props.ref instanceof ValImpl) {
+        if (props.ref instanceof Ref) {
             this._refProp = props.ref;
         }
     }
@@ -261,7 +262,7 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
 
     public mount() {
         if (this._refProp) {
-            this._refProp.value = this.ref;
+            this._refProp[RefValue] = this.ref;
         }
 
         this.onMountCallback?.();
@@ -279,7 +280,7 @@ class VNodeFunctionalComponentImpl implements VNodeFunctionalComponent {
         this.onUnmountCallback?.();
 
         if (this._refProp) {
-            this._refProp.value = null;
+            this._refProp[RefValue] = null;
         }
     }
 }

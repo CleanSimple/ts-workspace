@@ -5,8 +5,9 @@ import { With } from './components/With.esm.js';
 import { WithMany } from './components/WithMany.esm.js';
 import { setProps } from './dom.esm.js';
 import { mountVNodes, defineRef, unmountVNodes, setCurrentFunctionalComponent } from './lifecycle.esm.js';
-import { ObservableImpl, ValImpl, val } from './reactive.esm.js';
+import { ObservableImpl, val } from './reactive.esm.js';
 import { resolveReactiveNodes, ReactiveNode } from './reactive-node.esm.js';
+import { Ref, RefValue } from './ref.esm.js';
 import { DeferredUpdatesScheduler } from './scheduling.esm.js';
 import { splitNamespace } from './utils.esm.js';
 
@@ -196,7 +197,7 @@ class VNodeFunctionalComponentImpl {
     constructor(props, parent) {
         this.type = 'component';
         this.parent = parent;
-        if (props.ref instanceof ValImpl) {
+        if (props.ref instanceof Ref) {
             this._refProp = props.ref;
         }
     }
@@ -206,7 +207,7 @@ class VNodeFunctionalComponentImpl {
     }
     mount() {
         if (this._refProp) {
-            this._refProp.value = this.ref;
+            this._refProp[RefValue] = this.ref;
         }
         this.onMountCallback?.();
     }
@@ -220,7 +221,7 @@ class VNodeFunctionalComponentImpl {
         }
         this.onUnmountCallback?.();
         if (this._refProp) {
-            this._refProp.value = null;
+            this._refProp[RefValue] = null;
         }
     }
 }

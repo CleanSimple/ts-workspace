@@ -14,13 +14,8 @@ export function jsx(type: string | FunctionalComponent, props: PropsType): JSXEl
 
 export { jsx as jsxDEV, jsx as jsxs };
 
-type DOMElement = Element;
-
 // eslint-disable-next-line @typescript-eslint/no-namespace
 export declare namespace JSX {
-    /* utility */
-    type PropsOf<T extends DOMElement> = T extends SVGElement ? SVGProps<T> : DOMProps<T>;
-
     /* jsx defs */
     type Fragment = typeof Fragment;
 

@@ -4,6 +4,7 @@ import type { DOMNode, PropsType } from './types';
 import { isObject } from '@cleansimple/utils-js';
 import { getLIS } from './lis';
 import { ObservableImpl, ValImpl } from './reactive';
+import { Ref, RefValue } from './ref';
 import { isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();
@@ -120,11 +121,11 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
         const value = props[key];
 
         if (key === 'ref') {
-            if (value instanceof ValImpl) {
-                value.value = elem;
+            if (value instanceof Ref) {
+                value[RefValue] = elem;
                 subscriptions.push({
                     unsubscribe: () => {
-                        value.value = null;
+                        value[RefValue] = null;
                     },
                 });
             }

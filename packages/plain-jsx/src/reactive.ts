@@ -1,5 +1,4 @@
 import type { Action } from '@cleansimple/utils-js';
-import type { FunctionalComponent } from '.';
 import type { IHasUpdates } from './scheduling';
 
 import { DeferredUpdatesScheduler } from './scheduling';
@@ -17,7 +16,6 @@ export interface Observable<T> {
 export interface Val<T> extends Observable<T> {
     set value(newValue: T);
 }
-export type Ref<T> = Observable<T | null>;
 
 type TaskStatus = 'Running' | 'Success' | 'Error';
 
@@ -52,14 +50,6 @@ export interface IDependant {
 /* helpers */
 export function val<T>(initialValue: T): Val<T> {
     return new ValImpl<T>(initialValue);
-}
-
-export function ref<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    T extends Element | FunctionalComponent<never, any>,
-    U = T extends Element ? T : T extends FunctionalComponent<never, infer TRef> ? TRef : never,
->(): Ref<U> {
-    return new ValImpl<U | null>(null);
 }
 
 export function computed<T extends readonly unknown[], R>(
