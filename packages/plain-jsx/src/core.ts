@@ -54,23 +54,8 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
         if (node == null || typeof node === 'boolean') {
             continue;
         }
-        // flatten arrays
-        if (Array.isArray(node)) {
-            nodes.unshift(...node);
-            continue;
-        }
-        // flatten fragments
-        if (typeof node === 'object' && 'type' in node && node.type === Fragment) {
-            if (Array.isArray(node.props.children)) {
-                nodes.unshift(...node.props.children);
-            }
-            else {
-                nodes.unshift(node.props.children);
-            }
-            continue;
-        }
-
-        if (typeof node === 'string' || typeof node === 'number') {
+        // render strings
+        else if (typeof node === 'string' || typeof node === 'number') {
             const textNode = document.createTextNode(String(node));
             if (parent?.type !== 'element') {
                 const vNode = new VNodeTextImpl(textNode, parent);
@@ -78,6 +63,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
             }
             domNodes.push(textNode);
         }
+        // render observables
         else if (node instanceof ObservableImpl) {
             const reactiveNode = new ReactiveNode();
             const vNode = new VNodeObservableImpl(reactiveNode, node, parent);
@@ -85,8 +71,22 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
 
             domNodes.push(reactiveNode);
         }
+        // flatten arrays
+        else if (Array.isArray(node)) {
+            nodes.unshift(...node);
+        }
         else if ('type' in node) {
-            if (typeof node.type === 'string') {
+            // flatten fragments
+            if (node.type === Fragment) {
+                if (Array.isArray(node.props.children)) {
+                    nodes.unshift(...node.props.children);
+                }
+                else {
+                    nodes.unshift(node.props.children);
+                }
+            }
+            // render DOM elements
+            else if (typeof node.type === 'string') {
                 const hasNS = node.type.includes(':');
 
                 const domElement = hasNS
@@ -115,8 +115,10 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
 
                 domNodes.push(domElement);
             }
+            // render components
             else {
                 const VNodeConstructor = BuiltinComponentMap.get(node.type);
+                // render built-in components
                 if (VNodeConstructor) {
                     const reactiveNode = new ReactiveNode();
                     const vNode = new VNodeConstructor(reactiveNode, node.props, parent);
@@ -124,6 +126,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
 
                     domNodes.push(reactiveNode);
                 }
+                // render functional components
                 else {
                     setLifecycleContext(_lifecycleContext);
                     const jsxNode = node.type(node.props, { defineRef });
