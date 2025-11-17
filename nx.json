@@ -1,0 +1,14 @@
+{
+    "namedInputs": {
+        "default": ["{projectRoot}/**/*"],
+        "src": ["!{projectRoot}/src/**/*"]
+    },
+    "targetDefaults": {
+        "build": {
+            "dependsOn": ["^build"],
+            "inputs": ["src", "^src"],
+            "outputs": ["{projectRoot}/dist"],
+            "cache": true
+        }
+    }
+}
