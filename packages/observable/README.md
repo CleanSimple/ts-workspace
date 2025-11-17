@@ -7,7 +7,7 @@ A simple observable value implementation.
 ```ts
 import { val } from '@cleansimple/observable';
 
-const value = new val(1);
+const value = val(1);
 
 // subscribe to changes
 const subscription = value.subscribe((newValue) => {
@@ -67,7 +67,7 @@ export interface Val<T> extends Observable<T> {
 The `subscribe` abd `computed` functions are the same as `.subscribe` and `.computed` on `Observable<T>`, but they allow using multiple observables as the sources.
 
 ```ts
-import { val, subscribe, computed } from '@cleansimple/observable';
+import { computed, subscribe, val } from '@cleansimple/observable';
 
 const val1 = val(0);
 const val2 = val(0);
