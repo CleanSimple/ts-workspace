@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/dprint-config",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "keywords": [
