@@ -14,6 +14,9 @@ const dirPath = path.resolve(dir);
 clean(dirPath);
 
 function clean(dirPath) {
+    if (!fs.existsSync(dirPath)) {
+        return;
+    }
     const entries = fs.readdirSync(dirPath);
 
     for (const entry of entries) {
