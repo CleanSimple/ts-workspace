@@ -1,8 +1,18 @@
 {
     "name": "@cleansimple/eslint-config",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "packageManager": "yarn@4.6.0",
     "type": "module",
+    "keywords": [
+        "config",
+        "eslint"
+    ],
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CleanSimple/ts-workspace.git"
+    },
     "exports": {
         "./config": "./config.js"
     },

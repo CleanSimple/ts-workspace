@@ -1,8 +1,18 @@
 {
     "name": "@cleansimple/dprint-config",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "packageManager": "yarn@4.6.0",
     "type": "module",
+    "keywords": [
+        "config",
+        "dprint"
+    ],
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CleanSimple/ts-workspace.git"
+    },
     "main": "./config.js",
     "bin": {
         "init-dprint-config": "./bin/init-config.js"

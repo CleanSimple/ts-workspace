@@ -1,8 +1,21 @@
 {
     "name": "@cleansimple/plain-jsx",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "packageManager": "yarn@4.6.0",
     "type": "module",
+    "keywords": [
+        "jsx",
+        "tsx",
+        "ui",
+        "framework",
+        "reactivity"
+    ],
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CleanSimple/ts-workspace.git"
+    },
     "exports": {
         ".": {
             "import": "./dist/index.esm.js",

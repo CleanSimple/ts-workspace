@@ -1,5 +1,15 @@
 {
     "name": "@cleansimple/typescript-config",
-    "version": "1.0.0",
-    "packageManager": "yarn@4.6.0"
+    "version": "1.0.1",
+    "packageManager": "yarn@4.6.0",
+    "keywords": [
+        "config",
+        "typescript"
+    ],
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CleanSimple/ts-workspace.git"
+    }
 }

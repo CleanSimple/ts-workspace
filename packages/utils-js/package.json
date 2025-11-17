@@ -1,8 +1,17 @@
 {
     "name": "@cleansimple/utils-js",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "packageManager": "yarn@4.6.0",
     "type": "module",
+    "keywords": [
+        "utils"
+    ],
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CleanSimple/ts-workspace.git"
+    },
     "exports": {
         "import": {
             "types": "./dist/types/index.d.ts",

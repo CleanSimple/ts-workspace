@@ -1,8 +1,18 @@
 {
     "name": "@cleansimple/rollup-config",
-    "version": "1.0.5",
+    "version": "1.0.6",
     "packageManager": "yarn@4.6.0",
     "type": "module",
+    "keywords": [
+        "config",
+        "rollup"
+    ],
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/CleanSimple/ts-workspace.git"
+    },
     "exports": {
         ".": {
             "types": "./imports.d.ts"
