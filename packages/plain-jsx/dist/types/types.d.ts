@@ -1,6 +1,5 @@
-import type { Action, MethodsOf, ReadonlyProps, Setter } from '@cleansimple/utils-js';
+import type { Observable, Subscription } from '@cleansimple/observable';
 import type { Properties as CSS } from 'csstype';
-import type { Observable, Subscription } from './reactive';
 import type { ReactiveNode } from './reactive-node';
 import type { Ref } from './ref';
 export type JSXNode = Observable<JSXNode> | JSXElement | string | number | boolean | null | undefined | JSXNode[];
@@ -26,22 +25,22 @@ export interface VNodeElement extends VNodeBase {
     type: 'element';
     ref: Element;
     addSubscriptions: (subscriptions: Subscription[]) => void;
-    cleanup: Action;
+    cleanup: () => void;
 }
 export interface VNodeFunctionalComponent extends VNodeBase {
     type: 'component';
     ref: object | null;
-    cleanup: Action;
+    cleanup: () => void;
 }
 export interface VNodeBuiltinComponent extends VNodeBase {
     type: 'builtin';
     ref: ReactiveNode;
-    cleanup: Action;
+    cleanup: () => void;
 }
 export interface VNodeObservable extends VNodeBase {
     type: 'observable';
     ref: ReactiveNode;
-    cleanup: Action;
+    cleanup: () => void;
 }
 export type VNode = VNodeRoot | VNodeText | VNodeElement | VNodeFunctionalComponent | VNodeBuiltinComponent | VNodeObservable;
 export type RNode = ChildNode | ReactiveNode;
@@ -67,7 +66,7 @@ export type FunctionalComponent<TProps = object, TRef extends object = object> =
      *     return <span>{count}</span>;
      * };
      */
-    defineRef: Setter<TRef>;
+    defineRef: (ref: TRef) => void;
 }) => JSXNode;
 export type PropsType = Record<string, unknown> & {
     ref?: Ref<object>;
@@ -94,4 +93,21 @@ type AsAcceptsObservable<T> = {
 };
 export type DOMProps<T extends Element> = Partial<AsAcceptsObservable<SettableProps<T>>> & CommonProps<T> & DOMEvents<T>;
 export type SVGProps<T extends SVGElement> = DOMProps<T> & Record<string, unknown>;
+export type Predicate<T> = (value: T) => boolean;
+export type Action<T = void> = [T] extends [void] ? () => void : (arg: T) => void;
+export type AnyFunc = (...args: any[]) => any;
+export type IfEquals<X, Y, A, B = never> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? A : B;
+export type IsReadonly<T, K extends keyof T> = IfEquals<{
+    [P in K]: T[P];
+}, {
+    -readonly [P in K]: T[P];
+}, false, true>;
+/** Note: Does not match setters/getters */
+export type MethodsOf<T> = {
+    [K in keyof T as T[K] extends AnyFunc ? K : never]: T[K];
+};
+/** Note: Does not match setter-only properties */
+export type ReadonlyProps<T> = {
+    [K in keyof T as IsReadonly<T, K> extends true ? K : never]: T[K];
+};
 export {};

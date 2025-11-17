@@ -1,6 +1,5 @@
-import type { Action, MaybePromise } from '@cleansimple/utils-js';
+type MaybeAsyncAction = () => void | Promise<void>;
 
-type MaybeAsyncAction = () => MaybePromise<void>;
 let _callbacks: MaybeAsyncAction[] = [];
 let _scheduled = false;
 
@@ -29,31 +28,5 @@ function runAsync(action: MaybeAsyncAction) {
         }
     } catch (err) {
         console.error(err);
-    }
-}
-
-export interface IHasUpdates {
-    flushUpdates: Action;
-}
-
-export class DeferredUpdatesScheduler {
-    private static _items: IHasUpdates[] = [];
-    private static _scheduled: boolean = false;
-
-    public static schedule(item: IHasUpdates) {
-        DeferredUpdatesScheduler._items.push(item);
-        if (DeferredUpdatesScheduler._scheduled) return;
-        DeferredUpdatesScheduler._scheduled = true;
-        queueMicrotask(DeferredUpdatesScheduler.flush);
-    }
-
-    private static flush(this: void) {
-        const items = DeferredUpdatesScheduler._items;
-        DeferredUpdatesScheduler._items = [];
-        DeferredUpdatesScheduler._scheduled = false;
-        const n = items.length;
-        for (let i = 0; i < n; ++i) {
-            items[i].flushUpdates();
-        }
     }
 }

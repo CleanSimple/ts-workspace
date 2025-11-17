@@ -1,4 +1,4 @@
-import type { Observable } from '../reactive';
+import type { Observable } from '@cleansimple/observable';
 import type { JSXNode } from '../types';
 
 interface ForCallbackProps<T> {

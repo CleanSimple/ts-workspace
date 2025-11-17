@@ -3,12 +3,7 @@ import baseConfig from '@cleansimple/rollup-config/lib';
 export default [
     {
         ...baseConfig,
-        input: {
-            'index': 'src/index.ts',
-            'jsx-runtime': 'src/jsx-runtime.ts',
-            'jsx-dev-runtime': 'src/jsx-dev-runtime.ts',
-        },
-        external: ['@cleansimple/observable'],
+        input: 'src/index.ts',
         output: [
             {
                 dir: 'dist',
@@ -21,12 +16,10 @@ export default [
     {
         ...baseConfig,
         input: 'src/index.ts',
-        external: ['@cleansimple/observable'],
         output: [
             {
-                name: 'PlainJSX',
+                name: 'Observable',
                 format: 'iife',
-                globals: { '@cleansimple/observable': 'Observable' },
                 file: './dist/index.iife.js',
             },
         ],

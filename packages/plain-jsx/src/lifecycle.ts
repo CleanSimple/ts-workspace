@@ -1,9 +1,7 @@
-import type { Action } from '@cleansimple/utils-js';
-import type { Observable } from '.';
-import type { ObservablesOf, Observer, Subscription } from './reactive';
-import type { VNode } from './types';
+import type { Observable, Observer, Subscription } from '@cleansimple/observable';
+import type { Action, VNode } from './types';
 
-import { subscribe } from './reactive';
+import { subscribe } from '@cleansimple/observable';
 
 export interface LifecycleContext {
     ref: object | null;
@@ -54,8 +52,8 @@ export function watch<T>(observable: Observable<T>, observer: Observer<T>) {
 }
 
 export function watchMany<T extends readonly unknown[]>(
-    observables: ObservablesOf<T>,
-    observer: (...values: T) => void,
+    observables: Parameters<typeof subscribe<T>>[0],
+    observer: Parameters<typeof subscribe<T>>[1],
 ) {
     if (!_LifecycleContext) {
         throw new Error('watchMany can only be called inside a functional component');

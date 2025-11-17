@@ -1,4 +1,4 @@
-import type { Observable } from '..';
+import type { Observable } from '@cleansimple/observable';
 import type { JSXNode } from '../types';
 
 export interface WithProps<T> {

@@ -1,8 +1,7 @@
-import { isObject } from '@cleansimple/utils-js';
+import { isObservable, isVal } from '@cleansimple/observable';
 import { getLIS } from './lis.esm.js';
-import { ObservableImpl, ValImpl } from './reactive.esm.js';
 import { RefImpl, RefValue } from './ref.esm.js';
-import { isReadonlyProp, splitNamespace } from './utils.esm.js';
+import { isObject, isReadonlyProp, splitNamespace } from './utils.esm.js';
 
 const _Fragment = document.createDocumentFragment();
 const _HandledEvents = new Map();
@@ -132,7 +131,7 @@ function setProps(elem, props) {
         }
         else if (key.startsWith('class:')) {
             const className = key.slice(6);
-            if (value instanceof ObservableImpl) {
+            if (isObservable(value)) {
                 elem.classList.toggle(className, value.value);
                 subscriptions.push(value.subscribe((value) => {
                     elem.classList.toggle(className, value);
@@ -153,7 +152,7 @@ function setProps(elem, props) {
             elem[eventKey] = value;
         }
         else if (key in elem && !isReadonlyProp(elem, key)) {
-            if (value instanceof ObservableImpl) {
+            if (isObservable(value)) {
                 elem[key] = value.value;
                 subscriptions.push(value.subscribe((value) => {
                     elem[key] = value;
@@ -161,7 +160,7 @@ function setProps(elem, props) {
                 // two way updates for input element
                 if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
                     || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
-                    const handler = value instanceof ValImpl
+                    const handler = isVal(value)
                         ? (e) => {
                             value.value = e.target[key];
                         }

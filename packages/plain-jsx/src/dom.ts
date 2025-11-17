@@ -1,11 +1,10 @@
-import type { Subscription } from './reactive';
+import type { Subscription } from '@cleansimple/observable';
 import type { DOMNode, PropsType } from './types';
 
-import { isObject } from '@cleansimple/utils-js';
+import { isObservable, isVal } from '@cleansimple/observable';
 import { getLIS } from './lis';
-import { ObservableImpl, ValImpl } from './reactive';
 import { RefImpl, RefValue } from './ref';
-import { isReadonlyProp, splitNamespace } from './utils';
+import { isObject, isReadonlyProp, splitNamespace } from './utils';
 
 const _Fragment = document.createDocumentFragment();
 const _HandledEvents = new Map<string, symbol>();
@@ -149,7 +148,7 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
         }
         else if (key.startsWith('class:')) {
             const className = key.slice(6);
-            if (value instanceof ObservableImpl) {
+            if (isObservable(value)) {
                 elem.classList.toggle(className, value.value as boolean);
                 subscriptions.push(value.subscribe((value) => {
                     elem.classList.toggle(className, value as boolean);
@@ -170,7 +169,7 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
             (elem as unknown as Record<symbol, unknown>)[eventKey] = value;
         }
         else if (key in elem && !isReadonlyProp(elem, key as keyof HTMLElement)) {
-            if (value instanceof ObservableImpl) {
+            if (isObservable(value)) {
                 (elem as unknown as Record<string, unknown>)[key] = value.value;
 
                 subscriptions.push(value.subscribe((value) => {
@@ -182,7 +181,7 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
                     (elem instanceof HTMLInputElement && key in InputTwoWayProps)
                     || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)
                 ) {
-                    const handler = value instanceof ValImpl
+                    const handler = isVal(value)
                         ? (e: Event) => {
                             value.value = (e.target as unknown as Record<string, unknown>)[key];
                         }

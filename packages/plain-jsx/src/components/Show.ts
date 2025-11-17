@@ -1,6 +1,5 @@
-import type { Predicate } from '@cleansimple/utils-js';
-import type { Observable } from '../reactive';
-import type { JSXNode } from '../types';
+import type { Observable } from '@cleansimple/observable';
+import type { JSXNode, Predicate } from '../types';
 
 type Truthy<T> = Exclude<T, 0 | '' | null | false | undefined>;
 type Falsy<T> = T extends number | string | false | null | undefined ? T : never;

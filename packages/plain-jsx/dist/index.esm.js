@@ -1,3 +1,4 @@
+export { computed, subscribe, task, val } from '@cleansimple/observable';
 export { For } from './components/For.esm.js';
 export { Fragment } from './components/Fragment.esm.js';
 export { Show } from './components/Show.esm.js';
@@ -5,6 +6,5 @@ export { With } from './components/With.esm.js';
 export { WithMany } from './components/WithMany.esm.js';
 export { render } from './core.esm.js';
 export { onCleanup, onMount, watch, watchMany } from './lifecycle.esm.js';
-export { computed, subscribe, task, val } from './reactive.esm.js';
 export { ref } from './ref.esm.js';
 export { nextTick } from './scheduling.esm.js';

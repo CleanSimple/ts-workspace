@@ -1,4 +1,4 @@
-var PlainJSX = (function (exports, utilsJs) {
+var PlainJSX = (function (exports, observable) {
     'use strict';
 
     function For(_props) {
@@ -51,272 +51,6 @@ var PlainJSX = (function (exports, utilsJs) {
         return lis;
     }
 
-    let _callbacks = [];
-    let _scheduled = false;
-    function nextTick(callback) {
-        _callbacks.push(callback);
-        if (_scheduled)
-            return;
-        _scheduled = true;
-        queueMicrotask(flushNextTickCallbacks);
-    }
-    function flushNextTickCallbacks() {
-        const callbacks = _callbacks;
-        _callbacks = [];
-        _scheduled = false;
-        const n = callbacks.length;
-        for (let i = 0; i < n; ++i) {
-            runAsync(callbacks[i]);
-        }
-    }
-    function runAsync(action) {
-        try {
-            const result = action();
-            if (result instanceof Promise) {
-                result.catch(err => console.error(err));
-            }
-        }
-        catch (err) {
-            console.error(err);
-        }
-    }
-    class DeferredUpdatesScheduler {
-        static _items = [];
-        static _scheduled = false;
-        static schedule(item) {
-            DeferredUpdatesScheduler._items.push(item);
-            if (DeferredUpdatesScheduler._scheduled)
-                return;
-            DeferredUpdatesScheduler._scheduled = true;
-            queueMicrotask(DeferredUpdatesScheduler.flush);
-        }
-        static flush() {
-            const items = DeferredUpdatesScheduler._items;
-            DeferredUpdatesScheduler._items = [];
-            DeferredUpdatesScheduler._scheduled = false;
-            const n = items.length;
-            for (let i = 0; i < n; ++i) {
-                items[i].flushUpdates();
-            }
-        }
-    }
-
-    /* helpers */
-    function val(initialValue) {
-        return new ValImpl(initialValue);
-    }
-    function computed(observables, compute) {
-        return new Computed(observables, compute);
-    }
-    function subscribe(observables, observer) {
-        return new MultiObservableSubscription(observables, observer);
-    }
-    const TaskAborted = Symbol('TaskAborted');
-    function task(action) {
-        const value = val(undefined);
-        const error = val(undefined);
-        const status = val('Running');
-        const isRunning = status.computed(status => status === 'Running');
-        const isCompleted = status.computed(status => status !== 'Running');
-        const isSuccess = status.computed(status => status === 'Success');
-        const isError = status.computed(status => status === 'Error');
-        let abortController = null;
-        const run = () => {
-            if (abortController) {
-                abortController.abort(TaskAborted);
-            }
-            abortController = new AbortController();
-            status.value = 'Running';
-            error.value = undefined;
-            action({ signal: abortController.signal }).then((result) => {
-                value.value = result;
-                status.value = 'Success';
-            }).catch(err => {
-                if (err === TaskAborted)
-                    return;
-                error.value = err;
-                status.value = 'Error';
-            });
-        };
-        run();
-        return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
-    }
-    /**
-     * Base class for observables
-     */
-    class ObservableImpl {
-        _observers = null;
-        _dependents = null;
-        _nextDependantId = 0;
-        _nextSubscriptionId = 0;
-        _prevValue = null;
-        _pendingUpdates = false;
-        registerDependant(dependant) {
-            this._dependents ??= new Map();
-            const id = ++this._nextDependantId;
-            this._dependents.set(id, new WeakRef(dependant));
-            return {
-                unsubscribe: () => {
-                    this._dependents.delete(id);
-                },
-            };
-        }
-        notifyDependents() {
-            if (!this._dependents)
-                return;
-            for (const [id, ref] of this._dependents.entries()) {
-                const dependant = ref.deref();
-                if (dependant) {
-                    dependant.onDependencyUpdated();
-                }
-                else {
-                    this._dependents.delete(id);
-                }
-            }
-        }
-        invalidate() {
-            if (!this._observers)
-                return;
-            if (this._pendingUpdates)
-                return;
-            this._pendingUpdates = true;
-            this._prevValue = this.value;
-            DeferredUpdatesScheduler.schedule(this);
-        }
-        flushUpdates() {
-            if (!this._pendingUpdates)
-                return;
-            const prevValue = this._prevValue;
-            const value = this.value;
-            this._pendingUpdates = false;
-            this._prevValue = null;
-            if (value === prevValue) {
-                return;
-            }
-            for (const observer of this._observers.values()) {
-                observer(value);
-            }
-        }
-        subscribe(observer) {
-            this._observers ??= new Map();
-            const id = ++this._nextSubscriptionId;
-            this._observers.set(id, observer);
-            return {
-                unsubscribe: () => {
-                    this._observers.delete(id);
-                },
-            };
-        }
-        computed(compute) {
-            return new ComputedSingle(compute, this);
-        }
-    }
-    /**
-     * Simple observable value implementation
-     */
-    class ValImpl extends ObservableImpl {
-        _value;
-        constructor(initialValue) {
-            super();
-            this._value = initialValue;
-        }
-        get value() {
-            return this._value;
-        }
-        set value(newValue) {
-            if (newValue === this._value)
-                return;
-            this.invalidate();
-            this._value = newValue;
-            this.notifyDependents();
-        }
-    }
-    class ComputedSingle extends ObservableImpl {
-        _compute;
-        _observable;
-        _value;
-        _shouldReCompute;
-        constructor(compute, observable) {
-            super();
-            this._compute = compute;
-            this._observable = observable;
-            this._value = this._compute(observable.value);
-            this._shouldReCompute = false;
-            observable.registerDependant(this);
-        }
-        onDependencyUpdated() {
-            this.invalidate();
-            this._shouldReCompute = true;
-            this.notifyDependents();
-        }
-        get value() {
-            if (this._shouldReCompute) {
-                this._shouldReCompute = false;
-                this._value = this._compute(this._observable.value);
-            }
-            return this._value;
-        }
-    }
-    class Computed extends ObservableImpl {
-        _compute;
-        _observables;
-        _value;
-        _shouldReCompute;
-        constructor(observables, compute) {
-            super();
-            this._compute = compute;
-            this._observables = observables;
-            this._value = this._compute(...observables.map(observable => observable.value));
-            this._shouldReCompute = false;
-            for (let i = 0; i < observables.length; ++i) {
-                observables[i].registerDependant(this);
-            }
-        }
-        onDependencyUpdated() {
-            this.invalidate();
-            this._shouldReCompute = true;
-            this.notifyDependents();
-        }
-        get value() {
-            if (this._shouldReCompute) {
-                this._shouldReCompute = false;
-                this._value = this._compute(...this._observables.map(observable => observable.value));
-            }
-            return this._value;
-        }
-    }
-    class MultiObservableSubscription {
-        _observables;
-        _observer;
-        _subscriptions;
-        _pendingUpdates = false;
-        constructor(observables, observer) {
-            this._observer = observer;
-            this._observables = observables;
-            this._subscriptions = [];
-            for (let i = 0; i < observables.length; ++i) {
-                this._subscriptions.push(observables[i].registerDependant(this));
-            }
-        }
-        onDependencyUpdated() {
-            if (this._pendingUpdates)
-                return;
-            this._pendingUpdates = true;
-            DeferredUpdatesScheduler.schedule(this);
-        }
-        flushUpdates() {
-            if (!this._pendingUpdates)
-                return;
-            this._pendingUpdates = false;
-            this._observer(...this._observables.map(observable => observable.value));
-        }
-        unsubscribe() {
-            for (let i = 0; i < this._subscriptions.length; ++i) {
-                this._subscriptions[i].unsubscribe();
-            }
-        }
-    }
-
     const RefValue = Symbol('RefValue');
     function ref() {
         return new RefImpl();
@@ -351,6 +85,11 @@ var PlainJSX = (function (exports, utilsJs) {
             currentObj = Object.getPrototypeOf(currentObj);
         }
         return true;
+    }
+    function isObject(value) {
+        return typeof value === 'object'
+            && value !== null
+            && Object.getPrototypeOf(value) === Object.prototype;
     }
 
     const _Fragment = document.createDocumentFragment();
@@ -463,7 +202,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 }
             }
             else if (key === 'style') {
-                if (utilsJs.isObject(value)) {
+                if (isObject(value)) {
                     Object.assign(elem.style, value);
                 }
                 else if (typeof value === 'string') {
@@ -474,14 +213,14 @@ var PlainJSX = (function (exports, utilsJs) {
                 }
             }
             else if (key === 'dataset') {
-                if (!utilsJs.isObject(value)) {
+                if (!isObject(value)) {
                     throw new Error('Dataset value must be an object');
                 }
                 Object.assign(elem.dataset, value);
             }
             else if (key.startsWith('class:')) {
                 const className = key.slice(6);
-                if (value instanceof ObservableImpl) {
+                if (observable.isObservable(value)) {
                     elem.classList.toggle(className, value.value);
                     subscriptions.push(value.subscribe((value) => {
                         elem.classList.toggle(className, value);
@@ -502,7 +241,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 elem[eventKey] = value;
             }
             else if (key in elem && !isReadonlyProp(elem, key)) {
-                if (value instanceof ObservableImpl) {
+                if (observable.isObservable(value)) {
                     elem[key] = value.value;
                     subscriptions.push(value.subscribe((value) => {
                         elem[key] = value;
@@ -510,7 +249,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     // two way updates for input element
                     if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
                         || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
-                        const handler = value instanceof ValImpl
+                        const handler = observable.isVal(value)
                             ? (e) => {
                                 value.value = e.target[key];
                             }
@@ -591,7 +330,7 @@ var PlainJSX = (function (exports, utilsJs) {
             throw new Error('watchMany can only be called inside a functional component');
         }
         _LifecycleContext.subscriptions ??= [];
-        _LifecycleContext.subscriptions.push(subscribe(observables, observer));
+        _LifecycleContext.subscriptions.push(observable.subscribe(observables, observer));
     }
     function cleanupVNodes(head, tail = null) {
         let node = head;
@@ -663,6 +402,36 @@ var PlainJSX = (function (exports, utilsJs) {
         return childNodes;
     }
 
+    let _callbacks = [];
+    let _scheduled = false;
+    function nextTick(callback) {
+        _callbacks.push(callback);
+        if (_scheduled)
+            return;
+        _scheduled = true;
+        queueMicrotask(flushNextTickCallbacks);
+    }
+    function flushNextTickCallbacks() {
+        const callbacks = _callbacks;
+        _callbacks = [];
+        _scheduled = false;
+        const n = callbacks.length;
+        for (let i = 0; i < n; ++i) {
+            runAsync(callbacks[i]);
+        }
+    }
+    function runAsync(action) {
+        try {
+            const result = action();
+            if (result instanceof Promise) {
+                result.catch(err => console.error(err));
+            }
+        }
+        catch (err) {
+            console.error(err);
+        }
+    }
+
     const _lifecycleContext = {
         ref: null,
         subscriptions: null,
@@ -692,7 +461,7 @@ var PlainJSX = (function (exports, utilsJs) {
                 domNodes.push(textNode);
             }
             // render observables
-            else if (node instanceof ObservableImpl) {
+            else if (observable.isObservable(node)) {
                 const reactiveNode = new ReactiveNode();
                 const vNode = new VNodeObservableImpl(reactiveNode, node, parent);
                 appendVNodeChild(parent, vNode);
@@ -944,7 +713,7 @@ var PlainJSX = (function (exports, utilsJs) {
             if (Array.isArray(of)) {
                 this.render(of);
             }
-            else if (of instanceof ObservableImpl) {
+            else if (observable.isObservable(of)) {
                 this.render(of.value);
                 this._subscription = of.subscribe((value) => this.render(value));
             }
@@ -973,7 +742,7 @@ var PlainJSX = (function (exports, utilsJs) {
                     }
                 }
                 else {
-                    const index = val(i);
+                    const index = observable.val(i);
                     let head = this.lastChild;
                     renderJSX(this._children({ item: value, index }), this);
                     let tail = this.lastChild;
@@ -1026,7 +795,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this._keyed = showProps.keyed ?? false;
             this._children = showProps.children;
             this._fallback = showProps.fallback ?? null;
-            if (when instanceof ObservableImpl) {
+            if (observable.isObservable(when)) {
                 this.render(when.value);
                 this._subscription = when.subscribe((value) => this.render(value));
             }
@@ -1082,7 +851,7 @@ var PlainJSX = (function (exports, utilsJs) {
             const withProps = props;
             const value = withProps.value;
             this._children = withProps.children;
-            if (value instanceof ObservableImpl) {
+            if (observable.isObservable(value)) {
                 this.render(value.value);
                 this._subscription = value.subscribe((value) => this.render(value));
             }
@@ -1109,43 +878,33 @@ var PlainJSX = (function (exports, utilsJs) {
         next = null;
         firstChild = null;
         lastChild = null;
-        _values;
         _children;
-        _subscriptions = null;
-        _pendingUpdates = false;
+        _subscription = null;
         constructor(ref, props, parent) {
             this.type = 'builtin';
             this.parent = parent;
             this.ref = ref;
             const withManyProps = props;
-            this._values = withManyProps.values;
+            const values = withManyProps.values;
             this._children = withManyProps.children;
             const args = [];
-            for (let i = 0; i < this._values.length; ++i) {
-                const value = this._values[i];
-                if (value instanceof ObservableImpl) {
+            const observables = [];
+            for (let i = 0; i < values.length; ++i) {
+                const value = values[i];
+                if (observable.isObservable(value)) {
                     args.push(value.value);
-                    this._subscriptions ??= [];
-                    this._subscriptions.push(value.registerDependant(this));
+                    observables.push(value);
                 }
                 else {
                     args.push(value);
                 }
             }
+            if (observables.length > 0) {
+                this._subscription = observable.subscribe(observables, () => {
+                    this.render(...values.map(value => observable.isObservable(value) ? value.value : value));
+                });
+            }
             this.render(...args);
-        }
-        onDependencyUpdated() {
-            if (this._pendingUpdates)
-                return;
-            this._pendingUpdates = true;
-            DeferredUpdatesScheduler.schedule(this);
-        }
-        flushUpdates() {
-            if (!this._pendingUpdates)
-                return;
-            this._pendingUpdates = false;
-            const values = this._values.map(value => value instanceof ObservableImpl ? value.value : value);
-            this.render(...values);
         }
         render(...values) {
             if (this.firstChild) {
@@ -1156,11 +915,7 @@ var PlainJSX = (function (exports, utilsJs) {
             this.ref.update(children);
         }
         cleanup() {
-            if (this._subscriptions) {
-                for (let i = 0; i < this._subscriptions.length; ++i) {
-                    this._subscriptions[i].unsubscribe();
-                }
-            }
+            this._subscription?.unsubscribe();
         }
     }
     const BuiltinComponentMap = new Map([
@@ -1170,23 +925,35 @@ var PlainJSX = (function (exports, utilsJs) {
         [WithMany, VNodeWithMany],
     ]);
 
+    Object.defineProperty(exports, "computed", {
+        enumerable: true,
+        get: function () { return observable.computed; }
+    });
+    Object.defineProperty(exports, "subscribe", {
+        enumerable: true,
+        get: function () { return observable.subscribe; }
+    });
+    Object.defineProperty(exports, "task", {
+        enumerable: true,
+        get: function () { return observable.task; }
+    });
+    Object.defineProperty(exports, "val", {
+        enumerable: true,
+        get: function () { return observable.val; }
+    });
     exports.For = For;
     exports.Fragment = Fragment;
     exports.Show = Show;
     exports.With = With;
     exports.WithMany = WithMany;
-    exports.computed = computed;
     exports.nextTick = nextTick;
     exports.onCleanup = onCleanup;
     exports.onMount = onMount;
     exports.ref = ref;
     exports.render = render;
-    exports.subscribe = subscribe;
-    exports.task = task;
-    exports.val = val;
     exports.watch = watch;
     exports.watchMany = watchMany;
 
     return exports;
 
-})({}, Utils);
+})({}, Observable);

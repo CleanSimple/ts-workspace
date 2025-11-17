@@ -24,3 +24,9 @@ export function isReadonlyProp<T>(obj: T, key: keyof T): boolean {
     }
     return true;
 }
+
+export function isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object'
+        && value !== null
+        && Object.getPrototypeOf(value) === Object.prototype;
+}

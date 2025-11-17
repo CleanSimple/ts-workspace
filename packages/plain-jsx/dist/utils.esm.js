@@ -22,5 +22,10 @@ function isReadonlyProp(obj, key) {
     }
     return true;
 }
+function isObject(value) {
+    return typeof value === 'object'
+        && value !== null
+        && Object.getPrototypeOf(value) === Object.prototype;
+}
 
-export { isReadonlyProp, splitNamespace };
+export { isObject, isReadonlyProp, splitNamespace };

@@ -1,13 +1,13 @@
-import type { Action, Predicate } from '@cleansimple/utils-js';
+import type { Observable, Subscription, Val } from '@cleansimple/observable';
 import type { ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
-import type { WithManyProps } from './components/WithMany';
+import type { ValuesOf, WithManyProps } from './components/WithMany';
 import type { LifecycleContext } from './lifecycle';
-import type { IDependant, Observable, Subscription, Val, ValuesOf } from './reactive';
-import type { IHasUpdates } from './scheduling';
 import type {
+    Action,
     JSXNode,
+    Predicate,
     PropsType,
     RNode,
     VNode,
@@ -19,6 +19,7 @@ import type {
     VNodeText,
 } from './types';
 
+import { isObservable, subscribe, val } from '@cleansimple/observable';
 import { For } from './components/For';
 import { Fragment } from './components/Fragment';
 import { Show } from './components/Show';
@@ -26,10 +27,9 @@ import { With } from './components/With';
 import { WithMany } from './components/WithMany';
 import { setProps } from './dom';
 import { cleanupVNodes, defineRef, setLifecycleContext } from './lifecycle';
-import { ObservableImpl, val } from './reactive';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
 import { RefImpl, RefValue } from './ref';
-import { DeferredUpdatesScheduler, nextTick } from './scheduling';
+import { nextTick } from './scheduling';
 import { splitNamespace } from './utils';
 
 const _lifecycleContext: LifecycleContext = {
@@ -64,7 +64,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNode | null, domNodes: RNode[] = [
             domNodes.push(textNode);
         }
         // render observables
-        else if (node instanceof ObservableImpl) {
+        else if (isObservable(node)) {
             const reactiveNode = new ReactiveNode();
             const vNode = new VNodeObservableImpl(reactiveNode, node, parent);
             appendVNodeChild(parent, vNode);
@@ -366,12 +366,12 @@ class VNodeFor<T> implements VNodeBuiltinComponent {
 
         const forProps = props as unknown as ForProps<T>;
         this._children = forProps.children;
-        const of = forProps.of as T[] | ObservableImpl<T[]>;
+        const of = forProps.of;
 
         if (Array.isArray(of)) {
             this.render(of);
         }
-        else if (of instanceof ObservableImpl) {
+        else if (isObservable(of)) {
             this.render(of.value);
             this._subscription = of.subscribe((value) => this.render(value));
         }
@@ -463,13 +463,13 @@ class VNodeShow<T> implements VNodeBuiltinComponent {
         this.ref = ref;
 
         const showProps = props as unknown as ShowProps<T>;
-        const when = showProps.when as T | ObservableImpl<T>;
+        const when = showProps.when;
         this._is = showProps.is;
         this._keyed = showProps.keyed ?? false;
         this._children = showProps.children;
         this._fallback = showProps.fallback ?? null;
 
-        if (when instanceof ObservableImpl) {
+        if (isObservable(when)) {
             this.render(when.value);
             this._subscription = when.subscribe((value) => this.render(value));
         }
@@ -534,10 +534,10 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
         this.ref = ref;
 
         const withProps = props as unknown as WithProps<T>;
-        const value = withProps.value as T | ObservableImpl<T>;
+        const value = withProps.value;
         this._children = withProps.children;
 
-        if (value instanceof ObservableImpl) {
+        if (isObservable(value)) {
             this.render(value.value);
             this._subscription = value.subscribe((value) => this.render(value));
         }
@@ -560,9 +560,7 @@ class VNodeWith<T> implements VNodeBuiltinComponent {
     }
 }
 
-class VNodeWithMany<T extends readonly unknown[]>
-    implements VNodeBuiltinComponent, IHasUpdates, IDependant
-{
+class VNodeWithMany<T extends readonly unknown[]> implements VNodeBuiltinComponent {
     public readonly type: 'builtin';
     public readonly ref: ReactiveNode;
     public parent: VNode | null;
@@ -570,10 +568,8 @@ class VNodeWithMany<T extends readonly unknown[]>
     public firstChild: VNode | null = null;
     public lastChild: VNode | null = null;
 
-    private readonly _values: WithManyProps<T>['values'];
     private readonly _children: WithManyProps<T>['children'];
-    private readonly _subscriptions: Subscription[] | null = null;
-    private _pendingUpdates: boolean = false;
+    private readonly _subscription: Subscription | null = null;
 
     public constructor(ref: ReactiveNode, props: PropsType, parent: VNode | null) {
         this.type = 'builtin';
@@ -581,37 +577,27 @@ class VNodeWithMany<T extends readonly unknown[]>
         this.ref = ref;
 
         const withManyProps = props as unknown as WithManyProps<T>;
-        this._values = withManyProps.values;
+        const values = withManyProps.values;
         this._children = withManyProps.children;
 
         const args: unknown[] = [];
-        for (let i = 0; i < this._values.length; ++i) {
-            const value = this._values[i];
-            if (value instanceof ObservableImpl) {
+        const observables: Observable<unknown>[] = [];
+        for (let i = 0; i < values.length; ++i) {
+            const value = values[i];
+            if (isObservable(value)) {
                 args.push(value.value);
-                this._subscriptions ??= [];
-                this._subscriptions.push(value.registerDependant(this));
+                observables.push(value);
             }
             else {
                 args.push(value);
             }
         }
+        if (observables.length > 0) {
+            this._subscription = subscribe<unknown[]>(observables, () => {
+                this.render(...values.map(value => isObservable(value) ? value.value : value));
+            });
+        }
         this.render(...args);
-    }
-
-    public onDependencyUpdated() {
-        if (this._pendingUpdates) return;
-        this._pendingUpdates = true;
-        DeferredUpdatesScheduler.schedule(this);
-    }
-
-    public flushUpdates() {
-        if (!this._pendingUpdates) return;
-        this._pendingUpdates = false;
-        const values = this._values.map(value =>
-            value instanceof ObservableImpl ? value.value as unknown : value
-        );
-        this.render(...values);
     }
 
     private render(...values: unknown[]) {
@@ -624,11 +610,7 @@ class VNodeWithMany<T extends readonly unknown[]>
     }
 
     public cleanup() {
-        if (this._subscriptions) {
-            for (let i = 0; i < this._subscriptions.length; ++i) {
-                this._subscriptions[i].unsubscribe();
-            }
-        }
+        this._subscription?.unsubscribe();
     }
 }
 

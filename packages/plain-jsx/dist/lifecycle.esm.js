@@ -1,4 +1,4 @@
-import { subscribe } from './reactive.esm.js';
+import { subscribe } from '@cleansimple/observable';
 
 let _LifecycleContext = null;
 function setLifecycleContext(lifecycleContext) {
