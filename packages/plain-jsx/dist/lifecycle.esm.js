@@ -42,36 +42,13 @@ function watchMany(observables, observer) {
     _LifecycleContext.subscriptions ??= [];
     _LifecycleContext.subscriptions.push(subscribe(observables, observer));
 }
-function cleanupVNodes(head, tail = null) {
-    let node = head;
-    while (node) {
-        cleanupVNode(node);
-        if (node === tail) {
-            break;
-        }
-        node = node.next;
-    }
-}
 function cleanupVNode(vNode) {
     let child = vNode.firstChild;
     while (child) {
         cleanupVNode(child);
         child = child.next;
     }
-    if (vNode.type === 'element') {
-        vNode.cleanup();
-    }
-    // else if (vNode.type === 'text') {
-    // }
-    else if (vNode.type === 'builtin') {
-        vNode.cleanup();
-    }
-    else if (vNode.type === 'observable') {
-        vNode.cleanup();
-    }
-    else if (vNode.type === 'component') {
-        vNode.cleanup();
-    }
+    vNode.cleanup();
 }
 
-export { cleanupVNodes, defineRef, onCleanup, onMount, setLifecycleContext, watch, watchMany };
+export { cleanupVNode, defineRef, onCleanup, onMount, setLifecycleContext, watch, watchMany };

@@ -1,4 +1,4 @@
-import type { Observable, Subscription } from '@cleansimple/observable';
+import type { Observable } from '@cleansimple/observable';
 import type { Properties as CSS } from 'csstype';
 import type { ReactiveNode } from './reactive-node';
 import type { Ref } from './ref';
@@ -20,55 +20,12 @@ export interface JSXElement {
 }
 
 /* VNode */
-export interface VNodeBase {
-    type: 'root' | 'text' | 'element' | 'component' | 'builtin' | 'observable';
-    parent: VNode | null;
+export interface VNode {
     firstChild: VNode | null; // head
     lastChild: VNode | null; // tail
     next: VNode | null;
-}
-
-export interface VNodeRoot extends VNodeBase {
-    type: 'root';
-}
-
-export interface VNodeText extends VNodeBase {
-    type: 'text';
-    ref: Text;
-}
-
-export interface VNodeElement extends VNodeBase {
-    type: 'element';
-    ref: Element;
-    addSubscriptions: (subscriptions: Subscription[]) => void;
     cleanup: () => void;
 }
-
-export interface VNodeFunctionalComponent extends VNodeBase {
-    type: 'component';
-    ref: object | null;
-    cleanup: () => void;
-}
-
-export interface VNodeBuiltinComponent extends VNodeBase {
-    type: 'builtin';
-    ref: ReactiveNode;
-    cleanup: () => void;
-}
-
-export interface VNodeObservable extends VNodeBase {
-    type: 'observable';
-    ref: ReactiveNode;
-    cleanup: () => void;
-}
-
-export type VNode =
-    | VNodeRoot
-    | VNodeText
-    | VNodeElement
-    | VNodeFunctionalComponent
-    | VNodeBuiltinComponent
-    | VNodeObservable;
 
 /* Rendered Node */
 export type RNode = ChildNode | ReactiveNode;

@@ -13,4 +13,4 @@ export declare function onMount(fn: Action): void;
 export declare function onCleanup(fn: Action): void;
 export declare function watch<T>(observable: Observable<T>, observer: Observer<T>): void;
 export declare function watchMany<T extends readonly unknown[]>(observables: Parameters<typeof subscribe<T>>[0], observer: Parameters<typeof subscribe<T>>[1]): void;
-export declare function cleanupVNodes(head: VNode, tail?: VNode | null): void;
+export declare function cleanupVNode(vNode: VNode): void;

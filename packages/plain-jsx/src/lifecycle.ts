@@ -62,36 +62,12 @@ export function watchMany<T extends readonly unknown[]>(
     _LifecycleContext.subscriptions.push(subscribe(observables, observer));
 }
 
-export function cleanupVNodes(head: VNode, tail: VNode | null = null) {
-    let node: VNode | null = head;
-    while (node) {
-        cleanupVNode(node);
-        if (node === tail) {
-            break;
-        }
-        node = node.next;
-    }
-}
-
-function cleanupVNode(vNode: VNode) {
+export function cleanupVNode(vNode: VNode) {
     let child = vNode.firstChild;
     while (child) {
         cleanupVNode(child);
         child = child.next;
     }
 
-    if (vNode.type === 'element') {
-        vNode.cleanup();
-    }
-    // else if (vNode.type === 'text') {
-    // }
-    else if (vNode.type === 'builtin') {
-        vNode.cleanup();
-    }
-    else if (vNode.type === 'observable') {
-        vNode.cleanup();
-    }
-    else if (vNode.type === 'component') {
-        vNode.cleanup();
-    }
+    vNode.cleanup();
 }
