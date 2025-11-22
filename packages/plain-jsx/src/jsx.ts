@@ -29,7 +29,6 @@ export declare namespace JSX {
             [K in keyof SVGElementTagNameMap as `svg:${K}`]: SVGProps<SVGElementTagNameMap[K]>;
         };
 
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface IntrinsicElements extends BaseIntrinsicElements {
         // allow extending the intrinsic elements
     }
