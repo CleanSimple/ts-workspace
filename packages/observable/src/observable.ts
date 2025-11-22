@@ -55,7 +55,15 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
             return;
         }
         for (const observer of this._observers!.values()) {
-            observer(value);
+            try {
+                const result = observer(value);
+                if (result instanceof Promise) {
+                    result.catch(err => console.error(err));
+                }
+            }
+            catch (err) {
+                console.error(err);
+            }
         }
     }
 

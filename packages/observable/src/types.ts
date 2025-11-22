@@ -1,7 +1,7 @@
 export interface Subscription {
     unsubscribe: () => void;
 }
-export type Observer<T> = (value: T) => void;
+export type Observer<T> = (value: T) => void | Promise<void>;
 export interface Observable<T> {
     get value(): T;
     subscribe: (observer: Observer<T>) => Subscription;
