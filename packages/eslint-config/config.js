@@ -36,6 +36,9 @@ export default defineConfig([
             }],
             '@typescript-eslint/consistent-type-exports': 'warn',
             '@typescript-eslint/method-signature-style': 'warn',
+            "@typescript-eslint/no-empty-object-type": ["warn", {
+                allowInterfaces: 'always'
+            }],
 
             '@typescript-eslint/explicit-member-accessibility': 'error',
             '@typescript-eslint/default-param-last': 'error',
@@ -47,6 +50,7 @@ export default defineConfig([
             '@typescript-eslint/no-inferrable-types': 'off',
             '@typescript-eslint/prefer-regexp-exec': 'off',
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+
             // import rules
             'import/order': ['warn', {
                 groups: [
