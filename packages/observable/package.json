@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/observable",
-    "version": "0.0.5",
+    "version": "0.1.0",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "keywords": [
