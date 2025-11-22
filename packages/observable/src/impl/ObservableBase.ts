@@ -1,19 +1,20 @@
-import type { IDependant, IHasUpdates, Observable, Observer, Subscription } from './types';
+import type { IDependent, IHasUpdates, Observable, Observer, Subscription } from '../types';
 
-import { DeferredUpdatesScheduler } from './scheduling';
+import { DeferredUpdatesScheduler } from '../scheduling';
 
 /**
  * Base class for observables
+ * Handles subscriptions and dispatching updates
  */
-export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
+export abstract class ObservableBase<T> implements Observable<T>, IHasUpdates {
     private _observers: Map<number, Observer<T>> | null = null;
-    private _dependents: Map<number, WeakRef<IDependant>> | null = null;
+    private _dependents: Map<number, WeakRef<IDependent>> | null = null;
     private _nextDependantId = 0;
     private _nextSubscriptionId = 0;
     private _prevValue: T | null = null;
     private _pendingUpdates = false;
 
-    public registerDependant(dependant: IDependant) {
+    public registerDependent(dependant: IDependent) {
         this._dependents ??= new Map();
         const id = ++this._nextDependantId;
         this._dependents.set(id, new WeakRef(dependant));
@@ -37,7 +38,7 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
         }
     }
 
-    protected invalidate() {
+    protected scheduleUpdate() {
         if (!this._observers) return;
         if (this._pendingUpdates) return;
         this._pendingUpdates = true;
@@ -78,40 +79,5 @@ export abstract class ObservableImpl<T> implements Observable<T>, IHasUpdates {
                 this._observers!.delete(id);
             },
         };
-    }
-
-    public computed<TComputed>(compute: (value: T) => TComputed): Observable<TComputed> {
-        return new ComputedSingle(compute, this);
-    }
-}
-
-class ComputedSingle<TVal, TComputed> extends ObservableImpl<TComputed> implements IDependant {
-    private readonly _compute: (value: TVal) => TComputed;
-    private readonly _observable: Observable<TVal>;
-    private _value: TComputed;
-    private _shouldReCompute: boolean;
-
-    public constructor(compute: (value: TVal) => TComputed, observable: ObservableImpl<TVal>) {
-        super();
-        this._compute = compute;
-        this._observable = observable;
-        this._value = this._compute(observable.value);
-        this._shouldReCompute = false;
-
-        observable.registerDependant(this);
-    }
-
-    public onDependencyUpdated(): void {
-        this.invalidate();
-        this._shouldReCompute = true;
-        this.notifyDependents();
-    }
-
-    public override get value(): TComputed {
-        if (this._shouldReCompute) {
-            this._shouldReCompute = false;
-            this._value = this._compute(this._observable.value);
-        }
-        return this._value;
     }
 }

@@ -1,9 +1,9 @@
-import { ObservableImpl } from './observable.esm.js';
+import { ObservableBase } from './ObservableBase.esm.js';
 
 /**
  * Simple observable value implementation
  */
-class ValImpl extends ObservableImpl {
+class ValImpl extends ObservableBase {
     _value;
     constructor(initialValue) {
         super();
@@ -15,7 +15,7 @@ class ValImpl extends ObservableImpl {
     set value(newValue) {
         if (newValue === this._value)
             return;
-        this.invalidate();
+        this.scheduleUpdate();
         this._value = newValue;
         this.notifyDependents();
     }

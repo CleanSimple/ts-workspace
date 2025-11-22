@@ -1,12 +1,18 @@
-import { Computed, MultiObservableSubscription } from './helpers.esm.js';
-import { ObservableImpl } from './observable.esm.js';
-import { ValImpl } from './val.esm.js';
+import { Computed } from './impl/Computed.esm.js';
+import { ComputedSingle } from './impl/ComputedSingle.esm.js';
+import { MultiObservableSubscription } from './impl/MultiObservableSubscription.esm.js';
+import { ObservableBase } from './impl/ObservableBase.esm.js';
+import { ValImpl } from './impl/ValImpl.esm.js';
 
 function val(initialValue) {
     return new ValImpl(initialValue);
 }
-function computed(observables, compute) {
-    return new Computed(observables, compute);
+function computed(source, compute) {
+    return Array.isArray(source)
+        ? source.length === 1
+            ? new ComputedSingle(source[0], compute)
+            : new Computed(source, compute)
+        : new ComputedSingle(source, compute);
 }
 function subscribe(observables, observer) {
     return new MultiObservableSubscription(observables, observer);
@@ -42,7 +48,7 @@ function task(action) {
     return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
 }
 function isObservable(value) {
-    return value instanceof ObservableImpl;
+    return value instanceof ObservableBase;
 }
 function isVal(value) {
     return value instanceof ValImpl;

@@ -1,9 +1,9 @@
-import { ObservableImpl } from './observable';
+import { ObservableBase } from './ObservableBase';
 
 /**
  * Simple observable value implementation
  */
-export class ValImpl<T> extends ObservableImpl<T> {
+export class ValImpl<T> extends ObservableBase<T> {
     private _value: T;
 
     public constructor(initialValue: T) {
@@ -17,7 +17,7 @@ export class ValImpl<T> extends ObservableImpl<T> {
 
     public set value(newValue) {
         if (newValue === this._value) return;
-        this.invalidate();
+        this.scheduleUpdate();
         this._value = newValue;
         this.notifyDependents();
     }

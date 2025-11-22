@@ -5,7 +5,6 @@ export type Observer<T> = (value: T) => void | Promise<void>;
 export interface Observable<T> {
     get value(): T;
     subscribe: (observer: Observer<T>) => Subscription;
-    computed: <TComputed>(compute: (value: T) => TComputed) => Observable<TComputed>;
 }
 export interface Val<T> extends Observable<T> {
     set value(newValue: T);
@@ -29,7 +28,7 @@ export type ObservablesOf<T extends readonly unknown[]> = {
     [K in keyof T]: Observable<T[K]>;
 };
 
-export interface IDependant {
+export interface IDependent {
     onDependencyUpdated: () => void;
 }
 

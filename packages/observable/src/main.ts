@@ -8,9 +8,11 @@ import type {
     Val,
 } from './types';
 
-import { Computed, MultiObservableSubscription } from './helpers';
-import { ObservableImpl } from './observable';
-import { ValImpl } from './val';
+import { Computed } from './impl/Computed';
+import { ComputedSingle } from './impl/ComputedSingle';
+import { MultiObservableSubscription } from './impl/MultiObservableSubscription';
+import { ObservableBase } from './impl/ObservableBase';
+import { ValImpl } from './impl/ValImpl';
 
 export function val<T>(initialValue: T): Val<T> {
     return new ValImpl<T>(initialValue);
@@ -19,8 +21,21 @@ export function val<T>(initialValue: T): Val<T> {
 export function computed<T extends readonly unknown[], R>(
     observables: ObservablesOf<T>,
     compute: (...values: T) => R,
+): Observable<R>;
+export function computed<T, R>(
+    observable: Observable<T>,
+    compute: (value: T) => R,
+): Observable<R>;
+
+export function computed<R>(
+    source: Observable<unknown> | Observable<unknown>[],
+    compute: (...values: unknown[]) => R,
 ): Observable<R> {
-    return new Computed(observables, compute);
+    return Array.isArray(source)
+        ? source.length === 1
+            ? new ComputedSingle(source[0], compute)
+            : new Computed(source, compute)
+        : new ComputedSingle(source, compute);
 }
 
 export function subscribe<T extends readonly unknown[]>(
@@ -65,7 +80,7 @@ export function task<T>(action: TaskAction<T>): Task<T> {
 }
 
 export function isObservable(value: unknown): value is Observable<unknown> {
-    return value instanceof ObservableImpl;
+    return value instanceof ObservableBase;
 }
 
 export function isVal(value: unknown): value is Val<unknown> {

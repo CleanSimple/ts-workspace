@@ -24,15 +24,16 @@ var Observable = (function (exports) {
 
     /**
      * Base class for observables
+     * Handles subscriptions and dispatching updates
      */
-    class ObservableImpl {
+    class ObservableBase {
         _observers = null;
         _dependents = null;
         _nextDependantId = 0;
         _nextSubscriptionId = 0;
         _prevValue = null;
         _pendingUpdates = false;
-        registerDependant(dependant) {
+        registerDependent(dependant) {
             this._dependents ??= new Map();
             const id = ++this._nextDependantId;
             this._dependents.set(id, new WeakRef(dependant));
@@ -55,7 +56,7 @@ var Observable = (function (exports) {
                 }
             }
         }
-        invalidate() {
+        scheduleUpdate() {
             if (!this._observers)
                 return;
             if (this._pendingUpdates)
@@ -96,25 +97,58 @@ var Observable = (function (exports) {
                 },
             };
         }
-        computed(compute) {
-            return new ComputedSingle(compute, this);
-        }
     }
-    class ComputedSingle extends ObservableImpl {
+
+    /**
+     * Multi source computed observable
+     */
+    class Computed extends ObservableBase {
+        _observables;
         _compute;
-        _observable;
         _value;
         _shouldReCompute;
-        constructor(compute, observable) {
+        constructor(observables, compute) {
             super();
+            this._observables = observables;
             this._compute = compute;
-            this._observable = observable;
-            this._value = this._compute(observable.value);
+            this._value = this._compute(...observables.map(observable => observable.value));
             this._shouldReCompute = false;
-            observable.registerDependant(this);
+            for (let i = 0; i < observables.length; ++i) {
+                observables[i].registerDependent(this);
+            }
         }
         onDependencyUpdated() {
-            this.invalidate();
+            this.scheduleUpdate();
+            this._shouldReCompute = true;
+            this.notifyDependents();
+        }
+        get value() {
+            if (this._shouldReCompute) {
+                this._shouldReCompute = false;
+                this._value = this._compute(...this._observables.map(observable => observable.value));
+            }
+            return this._value;
+        }
+    }
+
+    /**
+     * Single source computed observable
+     */
+    class ComputedSingle extends ObservableBase {
+        _observable;
+        _compute;
+        _value;
+        _shouldReCompute;
+        constructor(observable, compute) {
+            super();
+            this._observable = observable;
+            this._compute = compute;
+            this._value = this._compute(observable.value);
+            this._shouldReCompute = false;
+            observable.registerDependent(this);
+        }
+        onDependencyUpdated() {
+            this.scheduleUpdate();
             this._shouldReCompute = true;
             this.notifyDependents();
         }
@@ -127,45 +161,17 @@ var Observable = (function (exports) {
         }
     }
 
-    class Computed extends ObservableImpl {
-        _compute;
-        _observables;
-        _value;
-        _shouldReCompute;
-        constructor(observables, compute) {
-            super();
-            this._compute = compute;
-            this._observables = observables;
-            this._value = this._compute(...observables.map(observable => observable.value));
-            this._shouldReCompute = false;
-            for (let i = 0; i < observables.length; ++i) {
-                observables[i].registerDependant(this);
-            }
-        }
-        onDependencyUpdated() {
-            this.invalidate();
-            this._shouldReCompute = true;
-            this.notifyDependents();
-        }
-        get value() {
-            if (this._shouldReCompute) {
-                this._shouldReCompute = false;
-                this._value = this._compute(...this._observables.map(observable => observable.value));
-            }
-            return this._value;
-        }
-    }
     class MultiObservableSubscription {
         _observables;
         _observer;
         _subscriptions;
         _pendingUpdates = false;
         constructor(observables, observer) {
-            this._observer = observer;
             this._observables = observables;
+            this._observer = observer;
             this._subscriptions = [];
             for (let i = 0; i < observables.length; ++i) {
-                this._subscriptions.push(observables[i].registerDependant(this));
+                this._subscriptions.push(observables[i].registerDependent(this));
             }
         }
         onDependencyUpdated() {
@@ -190,7 +196,7 @@ var Observable = (function (exports) {
     /**
      * Simple observable value implementation
      */
-    class ValImpl extends ObservableImpl {
+    class ValImpl extends ObservableBase {
         _value;
         constructor(initialValue) {
             super();
@@ -202,7 +208,7 @@ var Observable = (function (exports) {
         set value(newValue) {
             if (newValue === this._value)
                 return;
-            this.invalidate();
+            this.scheduleUpdate();
             this._value = newValue;
             this.notifyDependents();
         }
@@ -211,8 +217,12 @@ var Observable = (function (exports) {
     function val(initialValue) {
         return new ValImpl(initialValue);
     }
-    function computed(observables, compute) {
-        return new Computed(observables, compute);
+    function computed(source, compute) {
+        return Array.isArray(source)
+            ? source.length === 1
+                ? new ComputedSingle(source[0], compute)
+                : new Computed(source, compute)
+            : new ComputedSingle(source, compute);
     }
     function subscribe(observables, observer) {
         return new MultiObservableSubscription(observables, observer);
@@ -248,7 +258,7 @@ var Observable = (function (exports) {
         return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
     }
     function isObservable(value) {
-        return value instanceof ObservableImpl;
+        return value instanceof ObservableBase;
     }
     function isVal(value) {
         return value instanceof ValImpl;

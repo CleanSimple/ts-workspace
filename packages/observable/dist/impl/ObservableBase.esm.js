@@ -1,16 +1,17 @@
-import { DeferredUpdatesScheduler } from './scheduling.esm.js';
+import { DeferredUpdatesScheduler } from '../scheduling.esm.js';
 
 /**
  * Base class for observables
+ * Handles subscriptions and dispatching updates
  */
-class ObservableImpl {
+class ObservableBase {
     _observers = null;
     _dependents = null;
     _nextDependantId = 0;
     _nextSubscriptionId = 0;
     _prevValue = null;
     _pendingUpdates = false;
-    registerDependant(dependant) {
+    registerDependent(dependant) {
         this._dependents ??= new Map();
         const id = ++this._nextDependantId;
         this._dependents.set(id, new WeakRef(dependant));
@@ -33,7 +34,7 @@ class ObservableImpl {
             }
         }
     }
-    invalidate() {
+    scheduleUpdate() {
         if (!this._observers)
             return;
         if (this._pendingUpdates)
@@ -74,35 +75,6 @@ class ObservableImpl {
             },
         };
     }
-    computed(compute) {
-        return new ComputedSingle(compute, this);
-    }
-}
-class ComputedSingle extends ObservableImpl {
-    _compute;
-    _observable;
-    _value;
-    _shouldReCompute;
-    constructor(compute, observable) {
-        super();
-        this._compute = compute;
-        this._observable = observable;
-        this._value = this._compute(observable.value);
-        this._shouldReCompute = false;
-        observable.registerDependant(this);
-    }
-    onDependencyUpdated() {
-        this.invalidate();
-        this._shouldReCompute = true;
-        this.notifyDependents();
-    }
-    get value() {
-        if (this._shouldReCompute) {
-            this._shouldReCompute = false;
-            this._value = this._compute(this._observable.value);
-        }
-        return this._value;
-    }
 }
 
-export { ObservableImpl };
+export { ObservableBase };
