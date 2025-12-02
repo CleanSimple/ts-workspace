@@ -9,15 +9,15 @@ import { DeferredUpdatesScheduler } from '../scheduling';
 export abstract class ObservableBase<T> implements Observable<T>, IHasUpdates {
     private _observers: Map<number, Observer<T>> | null = null;
     private _dependents: Map<number, WeakRef<IDependent>> | null = null;
-    private _nextDependantId = 0;
+    private _nextDependentId = 0;
     private _nextSubscriptionId = 0;
     private _prevValue: T | null = null;
     private _pendingUpdates = false;
 
-    public registerDependent(dependant: IDependent) {
+    public registerDependent(dependent: IDependent) {
         this._dependents ??= new Map();
-        const id = ++this._nextDependantId;
-        this._dependents.set(id, new WeakRef(dependant));
+        const id = ++this._nextDependentId;
+        this._dependents.set(id, new WeakRef(dependent));
         return {
             unsubscribe: () => {
                 this._dependents!.delete(id);
@@ -28,9 +28,9 @@ export abstract class ObservableBase<T> implements Observable<T>, IHasUpdates {
     protected notifyDependents() {
         if (!this._dependents) return;
         for (const [id, ref] of this._dependents.entries()) {
-            const dependant = ref.deref();
-            if (dependant) {
-                dependant.onDependencyUpdated();
+            const dependent = ref.deref();
+            if (dependent) {
+                dependent.onDependencyUpdated();
             }
             else {
                 this._dependents.delete(id);
