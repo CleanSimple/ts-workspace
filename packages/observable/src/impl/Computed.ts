@@ -11,16 +11,14 @@ export class Computed<T extends readonly unknown[], R> extends ObservableBase<R>
     private readonly _observables: ObservablesOf<T>;
     private readonly _compute: (...values: T) => R;
     private _value: R;
-    private _shouldReCompute: boolean;
+    private _shouldCompute: boolean;
 
     public constructor(observables: ObservablesOf<T>, compute: (...values: T) => R) {
         super();
         this._observables = observables;
         this._compute = compute;
-        this._value = this._compute(
-            ...observables.map(observable => observable.value) as unknown as T,
-        );
-        this._shouldReCompute = false;
+        this._value = null!;
+        this._shouldCompute = true;
 
         for (let i = 0; i < observables.length; ++i) {
             (observables[i] as ObservableBase<T>).registerDependent(this);
@@ -29,13 +27,13 @@ export class Computed<T extends readonly unknown[], R> extends ObservableBase<R>
 
     public onDependencyUpdated() {
         this.scheduleUpdate();
-        this._shouldReCompute = true;
+        this._shouldCompute = true;
         this.notifyDependents();
     }
 
     public override get value(): R {
-        if (this._shouldReCompute) {
-            this._shouldReCompute = false;
+        if (this._shouldCompute) {
+            this._shouldCompute = false;
             this._value = this._compute(
                 ...this._observables.map(observable => observable.value) as unknown as T,
             );
