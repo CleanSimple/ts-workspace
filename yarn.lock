@@ -47,7 +47,6 @@ __metadata:
     "@eslint/js": "npm:^9.39.1"
     eslint: "npm:9.39.1"
     eslint-plugin-import: "npm:^2.32.0"
-    eslint-plugin-only-warn: "npm:^1.1.0"
     typescript: "npm:5.9.3"
     typescript-eslint: "npm:^8.46.3"
   peerDependencies:
@@ -3972,13 +3971,6 @@ __metadata:
   peerDependencies:
     eslint: ^2 || ^3 || ^4 || ^5 || ^6 || ^7.2.0 || ^8 || ^9
   checksum: 10c0/bfb1b8fc8800398e62ddfefbf3638d185286edfed26dfe00875cc2846d954491b4f5112457831588b757fa789384e1ae585f812614c4797f0499fa234fd4a48b
-  languageName: node
-  linkType: hard
-
-"eslint-plugin-only-warn@npm:^1.1.0":
-  version: 1.1.0
-  resolution: "eslint-plugin-only-warn@npm:1.1.0"
-  checksum: 10c0/72dfc947aa944321dfa63938f2e8bb91e7fda68f988837a8accf4551534ed04bf71957a46d00a4ddc43de5fe31055da12365b2c53c6ee6508f2ba203cd2cfa27
   languageName: node
   linkType: hard
 

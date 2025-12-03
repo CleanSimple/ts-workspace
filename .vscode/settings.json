@@ -1,9 +1,5 @@
 {
     "editor.defaultFormatter": "dprint.dprint",
-    "eslint.probe": [
-        "typescript",
-        "typescriptreact"
-    ],
     "eslint.nodePath": ".yarn/sdks",
     "typescript.tsdk": ".yarn/sdks/typescript/lib",
     "typescript.enablePromptUseWorkspaceTsdk": true,

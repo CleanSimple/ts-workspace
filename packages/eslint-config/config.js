@@ -1,25 +1,49 @@
-import { defineConfig } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import eslint from '@eslint/js';
-import onlyWarn from 'eslint-plugin-only-warn';
 import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
 
-export default defineConfig([
-    eslint.configs.recommended,
-    tseslint.configs.recommendedTypeChecked,
-    tseslint.configs.stylisticTypeChecked,
-    {
-        files: ['**/*.js'],
-        extends: [tseslint.configs.disableTypeChecked],
-    },
-    {
-        plugins: {
-            onlyWarn,
-            "import": importPlugin,
 
-        },
-    },
+/**
+ * @param {Parameters<defineConfig>[0]} config
+ */
+const warnOnly = (config) => {
+    if (Array.isArray(config)) {
+        return config.map((subConfig) => warnOnly(subConfig));
+    }
+    else {
+        config = { ...config };
+        config.rules = Object.fromEntries(
+            Object.entries(config.rules ?? {}).map(([ruleName, ruleEntry]) => {
+                if (Array.isArray(ruleEntry)) {
+                    const [severity, ...options] = ruleEntry;
+                    ruleEntry = [
+                        severity === 'error' ? 'warn' : severity, ...options
+                    ];
+                }
+                else if (ruleEntry === 'error') {
+                    ruleEntry = 'warn';
+                }
+                return [ruleName, ruleEntry];
+            })
+        );
+        return config;
+    }
+}
+
+
+export default defineConfig([
+    globalIgnores(['dist']),
     {
+        files: ['**/*.{ts,tsx}'],
+        extends: [
+            warnOnly(eslint.configs.recommended),
+            warnOnly(tseslint.configs.recommendedTypeChecked),
+            warnOnly(tseslint.configs.stylisticTypeChecked),
+        ],
+        plugins: {
+            "import": importPlugin,
+        },
         languageOptions: {
             parserOptions: {
                 projectService: true,
