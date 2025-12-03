@@ -1,9 +1,11 @@
+import type { Val } from '../types';
+
 import { ObservableBase } from './ObservableBase';
 
 /**
  * Simple observable value implementation
  */
-export class ValImpl<T> extends ObservableBase<T> {
+export class ValImpl<T> extends ObservableBase<T> implements Val<T> {
     private _value: T;
 
     public constructor(initialValue: T) {

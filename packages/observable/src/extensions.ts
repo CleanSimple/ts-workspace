@@ -1,7 +1,5 @@
-import type { Observable } from './types';
-
+import { Observable } from './abstract/Observable';
 import { ComputedSingle } from './impl/ComputedSingle';
-import { ObservableBase } from './impl/ObservableBase';
 
 interface ObservableExtensions<T> {
     /**
@@ -18,17 +16,13 @@ interface ObservableExtensions<T> {
     computed: <TComputed>(compute: (value: T) => TComputed) => Observable<TComputed>;
 }
 
-declare module './types' {
+declare module './abstract/Observable' {
     interface Observable<T> extends ObservableExtensions<T> {
     }
 }
 
-declare module './impl/ObservableBase' {
-    interface ObservableBase<T> extends ObservableExtensions<T> {
-    }
-}
-
-ObservableBase.prototype.computed = function<T, TComputed>(
+Observable.prototype.computed = function<T, TComputed>(
+    this: Observable<T>,
     compute: (value: T) => TComputed,
 ): Observable<TComputed> {
     return new ComputedSingle(this, compute);

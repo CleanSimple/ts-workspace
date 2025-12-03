@@ -1,12 +1,13 @@
+import type { Observable } from './abstract/Observable';
+
 export interface Subscription {
     unsubscribe: () => void;
 }
+
 export type Observer<T> = (value: T) => void | Promise<void>;
-export interface Observable<T> {
-    get value(): T;
-    subscribe: (observer: Observer<T>) => Subscription;
-}
+
 export interface Val<T> extends Observable<T> {
+    get value(): T;
     set value(newValue: T);
 }
 

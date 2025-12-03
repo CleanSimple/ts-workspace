@@ -1,12 +1,13 @@
-import type { IDependent, IHasUpdates, Observable, Observer, Subscription } from '../types';
+import type { IDependent, IHasUpdates, Observer, Subscription } from '../types';
 
+import { Observable } from '../abstract/Observable';
 import { DeferredUpdatesScheduler } from '../scheduling';
 
 /**
  * Base class for observables
  * Handles subscriptions and dispatching updates
  */
-export abstract class ObservableBase<T> implements Observable<T>, IHasUpdates {
+export abstract class ObservableBase<T> extends Observable<T> implements IHasUpdates {
     private _observers: Map<number, Observer<T>> | null = null;
     private _dependents: Map<number, WeakRef<IDependent>> | null = null;
     private _nextDependentId = 0;
@@ -68,9 +69,7 @@ export abstract class ObservableBase<T> implements Observable<T>, IHasUpdates {
         }
     }
 
-    public abstract get value(): T;
-
-    public subscribe(observer: Observer<T>): Subscription {
+    public override subscribe(observer: Observer<T>): Subscription {
         this._observers ??= new Map();
         const id = ++this._nextSubscriptionId;
         this._observers.set(id, observer);

@@ -1,4 +1,5 @@
-import type { IDependent, Observable } from '../types';
+import type { Observable } from '../abstract/Observable';
+import type { IDependent } from '../types';
 
 import { SENTINEL } from '../sentinel';
 import { ObservableBase } from './ObservableBase';

@@ -1,18 +1,13 @@
-import type {
-    Observable,
-    ObservablesOf,
-    Subscription,
-    Task,
-    TaskAction,
-    TaskStatus,
-    Val,
-} from './types';
+import type { Observable } from './abstract/Observable';
+import type { ObservablesOf, Subscription, Task, TaskAction, TaskStatus, Val } from './types';
 
 import { Computed } from './impl/Computed';
 import { ComputedSingle } from './impl/ComputedSingle';
 import { MultiObservableSubscription } from './impl/MultiObservableSubscription';
 import { ObservableBase } from './impl/ObservableBase';
 import { ValImpl } from './impl/ValImpl';
+
+import './extensions';
 
 export function val<T>(initialValue: T): Val<T> {
     return new ValImpl<T>(initialValue);
