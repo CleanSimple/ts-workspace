@@ -1,5 +1,6 @@
 import type { IDependent, ObservablesOf } from '../types';
 
+import { SENTINEL } from '../sentinel';
 import { ObservableBase } from './ObservableBase';
 
 /**
@@ -17,7 +18,7 @@ export class Computed<T extends readonly unknown[], R> extends ObservableBase<R>
         super();
         this._observables = observables;
         this._compute = compute;
-        this._value = null!;
+        this._value = SENTINEL as R;
         this._shouldCompute = true;
 
         for (let i = 0; i < observables.length; ++i) {

@@ -1,5 +1,6 @@
 import type { IDependent, Observable } from '../types';
 
+import { SENTINEL } from '../sentinel';
 import { ObservableBase } from './ObservableBase';
 
 /**
@@ -15,7 +16,7 @@ export class ComputedSingle<T, R> extends ObservableBase<R> implements IDependen
         super();
         this._observable = observable;
         this._compute = compute;
-        this._value = null!;
+        this._value = SENTINEL as R;
         this._shouldCompute = true;
 
         (observable as ObservableBase<T>).registerDependent(this);
