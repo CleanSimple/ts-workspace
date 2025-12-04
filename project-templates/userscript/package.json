@@ -10,7 +10,6 @@
         "fmt": "dprint fmt ./src/**"
     },
     "dependencies": {
-        "@cleansimple/plain-jsx": "workspace:^",
         "@cleansimple/utils-js": "workspace:^"
     },
     "devDependencies": {

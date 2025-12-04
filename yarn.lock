@@ -9050,7 +9050,6 @@ __metadata:
   dependencies:
     "@cleansimple/dprint-config": "workspace:^"
     "@cleansimple/eslint-config": "workspace:^"
-    "@cleansimple/plain-jsx": "workspace:^"
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
     "@cleansimple/utils-js": "workspace:^"
