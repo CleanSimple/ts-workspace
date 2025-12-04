@@ -20,7 +20,7 @@ export class ComputedSingle<T, R> extends Observable<R> {
         this._shouldCompute = true;
 
         this._dependencyUpdatedCallback = () => {
-            this.scheduleNotification();
+            this.schedule();
             this._shouldCompute = true;
             notifyDependents(this);
         };

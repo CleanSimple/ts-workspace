@@ -18,7 +18,7 @@ export class Val<T> extends Observable<T> {
 
     public set value(newValue) {
         if (newValue === this._value) return;
-        this.scheduleNotification();
+        this.schedule();
         this._value = newValue;
         notifyDependents(this);
     }

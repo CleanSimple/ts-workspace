@@ -1,9 +1,9 @@
 import type { ObservablesOf, Registration, Subscription } from '../types';
 
-import { DeferredNotifier } from '../abstract/DeferredNotifier';
+import { Schedulable } from '../abstract/Schedulable';
 import { registerDependent } from '../tracking';
 
-export class MultiObservableSubscription<T extends readonly unknown[]> extends DeferredNotifier
+export class MultiObservableSubscription<T extends readonly unknown[]> extends Schedulable
     implements Subscription
 {
     private readonly _observables: ObservablesOf<T>;
@@ -17,7 +17,7 @@ export class MultiObservableSubscription<T extends readonly unknown[]> extends D
         this._observer = observer;
         this._registrations = [];
 
-        this._dependencyUpdatedCallback = () => this.scheduleNotification();
+        this._dependencyUpdatedCallback = () => this.schedule();
 
         for (let i = 0; i < observables.length; ++i) {
             this._registrations.push(
@@ -26,9 +26,9 @@ export class MultiObservableSubscription<T extends readonly unknown[]> extends D
         }
     }
 
-    protected override onScheduleNotification(): void {/* empty */}
+    protected override onSchedule(): void {/* empty */}
 
-    protected override onDispatchNotification(): void {
+    protected override onDispatch(): void {
         this._observer(...this._observables.map(observable => observable.value) as unknown as T);
     }
 

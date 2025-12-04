@@ -1,20 +1,20 @@
 import type { Observer, Subscription } from '../types';
 
-import { DeferredNotifier } from './DeferredNotifier';
+import { Schedulable } from './Schedulable';
 
 const ObservableSymbol = Symbol('Observable');
 
-export abstract class Observable<T> extends DeferredNotifier {
+export abstract class Observable<T> extends Schedulable {
     protected readonly [ObservableSymbol] = true;
     private _lastObserverId: number = 0;
     private _observers: Map<number, Observer<T>> | null = null;
     private _prevValue: T | null = null;
 
-    protected override onScheduleNotification(): void {
+    protected override onSchedule(): void {
         this._prevValue = this.value;
     }
 
-    protected override onDispatchNotification(): void {
+    protected override onDispatch(): void {
         const prevValue = this._prevValue;
         this._prevValue = null;
         if (!this._observers?.size) return;
