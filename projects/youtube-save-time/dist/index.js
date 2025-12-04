@@ -18,80 +18,62 @@
         return { type, props };
     }
 
-    class DeferredUpdatesScheduler {
-        static _items = [];
-        static _scheduled = false;
-        static schedule(item) {
-            DeferredUpdatesScheduler._items.push(item);
-            if (DeferredUpdatesScheduler._scheduled)
+    class Schedulable {
+        _isScheduled = false;
+        schedule() {
+            if (this._isScheduled)
                 return;
-            DeferredUpdatesScheduler._scheduled = true;
-            queueMicrotask(DeferredUpdatesScheduler.flush);
+            this._isScheduled = true;
+            this.onSchedule();
+            Schedulable._pendingItems.push(this);
+            if (Schedulable._pendingItems.length === 1) {
+                queueMicrotask(Schedulable.flush);
+            }
         }
+        /* static members */
+        static _pendingItems = [];
+        static _cyclicScheduleCount = 0;
         static flush() {
-            const items = DeferredUpdatesScheduler._items;
-            DeferredUpdatesScheduler._items = [];
-            DeferredUpdatesScheduler._scheduled = false;
+            const items = Schedulable._pendingItems;
+            Schedulable._pendingItems = [];
             const n = items.length;
             for (let i = 0; i < n; ++i) {
-                items[i].flushUpdates();
+                const item = items[i];
+                item._isScheduled = false;
+                item.onDispatch();
+            }
+            // detect cyclic scheduling
+            if (Schedulable._pendingItems.length > 0) {
+                Schedulable._cyclicScheduleCount++;
+                if (Schedulable._cyclicScheduleCount >= 100) {
+                    // break the cycle to avoid starving the event loop
+                    Schedulable._pendingItems = [];
+                    throw new Error('Too many nested updates');
+                }
+            }
+            else {
+                Schedulable._cyclicScheduleCount = 0;
             }
         }
     }
 
-    /**
-     * Base class for observables
-     * Handles subscriptions and dispatching updates
-     */
-    class ObservableBase {
+    const SignalSymbol = Symbol('Signal');
+    class Signal extends Schedulable {
+        [SignalSymbol] = true;
+        _lastObserverId = 0;
         _observers = null;
-        _dependents = null;
-        _nextDependantId = 0;
-        _nextSubscriptionId = 0;
         _prevValue = null;
-        _pendingUpdates = false;
-        registerDependent(dependant) {
-            this._dependents ??= new Map();
-            const id = ++this._nextDependantId;
-            this._dependents.set(id, new WeakRef(dependant));
-            return {
-                unsubscribe: () => {
-                    this._dependents.delete(id);
-                },
-            };
-        }
-        notifyDependents() {
-            if (!this._dependents)
-                return;
-            for (const [id, ref] of this._dependents.entries()) {
-                const dependant = ref.deref();
-                if (dependant) {
-                    dependant.onDependencyUpdated();
-                }
-                else {
-                    this._dependents.delete(id);
-                }
-            }
-        }
-        scheduleUpdate() {
-            if (!this._observers)
-                return;
-            if (this._pendingUpdates)
-                return;
-            this._pendingUpdates = true;
+        onSchedule() {
             this._prevValue = this.value;
-            DeferredUpdatesScheduler.schedule(this);
         }
-        flushUpdates() {
-            if (!this._pendingUpdates)
-                return;
+        onDispatch() {
             const prevValue = this._prevValue;
-            const value = this.value;
-            this._pendingUpdates = false;
             this._prevValue = null;
-            if (value === prevValue) {
+            if (!this._observers?.size)
                 return;
-            }
+            const value = this.value;
+            if (value === prevValue)
+                return;
             for (const observer of this._observers.values()) {
                 try {
                     const result = observer(value);
@@ -105,8 +87,8 @@
             }
         }
         subscribe(observer) {
+            const id = ++this._lastObserverId;
             this._observers ??= new Map();
-            const id = ++this._nextSubscriptionId;
             this._observers.set(id, observer);
             return {
                 unsubscribe: () => {
@@ -116,42 +98,105 @@
         }
     }
 
-    class MultiObservableSubscription {
-        _observables;
-        _observer;
-        _subscriptions;
-        _pendingUpdates = false;
-        constructor(observables, observer) {
-            this._observables = observables;
-            this._observer = observer;
-            this._subscriptions = [];
-            for (let i = 0; i < observables.length; ++i) {
-                this._subscriptions.push(observables[i].registerDependent(this));
+    const SENTINEL = Symbol('SENTINEL');
+
+    class TrackingInfo {
+        lastDependentId = 0;
+        dependents = new Map();
+    }
+    const _TrackingMap = new WeakMap();
+    function registerDependent(dependency, dependent) {
+        let trackingInfo = _TrackingMap.get(dependency);
+        if (!trackingInfo) {
+            trackingInfo = new TrackingInfo();
+            _TrackingMap.set(dependency, trackingInfo);
+        }
+        const id = ++trackingInfo.lastDependentId;
+        trackingInfo.dependents.set(id, new WeakRef(dependent));
+        return {
+            unregister: () => {
+                trackingInfo.dependents.delete(id);
+            },
+        };
+    }
+    function notifyDependents(dependency) {
+        const trackingInfo = _TrackingMap.get(dependency);
+        if (!trackingInfo)
+            return;
+        if (!trackingInfo.dependents.size)
+            return;
+        for (const [id, ref] of trackingInfo.dependents.entries()) {
+            const dependent = ref.deref();
+            if (dependent) {
+                dependent();
             }
-        }
-        onDependencyUpdated() {
-            if (this._pendingUpdates)
-                return;
-            this._pendingUpdates = true;
-            DeferredUpdatesScheduler.schedule(this);
-        }
-        flushUpdates() {
-            if (!this._pendingUpdates)
-                return;
-            this._pendingUpdates = false;
-            this._observer(...this._observables.map(observable => observable.value));
-        }
-        unsubscribe() {
-            for (let i = 0; i < this._subscriptions.length; ++i) {
-                this._subscriptions[i].unsubscribe();
+            else {
+                trackingInfo.dependents.delete(id);
             }
         }
     }
 
     /**
-     * Simple observable value implementation
+     * Single source computed signal
      */
-    class ValImpl extends ObservableBase {
+    class ComputedSingle extends Signal {
+        _signal;
+        _compute;
+        _dependencyUpdatedCallback;
+        _value;
+        _shouldCompute;
+        constructor(signal, compute) {
+            super();
+            this._signal = signal;
+            this._compute = compute;
+            this._value = SENTINEL;
+            this._shouldCompute = true;
+            this._dependencyUpdatedCallback = () => {
+                this.schedule();
+                this._shouldCompute = true;
+                notifyDependents(this);
+            };
+            registerDependent(signal, this._dependencyUpdatedCallback);
+        }
+        get value() {
+            if (this._shouldCompute) {
+                this._shouldCompute = false;
+                this._value = this._compute(this._signal.value);
+            }
+            return this._value;
+        }
+    }
+
+    class MultiSourceSubscription extends Schedulable {
+        _signals;
+        _observer;
+        _dependencyUpdatedCallback;
+        _registrations;
+        constructor(signals, observer) {
+            super();
+            this._signals = signals;
+            this._observer = observer;
+            this._registrations = [];
+            this._dependencyUpdatedCallback = () => this.schedule();
+            for (let i = 0; i < signals.length; ++i) {
+                this._registrations.push(registerDependent(signals[i], this._dependencyUpdatedCallback));
+            }
+        }
+        onSchedule() { }
+        onDispatch() {
+            this._observer(...this._signals.map(signal => signal.value));
+        }
+        unsubscribe() {
+            for (let i = 0; i < this._registrations.length; ++i) {
+                this._registrations[i].unregister();
+            }
+        }
+    }
+
+    /**
+     * Simple value signal implementation
+     */
+    class Val extends Signal {
         _value;
         constructor(initialValue) {
             super();
@@ -163,23 +208,52 @@
         set value(newValue) {
             if (newValue === this._value)
                 return;
-            this.scheduleUpdate();
+            this.schedule();
             this._value = newValue;
-            this.notifyDependents();
+            notifyDependents(this);
         }
     }
 
+    Signal.prototype.computed = function (compute) {
+        return new ComputedSingle(this, compute);
+    };
+
+    /**
+     * Proxy signal
+     */
+    class ProxySignal extends Signal {
+        _dependencyUpdatedCallback;
+        _value;
+        constructor(signal) {
+            super();
+            this._value = signal.value;
+            this._dependencyUpdatedCallback = () => {
+                this.schedule();
+                this._value = signal.value;
+                notifyDependents(this);
+            };
+            registerDependent(signal, this._dependencyUpdatedCallback);
+        }
+        get value() {
+            return this._value;
+        }
+    }
+
+    Val.prototype.asReadOnly = function () {
+        return new ProxySignal(this);
+    };
+
     function val(initialValue) {
-        return new ValImpl(initialValue);
+        return new Val(initialValue);
     }
-    function subscribe(observables, observer) {
-        return new MultiObservableSubscription(observables, observer);
+    function subscribe(signal, observer) {
+        return new MultiSourceSubscription(signal, observer);
     }
-    function isObservable(value) {
-        return value instanceof ObservableBase;
+    function isSignal(value) {
+        return value instanceof Signal;
     }
     function isVal(value) {
-        return value instanceof ValImpl;
+        return value instanceof Val;
     }
 
     function For(_props) {
@@ -396,7 +470,7 @@
             }
             else if (key.startsWith('class:')) {
                 const className = key.slice(6);
-                if (isObservable(value)) {
+                if (isSignal(value)) {
                     elem.classList.toggle(className, value.value);
                     subscriptions.push(value.subscribe((value) => {
                         elem.classList.toggle(className, value);
@@ -417,7 +491,7 @@
                 elem[eventKey] = value;
             }
             else if (key in elem && !isReadonlyProp(elem, key)) {
-                if (isObservable(value)) {
+                if (isSignal(value)) {
                     elem[key] = value.value;
                     subscriptions.push(value.subscribe((value) => {
                         elem[key] = value;
@@ -591,10 +665,10 @@
                 const textNode = document.createTextNode(String(node));
                 domNodes.push(textNode);
             }
-            // render observables
-            else if (isObservable(node)) {
+            // render signals
+            else if (isSignal(node)) {
                 const reactiveNode = new ReactiveNode();
-                const vNode = new VNodeObservable(reactiveNode, node);
+                const vNode = new VNodeSignal(reactiveNode, node);
                 appendVNodeChild(parent, vNode);
                 vNode.render();
                 domNodes.push(reactiveNode);
@@ -731,7 +805,7 @@
             }
         }
     }
-    class VNodeObservable extends VNodeBuiltinComponent {
+    class VNodeSignal extends VNodeBuiltinComponent {
         _value;
         _textNode = null;
         constructor(reactiveNode, value) {
@@ -773,12 +847,12 @@
             const forProps = props;
             this._children = forProps.children;
             this._of = forProps.of;
-            if (isObservable(this._of)) {
+            if (isSignal(this._of)) {
                 this.setSubscription(this._of.subscribe((value) => this.renderValue(value)));
             }
         }
         render() {
-            this.renderValue(isObservable(this._of) ? this._of.value : this._of);
+            this.renderValue(isSignal(this._of) ? this._of.value : this._of);
         }
         renderValue(items) {
             this.firstChild = this.lastChild = null;
@@ -829,12 +903,12 @@
             this._keyed = showProps.keyed ?? false;
             this._children = showProps.children;
             this._fallback = showProps.fallback ?? null;
-            if (isObservable(this._when)) {
+            if (isSignal(this._when)) {
                 this.setSubscription(this._when.subscribe((value) => this.renderValue(value)));
             }
         }
         render() {
-            this.renderValue(isObservable(this._when) ? this._when.value : this._when);
+            this.renderValue(isSignal(this._when) ? this._when.value : this._when);
         }
         renderValue(value) {
             let show;
@@ -875,12 +949,12 @@
             const withProps = props;
             this._value = withProps.value;
             this._children = withProps.children;
-            if (isObservable(this._value)) {
+            if (isSignal(this._value)) {
                 this.setSubscription(this._value.subscribe((value) => this.renderValue(value)));
             }
         }
         render() {
-            this.renderValue(isObservable(this._value) ? this._value.value : this._value);
+            this.renderValue(isSignal(this._value) ? this._value.value : this._value);
         }
         renderValue(value) {
             if (this.firstChild) {
@@ -900,21 +974,21 @@
             const withManyProps = props;
             this._values = withManyProps.values;
             this._children = withManyProps.children;
-            const observables = [];
+            const signals = [];
             for (let i = 0; i < this._values.length; ++i) {
                 const value = this._values[i];
-                if (isObservable(value)) {
-                    observables.push(value);
+                if (isSignal(value)) {
+                    signals.push(value);
                 }
             }
-            if (observables.length > 0) {
-                this.setSubscription(subscribe(observables, () => {
+            if (signals.length > 0) {
+                this.setSubscription(subscribe(signals, () => {
                     this.render();
                 }));
             }
         }
         render() {
-            this.renderValue(...this._values.map(value => isObservable(value) ? value.value : value));
+            this.renderValue(...this._values.map(value => isSignal(value) ? value.value : value));
         }
         renderValue(...values) {
             if (this.firstChild) {

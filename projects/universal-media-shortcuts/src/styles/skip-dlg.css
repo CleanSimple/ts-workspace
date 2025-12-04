@@ -1,11 +1,10 @@
 :root {
-    --main-color: #1939F5;
+    --main-color: #1939f5;
     --border-color: #404040;
     --border-active-color: #0a2ae8;
     --background-color: #151515;
-    --text-color: #C0C0C5;
+    --text-color: #c0c0c5;
 }
-
 
 .skip-dlg-container {
     all: revert;
@@ -20,7 +19,7 @@
     align-items: center;
     transition-duration: 0.2s;
     /* font */
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     font-size: initial;
     font-weight: initial;
     font-style: initial;
@@ -41,7 +40,6 @@
         height: 100%;
     }
 }
-
 
 .skip-dlg {
     box-shadow: 0px 0px 10px var(--main-color);
@@ -75,10 +73,7 @@
             calc(100% - 10px) 50%,
             calc(100% - 5px) 50%,
             calc(100% - 20px) 0px;
-        background-size:
-            5px 5px,
-            5px 5px,
-            1px 100%;
+        background-size: 5px 5px, 5px 5px, 1px 100%;
         background-repeat: no-repeat;
     }
 
