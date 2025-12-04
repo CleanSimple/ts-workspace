@@ -19,6 +19,7 @@ export abstract class DeferredNotifier {
 
     /* static members */
     private static _scheduledNotifiers: DeferredNotifier[] = [];
+    private static _nestedUpdates: number = 0;
 
     private static dispatchNotifications(this: void) {
         const notifiers = DeferredNotifier._scheduledNotifiers;
@@ -29,6 +30,19 @@ export abstract class DeferredNotifier {
             const notifier = notifiers[i];
             notifier._isScheduled = false;
             notifier.onDispatchNotification();
+        }
+
+        // detect cyclic updates
+        if (DeferredNotifier._scheduledNotifiers.length > 0) {
+            DeferredNotifier._nestedUpdates++;
+            if (DeferredNotifier._nestedUpdates >= 100) {
+                // break cyclic updates to avoid starving the event loop
+                DeferredNotifier._scheduledNotifiers = [];
+                throw new Error('Too many nested updates');
+            }
+        }
+        else {
+            DeferredNotifier._nestedUpdates = 0;
         }
     }
 }
