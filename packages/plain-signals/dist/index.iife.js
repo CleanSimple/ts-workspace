@@ -234,6 +234,31 @@ var PlainSignals = (function (exports) {
         return new ComputedSingle(this, compute);
     };
 
+    /**
+     * Proxy signal
+     */
+    class ProxySignal extends Signal {
+        _dependencyUpdatedCallback;
+        _value;
+        constructor(signal) {
+            super();
+            this._value = signal.value;
+            this._dependencyUpdatedCallback = () => {
+                this.schedule();
+                this._value = signal.value;
+                notifyDependents(this);
+            };
+            registerDependent(signal, this._dependencyUpdatedCallback);
+        }
+        get value() {
+            return this._value;
+        }
+    }
+
+    Val.prototype.asReadOnly = function () {
+        return new ProxySignal(this);
+    };
+
     function val(initialValue) {
         return new Val(initialValue);
     }
@@ -275,7 +300,16 @@ var PlainSignals = (function (exports) {
             });
         };
         run();
-        return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
+        return {
+            value: value.asReadOnly(),
+            status: status.asReadOnly(),
+            isRunning,
+            isCompleted,
+            isSuccess,
+            isError,
+            error: error.asReadOnly(),
+            rerun: run,
+        };
     }
     function isSignal(value) {
         return value instanceof Signal;

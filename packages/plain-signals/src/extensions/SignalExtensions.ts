@@ -1,5 +1,5 @@
-import { Signal } from './abstract/Signal';
-import { ComputedSingle } from './impl/ComputedSingle';
+import { Signal } from '../abstract/Signal';
+import { ComputedSingle } from '../impl/ComputedSingle';
 
 interface SignalExtensions<T> {
     /**
@@ -16,7 +16,7 @@ interface SignalExtensions<T> {
     computed: <TComputed>(compute: (value: T) => TComputed) => Signal<TComputed>;
 }
 
-declare module './abstract/Signal' {
+declare module '../abstract/Signal' {
     interface Signal<T> extends SignalExtensions<T> {
     }
 }

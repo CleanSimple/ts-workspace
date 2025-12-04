@@ -3,7 +3,8 @@ import { Computed } from './impl/Computed.esm.js';
 import { ComputedSingle } from './impl/ComputedSingle.esm.js';
 import { MultiSourceSubscription } from './impl/MultiSourceSubscription.esm.js';
 import { Val } from './impl/Val.esm.js';
-import './extensions.esm.js';
+import './extensions/SignalExtensions.esm.js';
+import './extensions/ValExtensions.esm.js';
 
 function val(initialValue) {
     return new Val(initialValue);
@@ -46,7 +47,16 @@ function task(action) {
         });
     };
     run();
-    return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
+    return {
+        value: value.asReadOnly(),
+        status: status.asReadOnly(),
+        isRunning,
+        isCompleted,
+        isSuccess,
+        isError,
+        error: error.asReadOnly(),
+        rerun: run,
+    };
 }
 function isSignal(value) {
     return value instanceof Signal;

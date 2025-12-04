@@ -1,4 +1,4 @@
-import { Signal } from './abstract/Signal';
+import { Signal } from '../abstract/Signal';
 interface SignalExtensions<T> {
     /**
      * A shorthand for creating a computed signal
@@ -13,7 +13,7 @@ interface SignalExtensions<T> {
      */
     computed: <TComputed>(compute: (value: T) => TComputed) => Signal<TComputed>;
 }
-declare module './abstract/Signal' {
+declare module '../abstract/Signal' {
     interface Signal<T> extends SignalExtensions<T> {
     }
 }

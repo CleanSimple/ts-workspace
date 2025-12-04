@@ -6,7 +6,8 @@ import { ComputedSingle } from './impl/ComputedSingle';
 import { MultiSourceSubscription } from './impl/MultiSourceSubscription';
 import { Val } from './impl/Val';
 
-import './extensions';
+import './extensions/SignalExtensions';
+import './extensions/ValExtensions';
 
 export function val<T>(initialValue: T): Val<T> {
     return new Val<T>(initialValue);
@@ -70,7 +71,16 @@ export function task<T>(action: TaskAction<T>): Task<T> {
     };
 
     run();
-    return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
+    return {
+        value: value.asReadOnly(),
+        status: status.asReadOnly(),
+        isRunning,
+        isCompleted,
+        isSuccess,
+        isError,
+        error: error.asReadOnly(),
+        rerun: run,
+    };
 }
 
 export function isSignal(value: unknown): value is Signal<unknown> {
