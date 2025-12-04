@@ -1,4 +1,4 @@
-import { isObservable, isVal } from '@cleansimple/observable';
+import { isSignal, isVal } from '@cleansimple/plain-signals';
 import { getLIS } from './lis.esm.js';
 import { RefImpl, RefValue } from './ref.esm.js';
 import { isObject, isReadonlyProp, splitNamespace } from './utils.esm.js';
@@ -131,7 +131,7 @@ function setProps(elem, props) {
         }
         else if (key.startsWith('class:')) {
             const className = key.slice(6);
-            if (isObservable(value)) {
+            if (isSignal(value)) {
                 elem.classList.toggle(className, value.value);
                 subscriptions.push(value.subscribe((value) => {
                     elem.classList.toggle(className, value);
@@ -152,7 +152,7 @@ function setProps(elem, props) {
             elem[eventKey] = value;
         }
         else if (key in elem && !isReadonlyProp(elem, key)) {
-            if (isObservable(value)) {
+            if (isSignal(value)) {
                 elem[key] = value.value;
                 subscriptions.push(value.subscribe((value) => {
                     elem[key] = value;

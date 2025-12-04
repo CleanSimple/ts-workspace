@@ -1,8 +1,8 @@
-import type { Observable } from '@cleansimple/observable';
+import type { Signal } from '@cleansimple/plain-signals';
 import type { Properties as CSS } from 'csstype';
 import type { ReactiveNode } from './reactive-node';
 import type { Ref } from './ref';
-export type JSXNode = Observable<JSXNode> | JSXElement | string | number | boolean | null | undefined | JSXNode[];
+export type JSXNode = Signal<JSXNode> | JSXElement | string | number | boolean | null | undefined | JSXNode[];
 export interface JSXElement {
     type: string | FunctionalComponent;
     props: PropsType;
@@ -42,7 +42,7 @@ export type PropsType = Record<string, unknown> & {
     ref?: Ref<object>;
     children?: JSXNode;
 };
-type Classes = Record<`class:${string}`, boolean | Observable<boolean>>;
+type Classes = Record<`class:${string}`, boolean | Signal<boolean>>;
 type CommonProps<T extends Element> = Classes & {
     ref?: Ref<T>;
     children?: JSXNode;
@@ -57,11 +57,11 @@ type TypedEvent<TElement extends Element, TEvent extends Event = Event> = TEvent
 type DOMEvents<T extends Element> = {
     [K in keyof GlobalEventHandlersEventMap as `on:${K}`]?: (this: T, ev: TypedEvent<T, GlobalEventHandlersEventMap[K]>) => unknown;
 };
-type AcceptsObservable<T> = (T extends infer U ? Observable<U> : never) | Observable<T>;
-type AsAcceptsObservable<T> = {
-    [K in keyof T]: T[K] | AcceptsObservable<T[K]>;
+type AcceptsSignal<T> = (T extends infer U ? Signal<U> : never) | Signal<T>;
+type AsAcceptsSignal<T> = {
+    [K in keyof T]: T[K] | AcceptsSignal<T[K]>;
 };
-export type DOMProps<T extends Element> = Partial<AsAcceptsObservable<SettableProps<T>>> & CommonProps<T> & DOMEvents<T>;
+export type DOMProps<T extends Element> = Partial<AsAcceptsSignal<SettableProps<T>>> & CommonProps<T> & DOMEvents<T>;
 export type SVGProps<T extends SVGElement> = DOMProps<T> & Record<string, unknown>;
 export type Predicate<T> = (value: T) => boolean;
 export type Action<T = void> = [T] extends [void] ? () => void : (arg: T) => void;

@@ -1,4 +1,4 @@
-import type { Observable, Subscription, Val } from '@cleansimple/observable';
+import type { Signal, Subscription, Val } from '@cleansimple/plain-signals';
 import type { ForProps } from './components/For';
 import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
@@ -6,7 +6,7 @@ import type { ValuesOf, WithManyProps } from './components/WithMany';
 import type { LifecycleContext } from './lifecycle';
 import type { Action, JSXNode, Predicate, PropsType, RNode, VNode } from './types';
 
-import { isObservable, subscribe, val } from '@cleansimple/observable';
+import { isSignal, subscribe, val } from '@cleansimple/plain-signals';
 import { For } from './components/For';
 import { Fragment } from './components/Fragment';
 import { Show } from './components/Show';
@@ -60,10 +60,10 @@ function renderJSX(jsxNode: JSXNode, parent: VNodeRoot, domNodes: RNode[] = []):
             const textNode = document.createTextNode(String(node));
             domNodes.push(textNode);
         }
-        // render observables
-        else if (isObservable(node)) {
+        // render signals
+        else if (isSignal(node)) {
             const reactiveNode = new ReactiveNode();
-            const vNode = new VNodeObservable(reactiveNode, node);
+            const vNode = new VNodeSignal(reactiveNode, node);
             appendVNodeChild(parent, vNode);
 
             vNode.render();
@@ -238,11 +238,11 @@ class VNodeFunctionalComponent extends VNodeRoot {
     }
 }
 
-class VNodeObservable extends VNodeBuiltinComponent {
-    private readonly _value: Observable<JSXNode>;
+class VNodeSignal extends VNodeBuiltinComponent {
+    private readonly _value: Signal<JSXNode>;
     private _textNode: Text | null = null;
 
-    public constructor(reactiveNode: ReactiveNode, value: Observable<JSXNode>) {
+    public constructor(reactiveNode: ReactiveNode, value: Signal<JSXNode>) {
         super(reactiveNode);
 
         this._value = value;
@@ -290,13 +290,13 @@ class VNodeFor<T> extends VNodeBuiltinComponent {
         this._children = forProps.children;
         this._of = forProps.of;
 
-        if (isObservable(this._of)) {
+        if (isSignal(this._of)) {
             this.setSubscription(this._of.subscribe((value) => this.renderValue(value)));
         }
     }
 
     public render(): void {
-        this.renderValue(isObservable(this._of) ? this._of.value : this._of);
+        this.renderValue(isSignal(this._of) ? this._of.value : this._of);
     }
 
     private renderValue(items: T[]): void {
@@ -357,13 +357,13 @@ class VNodeShow<T> extends VNodeBuiltinComponent {
         this._children = showProps.children;
         this._fallback = showProps.fallback ?? null;
 
-        if (isObservable(this._when)) {
+        if (isSignal(this._when)) {
             this.setSubscription(this._when.subscribe((value) => this.renderValue(value)));
         }
     }
 
     public render(): void {
-        this.renderValue(isObservable(this._when) ? this._when.value : this._when);
+        this.renderValue(isSignal(this._when) ? this._when.value : this._when);
     }
 
     private renderValue(value: T) {
@@ -414,13 +414,13 @@ class VNodeWith<T> extends VNodeBuiltinComponent {
         this._value = withProps.value;
         this._children = withProps.children;
 
-        if (isObservable(this._value)) {
+        if (isSignal(this._value)) {
             this.setSubscription(this._value.subscribe((value) => this.renderValue(value)));
         }
     }
 
     public render(): void {
-        this.renderValue(isObservable(this._value) ? this._value.value : this._value);
+        this.renderValue(isSignal(this._value) ? this._value.value : this._value);
     }
 
     private renderValue(value: T) {
@@ -445,15 +445,15 @@ class VNodeWithMany<T extends readonly unknown[]> extends VNodeBuiltinComponent 
         this._values = withManyProps.values;
         this._children = withManyProps.children;
 
-        const observables: Observable<unknown>[] = [];
+        const signals: Signal<unknown>[] = [];
         for (let i = 0; i < this._values.length; ++i) {
             const value = this._values[i];
-            if (isObservable(value)) {
-                observables.push(value);
+            if (isSignal(value)) {
+                signals.push(value);
             }
         }
-        if (observables.length > 0) {
-            this.setSubscription(subscribe<unknown[]>(observables, () => {
+        if (signals.length > 0) {
+            this.setSubscription(subscribe<unknown[]>(signals, () => {
                 this.render();
             }));
         }
@@ -461,7 +461,7 @@ class VNodeWithMany<T extends readonly unknown[]> extends VNodeBuiltinComponent 
 
     public render(): void {
         this.renderValue(
-            ...this._values.map(value => isObservable(value) ? value.value : value) as ValuesOf<T>,
+            ...this._values.map(value => isSignal(value) ? value.value : value) as ValuesOf<T>,
         );
     }
 

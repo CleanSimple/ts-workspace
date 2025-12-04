@@ -1,4 +1,4 @@
-export { computed, subscribe, task, val } from '@cleansimple/observable';
+export { computed, subscribe, task, val } from '@cleansimple/plain-signals';
 export { For } from './components/For.esm.js';
 export { Fragment } from './components/Fragment.esm.js';
 export { Show } from './components/Show.esm.js';

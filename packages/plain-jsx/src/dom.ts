@@ -1,7 +1,7 @@
-import type { Subscription } from '@cleansimple/observable';
+import type { Subscription } from '@cleansimple/plain-signals';
 import type { DOMNode, PropsType } from './types';
 
-import { isObservable, isVal } from '@cleansimple/observable';
+import { isSignal, isVal } from '@cleansimple/plain-signals';
 import { getLIS } from './lis';
 import { RefImpl, RefValue } from './ref';
 import { isObject, isReadonlyProp, splitNamespace } from './utils';
@@ -148,7 +148,7 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
         }
         else if (key.startsWith('class:')) {
             const className = key.slice(6);
-            if (isObservable(value)) {
+            if (isSignal(value)) {
                 elem.classList.toggle(className, value.value as boolean);
                 subscriptions.push(value.subscribe((value) => {
                     elem.classList.toggle(className, value as boolean);
@@ -169,7 +169,7 @@ export function setProps(elem: HTMLElement, props: PropsType): Subscription[] | 
             (elem as unknown as Record<symbol, unknown>)[eventKey] = value;
         }
         else if (key in elem && !isReadonlyProp(elem, key as keyof HTMLElement)) {
-            if (isObservable(value)) {
+            if (isSignal(value)) {
                 (elem as unknown as Record<string, unknown>)[key] = value.value;
 
                 subscriptions.push(value.subscribe((value) => {

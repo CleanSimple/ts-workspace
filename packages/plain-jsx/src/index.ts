@@ -1,11 +1,11 @@
 import type { DOMProps, JSXNode, SVGProps } from './types';
 
-export type { Observable, Subscription, Task, Val } from '@cleansimple/observable';
+export type { Signal, Subscription, Task, Val } from '@cleansimple/plain-signals';
 export type { JSX } from './jsx';
 export type { Ref } from './ref';
 export type { FunctionalComponent } from './types';
 
-export { computed, subscribe, task, val } from '@cleansimple/observable';
+export { computed, subscribe, task, val } from '@cleansimple/plain-signals';
 export { For } from './components/For';
 export { Fragment } from './components/Fragment';
 export { Show } from './components/Show';

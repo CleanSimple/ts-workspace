@@ -1,4 +1,4 @@
-var PlainJSX = (function (exports, observable) {
+var PlainJSX = (function (exports, plainSignals) {
     'use strict';
 
     function For(_props) {
@@ -220,7 +220,7 @@ var PlainJSX = (function (exports, observable) {
             }
             else if (key.startsWith('class:')) {
                 const className = key.slice(6);
-                if (observable.isObservable(value)) {
+                if (plainSignals.isSignal(value)) {
                     elem.classList.toggle(className, value.value);
                     subscriptions.push(value.subscribe((value) => {
                         elem.classList.toggle(className, value);
@@ -241,7 +241,7 @@ var PlainJSX = (function (exports, observable) {
                 elem[eventKey] = value;
             }
             else if (key in elem && !isReadonlyProp(elem, key)) {
-                if (observable.isObservable(value)) {
+                if (plainSignals.isSignal(value)) {
                     elem[key] = value.value;
                     subscriptions.push(value.subscribe((value) => {
                         elem[key] = value;
@@ -249,7 +249,7 @@ var PlainJSX = (function (exports, observable) {
                     // two way updates for input element
                     if ((elem instanceof HTMLInputElement && key in InputTwoWayProps)
                         || (elem instanceof HTMLSelectElement && key in SelectTwoWayProps)) {
-                        const handler = observable.isVal(value)
+                        const handler = plainSignals.isVal(value)
                             ? (e) => {
                                 value.value = e.target[key];
                             }
@@ -318,19 +318,19 @@ var PlainJSX = (function (exports, observable) {
         }
         _LifecycleContext.onCleanupCallback = fn;
     }
-    function watch(observable, observer) {
+    function watch(signal, observer) {
         if (!_LifecycleContext) {
             throw new Error('watch can only be called inside a functional component');
         }
         _LifecycleContext.subscriptions ??= [];
-        _LifecycleContext.subscriptions.push(observable.subscribe(observer));
+        _LifecycleContext.subscriptions.push(signal.subscribe(observer));
     }
-    function watchMany(observables, observer) {
+    function watchMany(signals, observer) {
         if (!_LifecycleContext) {
             throw new Error('watchMany can only be called inside a functional component');
         }
         _LifecycleContext.subscriptions ??= [];
-        _LifecycleContext.subscriptions.push(observable.subscribe(observables, observer));
+        _LifecycleContext.subscriptions.push(plainSignals.subscribe(signals, observer));
     }
     function cleanupVNode(vNode) {
         let child = vNode.firstChild;
@@ -447,10 +447,10 @@ var PlainJSX = (function (exports, observable) {
                 const textNode = document.createTextNode(String(node));
                 domNodes.push(textNode);
             }
-            // render observables
-            else if (observable.isObservable(node)) {
+            // render signals
+            else if (plainSignals.isSignal(node)) {
                 const reactiveNode = new ReactiveNode();
-                const vNode = new VNodeObservable(reactiveNode, node);
+                const vNode = new VNodeSignal(reactiveNode, node);
                 appendVNodeChild(parent, vNode);
                 vNode.render();
                 domNodes.push(reactiveNode);
@@ -587,7 +587,7 @@ var PlainJSX = (function (exports, observable) {
             }
         }
     }
-    class VNodeObservable extends VNodeBuiltinComponent {
+    class VNodeSignal extends VNodeBuiltinComponent {
         _value;
         _textNode = null;
         constructor(reactiveNode, value) {
@@ -629,12 +629,12 @@ var PlainJSX = (function (exports, observable) {
             const forProps = props;
             this._children = forProps.children;
             this._of = forProps.of;
-            if (observable.isObservable(this._of)) {
+            if (plainSignals.isSignal(this._of)) {
                 this.setSubscription(this._of.subscribe((value) => this.renderValue(value)));
             }
         }
         render() {
-            this.renderValue(observable.isObservable(this._of) ? this._of.value : this._of);
+            this.renderValue(plainSignals.isSignal(this._of) ? this._of.value : this._of);
         }
         renderValue(items) {
             this.firstChild = this.lastChild = null;
@@ -648,7 +648,7 @@ var PlainJSX = (function (exports, observable) {
                     item.index.value = i;
                 }
                 else {
-                    const index = observable.val(i);
+                    const index = plainSignals.val(i);
                     const vNode = new VNodeRoot();
                     const children = renderJSX(this._children({ item: value, index }), vNode);
                     item = { index, vNode, children: children.length > 0 ? children : null };
@@ -685,12 +685,12 @@ var PlainJSX = (function (exports, observable) {
             this._keyed = showProps.keyed ?? false;
             this._children = showProps.children;
             this._fallback = showProps.fallback ?? null;
-            if (observable.isObservable(this._when)) {
+            if (plainSignals.isSignal(this._when)) {
                 this.setSubscription(this._when.subscribe((value) => this.renderValue(value)));
             }
         }
         render() {
-            this.renderValue(observable.isObservable(this._when) ? this._when.value : this._when);
+            this.renderValue(plainSignals.isSignal(this._when) ? this._when.value : this._when);
         }
         renderValue(value) {
             let show;
@@ -731,12 +731,12 @@ var PlainJSX = (function (exports, observable) {
             const withProps = props;
             this._value = withProps.value;
             this._children = withProps.children;
-            if (observable.isObservable(this._value)) {
+            if (plainSignals.isSignal(this._value)) {
                 this.setSubscription(this._value.subscribe((value) => this.renderValue(value)));
             }
         }
         render() {
-            this.renderValue(observable.isObservable(this._value) ? this._value.value : this._value);
+            this.renderValue(plainSignals.isSignal(this._value) ? this._value.value : this._value);
         }
         renderValue(value) {
             if (this.firstChild) {
@@ -756,21 +756,21 @@ var PlainJSX = (function (exports, observable) {
             const withManyProps = props;
             this._values = withManyProps.values;
             this._children = withManyProps.children;
-            const observables = [];
+            const signals = [];
             for (let i = 0; i < this._values.length; ++i) {
                 const value = this._values[i];
-                if (observable.isObservable(value)) {
-                    observables.push(value);
+                if (plainSignals.isSignal(value)) {
+                    signals.push(value);
                 }
             }
-            if (observables.length > 0) {
-                this.setSubscription(observable.subscribe(observables, () => {
+            if (signals.length > 0) {
+                this.setSubscription(plainSignals.subscribe(signals, () => {
                     this.render();
                 }));
             }
         }
         render() {
-            this.renderValue(...this._values.map(value => observable.isObservable(value) ? value.value : value));
+            this.renderValue(...this._values.map(value => plainSignals.isSignal(value) ? value.value : value));
         }
         renderValue(...values) {
             if (this.firstChild) {
@@ -791,19 +791,19 @@ var PlainJSX = (function (exports, observable) {
 
     Object.defineProperty(exports, "computed", {
         enumerable: true,
-        get: function () { return observable.computed; }
+        get: function () { return plainSignals.computed; }
     });
     Object.defineProperty(exports, "subscribe", {
         enumerable: true,
-        get: function () { return observable.subscribe; }
+        get: function () { return plainSignals.subscribe; }
     });
     Object.defineProperty(exports, "task", {
         enumerable: true,
-        get: function () { return observable.task; }
+        get: function () { return plainSignals.task; }
     });
     Object.defineProperty(exports, "val", {
         enumerable: true,
-        get: function () { return observable.val; }
+        get: function () { return plainSignals.val; }
     });
     exports.For = For;
     exports.Fragment = Fragment;
@@ -820,4 +820,4 @@ var PlainJSX = (function (exports, observable) {
 
     return exports;
 
-})({}, Observable);
+})({}, PlainSignals);

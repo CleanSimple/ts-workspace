@@ -1,7 +1,7 @@
-import type { Observable, Observer, Subscription } from '@cleansimple/observable';
+import type { Observer, Signal, Subscription } from '@cleansimple/plain-signals';
 import type { Action, VNode } from './types';
 
-import { subscribe } from '@cleansimple/observable';
+import { subscribe } from '@cleansimple/plain-signals';
 
 export interface LifecycleContext {
     ref: object | null;
@@ -43,23 +43,23 @@ export function onCleanup(fn: Action) {
     _LifecycleContext.onCleanupCallback = fn;
 }
 
-export function watch<T>(observable: Observable<T>, observer: Observer<T>) {
+export function watch<T>(signal: Signal<T>, observer: Observer<T>) {
     if (!_LifecycleContext) {
         throw new Error('watch can only be called inside a functional component');
     }
     _LifecycleContext.subscriptions ??= [];
-    _LifecycleContext.subscriptions.push(observable.subscribe(observer));
+    _LifecycleContext.subscriptions.push(signal.subscribe(observer));
 }
 
 export function watchMany<T extends readonly unknown[]>(
-    observables: Parameters<typeof subscribe<T>>[0],
+    signals: Parameters<typeof subscribe<T>>[0],
     observer: Parameters<typeof subscribe<T>>[1],
 ) {
     if (!_LifecycleContext) {
         throw new Error('watchMany can only be called inside a functional component');
     }
     _LifecycleContext.subscriptions ??= [];
-    _LifecycleContext.subscriptions.push(subscribe(observables, observer));
+    _LifecycleContext.subscriptions.push(subscribe(signals, observer));
 }
 
 export function cleanupVNode(vNode: VNode) {

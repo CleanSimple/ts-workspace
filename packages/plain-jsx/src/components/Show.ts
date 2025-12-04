@@ -1,4 +1,4 @@
-import type { Observable } from '@cleansimple/observable';
+import type { Signal } from '@cleansimple/plain-signals';
 import type { JSXNode, Predicate } from '../types';
 
 type Truthy<T> = Exclude<T, 0 | '' | null | false | undefined>;
@@ -8,7 +8,7 @@ type Falsy<T> = T extends number | string | false | null | undefined ? T : never
 type ExtractGuardedType<F> = F extends ((val: any) => val is infer T) ? T : boolean;
 
 interface ShowPropsBase<T> {
-    when: T | Observable<T>;
+    when: T | Signal<T>;
     is?: T | Predicate<T>;
     /**
      * If `true`, the children will be re-rendered when the value changes.

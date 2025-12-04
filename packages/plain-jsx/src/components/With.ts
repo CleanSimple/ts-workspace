@@ -1,8 +1,8 @@
-import type { Observable } from '@cleansimple/observable';
+import type { Signal } from '@cleansimple/plain-signals';
 import type { JSXNode } from '../types';
 
 export interface WithProps<T> {
-    value: T | Observable<T>;
+    value: T | Signal<T>;
     children: (value: T) => JSXNode;
 }
 

@@ -1,13 +1,13 @@
-import type { Observable } from '@cleansimple/observable';
+import type { Signal } from '@cleansimple/plain-signals';
 import type { JSXNode } from '../types';
 
 interface ForCallbackProps<T> {
     item: T;
-    index: Observable<number>;
+    index: Signal<number>;
 }
 
 export interface ForProps<T> {
-    of: T[] | Observable<T[]>;
+    of: T[] | Signal<T[]>;
     children: (props: ForCallbackProps<T>) => JSXNode;
 }
 

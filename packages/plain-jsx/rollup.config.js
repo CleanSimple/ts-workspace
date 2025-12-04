@@ -8,7 +8,7 @@ export default [
             'jsx-runtime': 'src/jsx-runtime.ts',
             'jsx-dev-runtime': 'src/jsx-dev-runtime.ts',
         },
-        external: ['@cleansimple/observable'],
+        external: ['@cleansimple/plain-signals'],
         output: [
             {
                 dir: 'dist',
@@ -21,12 +21,12 @@ export default [
     {
         ...baseConfig,
         input: 'src/index.ts',
-        external: ['@cleansimple/observable'],
+        external: ['@cleansimple/plain-signals'],
         output: [
             {
                 name: 'PlainJSX',
                 format: 'iife',
-                globals: { '@cleansimple/observable': 'Observable' },
+                globals: { '@cleansimple/plain-signals': 'PlainSignals' },
                 file: './dist/index.iife.js',
             },
         ],

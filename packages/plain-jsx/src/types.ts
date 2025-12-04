@@ -1,11 +1,11 @@
-import type { Observable } from '@cleansimple/observable';
+import type { Signal } from '@cleansimple/plain-signals';
 import type { Properties as CSS } from 'csstype';
 import type { ReactiveNode } from './reactive-node';
 import type { Ref } from './ref';
 
 /* JSX Node */
 export type JSXNode =
-    | Observable<JSXNode>
+    | Signal<JSXNode>
     | JSXElement
     | string
     | number
@@ -67,7 +67,7 @@ export type PropsType = Record<string, unknown> & {
     children?: JSXNode;
 };
 
-type Classes = Record<`class:${string}`, boolean | Observable<boolean>>;
+type Classes = Record<`class:${string}`, boolean | Signal<boolean>>;
 
 type CommonProps<T extends Element> =
     & Classes
@@ -106,17 +106,17 @@ type DOMEvents<T extends Element> = {
 };
 
 /* utilities */
-type AcceptsObservable<T> =
-    | (T extends infer U ? Observable<U> : never)
-    | Observable<T>;
+type AcceptsSignal<T> =
+    | (T extends infer U ? Signal<U> : never)
+    | Signal<T>;
 
-type AsAcceptsObservable<T> = {
-    [K in keyof T]: T[K] | AcceptsObservable<T[K]>;
+type AsAcceptsSignal<T> = {
+    [K in keyof T]: T[K] | AcceptsSignal<T[K]>;
 };
 
 /* all props */
 export type DOMProps<T extends Element> =
-    & Partial<AsAcceptsObservable<SettableProps<T>>>
+    & Partial<AsAcceptsSignal<SettableProps<T>>>
     & CommonProps<T>
     & DOMEvents<T>;
 
