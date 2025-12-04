@@ -1,3 +1,5 @@
+import { ComputedMany } from './components/ComputedMulti';
+import { ComputedSingle } from './components/ComputedSingle';
 import { DefineRef } from './components/DefineRef';
 import { FocusInputOnMount } from './components/FocusInputOnMount';
 import { ForComponent } from './components/ForComponent';
@@ -19,6 +21,8 @@ const App: FunctionalComponent = () => {
             <WithComponent />
             <WithManyComponent />
             <ForComponent />
+            <ComputedSingle />
+            <ComputedMany />
             <Watch />
             <WatchMany />
             <Task />
