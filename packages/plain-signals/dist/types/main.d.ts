@@ -1,0 +1,11 @@
+import type { SignalsOf, Subscription, Task, TaskAction } from './types';
+import { Signal } from './abstract/Signal';
+import { Val } from './impl/Val';
+import './extensions';
+export declare function val<T>(initialValue: T): Val<T>;
+export declare function computed<T extends readonly unknown[], R>(signals: SignalsOf<T>, compute: (...values: T) => R): Signal<R>;
+export declare function computed<T, R>(signal: Signal<T>, compute: (value: T) => R): Signal<R>;
+export declare function subscribe<T extends readonly unknown[]>(signal: SignalsOf<T>, observer: (...values: T) => void): Subscription;
+export declare function task<T>(action: TaskAction<T>): Task<T>;
+export declare function isSignal(value: unknown): value is Signal<unknown>;
+export declare function isVal(value: unknown): value is Val<unknown>;
