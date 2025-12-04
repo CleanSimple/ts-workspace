@@ -1,10 +1,9 @@
-import type { FunctionalComponent, Observable } from '@cleansimple/plain-jsx';
-import type { JSX } from '@cleansimple/plain-jsx/jsx-runtime';
+import type { FunctionalComponent, PropsOf, Signal } from '@cleansimple/plain-jsx';
 
 import { ref } from '@cleansimple/plain-jsx';
 
-interface UpDownProps extends JSX.PropsOf<HTMLDivElement> {
-    value?: Observable<number> | number;
+interface UpDownProps extends PropsOf<HTMLDivElement> {
+    value?: Signal<number> | number;
     minValue?: number;
     maxValue?: number;
 }
@@ -15,7 +14,7 @@ export const UpDown: FunctionalComponent<UpDownProps> = (
     const inputRef = ref<HTMLInputElement>();
 
     function increment() {
-        const { value: input } = inputRef;
+        const { current: input } = inputRef;
         if (!input) throw new Error();
 
         const value = Math.min(maxValue, input.valueAsNumber + 1);
@@ -25,7 +24,7 @@ export const UpDown: FunctionalComponent<UpDownProps> = (
         }
     }
     function decrement() {
-        const { value: input } = inputRef;
+        const { current: input } = inputRef;
         if (!input) throw new Error();
 
         const value = Math.max(minValue, input.valueAsNumber - 1);

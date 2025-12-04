@@ -4,7 +4,7 @@ import {
     Show,
     val,
     type FunctionalComponent,
-    type Observable,
+    type Signal,
     type Val,
 } from '@cleansimple/plain-jsx';
 import { Button } from './ui/Button';
@@ -14,7 +14,7 @@ import { Stack } from './ui/Stack';
 import { Header } from './ui/Header';
 
 interface ComponentProps {
-    show: Observable<boolean>;
+    show: Signal<boolean>;
     state: Val<string>;
 }
 
