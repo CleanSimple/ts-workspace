@@ -1,58 +1,24 @@
-import { DeferredUpdatesScheduler } from '../scheduling.esm.js';
+import { Observable } from '../abstract/Observable.esm.js';
 
 /**
  * Base class for observables
  * Handles subscriptions and dispatching updates
  */
-class ObservableBase {
+class ObservableBase extends Observable {
+    _lastObserverId = 0;
     _observers = null;
-    _dependents = null;
-    _nextDependantId = 0;
-    _nextSubscriptionId = 0;
     _prevValue = null;
-    _pendingUpdates = false;
-    registerDependent(dependant) {
-        this._dependents ??= new Map();
-        const id = ++this._nextDependantId;
-        this._dependents.set(id, new WeakRef(dependant));
-        return {
-            unsubscribe: () => {
-                this._dependents.delete(id);
-            },
-        };
-    }
-    notifyDependents() {
-        if (!this._dependents)
-            return;
-        for (const [id, ref] of this._dependents.entries()) {
-            const dependant = ref.deref();
-            if (dependant) {
-                dependant.onDependencyUpdated();
-            }
-            else {
-                this._dependents.delete(id);
-            }
-        }
-    }
-    scheduleUpdate() {
-        if (!this._observers)
-            return;
-        if (this._pendingUpdates)
-            return;
-        this._pendingUpdates = true;
+    onScheduleNotification() {
         this._prevValue = this.value;
-        DeferredUpdatesScheduler.schedule(this);
     }
-    flushUpdates() {
-        if (!this._pendingUpdates)
-            return;
+    onDispatchNotification() {
         const prevValue = this._prevValue;
-        const value = this.value;
-        this._pendingUpdates = false;
         this._prevValue = null;
-        if (value === prevValue) {
+        if (!this._observers?.size)
             return;
-        }
+        const value = this.value;
+        if (value === prevValue)
+            return;
         for (const observer of this._observers.values()) {
             try {
                 const result = observer(value);
@@ -66,8 +32,8 @@ class ObservableBase {
         }
     }
     subscribe(observer) {
+        const id = ++this._lastObserverId;
         this._observers ??= new Map();
-        const id = ++this._nextSubscriptionId;
         this._observers.set(id, observer);
         return {
             unsubscribe: () => {

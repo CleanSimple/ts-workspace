@@ -1,16 +1,16 @@
-import type { IDependent, ObservablesOf } from '../types';
+import type { ObservablesOf } from '../types';
 
 import { SENTINEL } from '../sentinel';
+import { notifyDependents, registerDependent } from '../tracking';
 import { ObservableBase } from './ObservableBase';
 
 /**
  * Multi source computed observable
  */
-export class Computed<T extends readonly unknown[], R> extends ObservableBase<R>
-    implements IDependent
-{
+export class Computed<T extends readonly unknown[], R> extends ObservableBase<R> {
     private readonly _observables: ObservablesOf<T>;
     private readonly _compute: (...values: T) => R;
+    private readonly _dependencyUpdatedCallback: () => void;
     private _value: R;
     private _shouldCompute: boolean;
 
@@ -21,15 +21,15 @@ export class Computed<T extends readonly unknown[], R> extends ObservableBase<R>
         this._value = SENTINEL as R;
         this._shouldCompute = true;
 
-        for (let i = 0; i < observables.length; ++i) {
-            (observables[i] as ObservableBase<T>).registerDependent(this);
-        }
-    }
+        this._dependencyUpdatedCallback = () => {
+            this.scheduleNotification();
+            this._shouldCompute = true;
+            notifyDependents(this);
+        };
 
-    public onDependencyUpdated() {
-        this.scheduleUpdate();
-        this._shouldCompute = true;
-        this.notifyDependents();
+        for (let i = 0; i < observables.length; ++i) {
+            registerDependent(observables[i], this._dependencyUpdatedCallback);
+        }
     }
 
     public override get value(): R {

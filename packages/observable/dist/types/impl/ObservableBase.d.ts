@@ -1,21 +1,14 @@
-import type { IDependent, IHasUpdates, Observable, Observer, Subscription } from '../types';
+import type { Observer, Subscription } from '../types';
+import { Observable } from '../abstract/Observable';
 /**
  * Base class for observables
  * Handles subscriptions and dispatching updates
  */
-export declare abstract class ObservableBase<T> implements Observable<T>, IHasUpdates {
+export declare abstract class ObservableBase<T> extends Observable<T> {
+    private _lastObserverId;
     private _observers;
-    private _dependents;
-    private _nextDependantId;
-    private _nextSubscriptionId;
     private _prevValue;
-    private _pendingUpdates;
-    registerDependent(dependant: IDependent): {
-        unsubscribe: () => void;
-    };
-    protected notifyDependents(): void;
-    protected scheduleUpdate(): void;
-    flushUpdates(): void;
-    abstract get value(): T;
+    protected onScheduleNotification(): void;
+    protected onDispatchNotification(): void;
     subscribe(observer: Observer<T>): Subscription;
 }

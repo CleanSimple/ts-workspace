@@ -1,11 +1,12 @@
-import type { IDependent, IHasUpdates, ObservablesOf, Subscription } from '../types';
-export declare class MultiObservableSubscription<T extends readonly unknown[]> implements Subscription, IDependent, IHasUpdates {
+import type { ObservablesOf, Subscription } from '../types';
+import { DeferredNotifier } from '../abstract/DeferredNotifier';
+export declare class MultiObservableSubscription<T extends readonly unknown[]> extends DeferredNotifier implements Subscription {
     private readonly _observables;
     private readonly _observer;
-    private readonly _subscriptions;
-    private _pendingUpdates;
+    private readonly _dependencyUpdatedCallback;
+    private readonly _registrations;
     constructor(observables: ObservablesOf<T>, observer: (...values: T) => void);
-    onDependencyUpdated(): void;
-    flushUpdates(): void;
+    protected onScheduleNotification(): void;
+    protected onDispatchNotification(): void;
     unsubscribe(): void;
 }

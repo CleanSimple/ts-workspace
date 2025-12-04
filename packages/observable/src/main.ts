@@ -1,16 +1,15 @@
-import type { Observable } from './abstract/Observable';
-import type { ObservablesOf, Subscription, Task, TaskAction, TaskStatus, Val } from './types';
+import type { ObservablesOf, Subscription, Task, TaskAction, TaskStatus } from './types';
 
+import { Observable } from './abstract/Observable';
 import { Computed } from './impl/Computed';
 import { ComputedSingle } from './impl/ComputedSingle';
 import { MultiObservableSubscription } from './impl/MultiObservableSubscription';
-import { ObservableBase } from './impl/ObservableBase';
-import { ValImpl } from './impl/ValImpl';
+import { Val } from './impl/Val';
 
 import './extensions';
 
 export function val<T>(initialValue: T): Val<T> {
-    return new ValImpl<T>(initialValue);
+    return new Val<T>(initialValue);
 }
 
 export function computed<T extends readonly unknown[], R>(
@@ -75,9 +74,9 @@ export function task<T>(action: TaskAction<T>): Task<T> {
 }
 
 export function isObservable(value: unknown): value is Observable<unknown> {
-    return value instanceof ObservableBase;
+    return value instanceof Observable;
 }
 
 export function isVal(value: unknown): value is Val<unknown> {
-    return value instanceof ValImpl;
+    return value instanceof Val;
 }

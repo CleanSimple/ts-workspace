@@ -1,23 +1,71 @@
 var Observable = (function (exports) {
     'use strict';
 
-    class DeferredUpdatesScheduler {
-        static _items = [];
-        static _scheduled = false;
-        static schedule(item) {
-            DeferredUpdatesScheduler._items.push(item);
-            if (DeferredUpdatesScheduler._scheduled)
+    class DeferredNotifier {
+        _isScheduled = false;
+        scheduleNotification() {
+            if (this._isScheduled)
                 return;
-            DeferredUpdatesScheduler._scheduled = true;
-            queueMicrotask(DeferredUpdatesScheduler.flush);
+            this._isScheduled = true;
+            this.onScheduleNotification();
+            DeferredNotifier._scheduledNotifiers.push(this);
+            if (DeferredNotifier._scheduledNotifiers.length === 1) {
+                queueMicrotask(DeferredNotifier.dispatchNotifications);
+            }
         }
-        static flush() {
-            const items = DeferredUpdatesScheduler._items;
-            DeferredUpdatesScheduler._items = [];
-            DeferredUpdatesScheduler._scheduled = false;
-            const n = items.length;
+        /* static members */
+        static _scheduledNotifiers = [];
+        static dispatchNotifications() {
+            const notifiers = DeferredNotifier._scheduledNotifiers;
+            DeferredNotifier._scheduledNotifiers = [];
+            const n = notifiers.length;
             for (let i = 0; i < n; ++i) {
-                items[i].flushUpdates();
+                const notifier = notifiers[i];
+                notifier._isScheduled = false;
+                notifier.onDispatchNotification();
+            }
+        }
+    }
+
+    const ObservableSymbol = Symbol('Observable');
+    class Observable extends DeferredNotifier {
+        [ObservableSymbol] = true;
+    }
+
+    const SENTINEL = Symbol('SENTINEL');
+
+    class TrackingInfo {
+        lastDependentId = 0;
+        dependents = new Map();
+    }
+    const _TrackingMap = new WeakMap();
+    function registerDependent(observable, dependent) {
+        let trackingInfo = _TrackingMap.get(observable);
+        if (!trackingInfo) {
+            trackingInfo = new TrackingInfo();
+            _TrackingMap.set(observable, trackingInfo);
+        }
+        const id = ++trackingInfo.lastDependentId;
+        trackingInfo.dependents.set(id, new WeakRef(dependent));
+        return {
+            unregister: () => {
+                trackingInfo.dependents.delete(id);
+            },
+        };
+    }
+    function notifyDependents(observable) {
+        const trackingInfo = _TrackingMap.get(observable);
+        if (!trackingInfo)
+            return;
+        if (!trackingInfo.dependents.size)
+            return;
+        for (const [id, ref] of trackingInfo.dependents.entries()) {
+            const dependent = ref.deref();
+            if (dependent) {
+                dependent();
+            }
+            else {
+                trackingInfo.dependents.delete(id);
             }
         }
     }
@@ -26,55 +74,21 @@ var Observable = (function (exports) {
      * Base class for observables
      * Handles subscriptions and dispatching updates
      */
-    class ObservableBase {
+    class ObservableBase extends Observable {
+        _lastObserverId = 0;
         _observers = null;
-        _dependents = null;
-        _nextDependantId = 0;
-        _nextSubscriptionId = 0;
         _prevValue = null;
-        _pendingUpdates = false;
-        registerDependent(dependant) {
-            this._dependents ??= new Map();
-            const id = ++this._nextDependantId;
-            this._dependents.set(id, new WeakRef(dependant));
-            return {
-                unsubscribe: () => {
-                    this._dependents.delete(id);
-                },
-            };
-        }
-        notifyDependents() {
-            if (!this._dependents)
-                return;
-            for (const [id, ref] of this._dependents.entries()) {
-                const dependant = ref.deref();
-                if (dependant) {
-                    dependant.onDependencyUpdated();
-                }
-                else {
-                    this._dependents.delete(id);
-                }
-            }
-        }
-        scheduleUpdate() {
-            if (!this._observers)
-                return;
-            if (this._pendingUpdates)
-                return;
-            this._pendingUpdates = true;
+        onScheduleNotification() {
             this._prevValue = this.value;
-            DeferredUpdatesScheduler.schedule(this);
         }
-        flushUpdates() {
-            if (!this._pendingUpdates)
-                return;
+        onDispatchNotification() {
             const prevValue = this._prevValue;
-            const value = this.value;
-            this._pendingUpdates = false;
             this._prevValue = null;
-            if (value === prevValue) {
+            if (!this._observers?.size)
                 return;
-            }
+            const value = this.value;
+            if (value === prevValue)
+                return;
             for (const observer of this._observers.values()) {
                 try {
                     const result = observer(value);
@@ -88,8 +102,8 @@ var Observable = (function (exports) {
             }
         }
         subscribe(observer) {
+            const id = ++this._lastObserverId;
             this._observers ??= new Map();
-            const id = ++this._nextSubscriptionId;
             this._observers.set(id, observer);
             return {
                 unsubscribe: () => {
@@ -105,26 +119,27 @@ var Observable = (function (exports) {
     class Computed extends ObservableBase {
         _observables;
         _compute;
+        _dependencyUpdatedCallback;
         _value;
-        _shouldReCompute;
+        _shouldCompute;
         constructor(observables, compute) {
             super();
             this._observables = observables;
             this._compute = compute;
-            this._value = this._compute(...observables.map(observable => observable.value));
-            this._shouldReCompute = false;
+            this._value = SENTINEL;
+            this._shouldCompute = true;
+            this._dependencyUpdatedCallback = () => {
+                this.scheduleNotification();
+                this._shouldCompute = true;
+                notifyDependents(this);
+            };
             for (let i = 0; i < observables.length; ++i) {
-                observables[i].registerDependent(this);
+                registerDependent(observables[i], this._dependencyUpdatedCallback);
             }
         }
-        onDependencyUpdated() {
-            this.scheduleUpdate();
-            this._shouldReCompute = true;
-            this.notifyDependents();
-        }
         get value() {
-            if (this._shouldReCompute) {
-                this._shouldReCompute = false;
+            if (this._shouldCompute) {
+                this._shouldCompute = false;
                 this._value = this._compute(...this._observables.map(observable => observable.value));
             }
             return this._value;
@@ -137,58 +152,53 @@ var Observable = (function (exports) {
     class ComputedSingle extends ObservableBase {
         _observable;
         _compute;
+        _dependencyUpdatedCallback;
         _value;
-        _shouldReCompute;
+        _shouldCompute;
         constructor(observable, compute) {
             super();
             this._observable = observable;
             this._compute = compute;
-            this._value = this._compute(observable.value);
-            this._shouldReCompute = false;
-            observable.registerDependent(this);
-        }
-        onDependencyUpdated() {
-            this.scheduleUpdate();
-            this._shouldReCompute = true;
-            this.notifyDependents();
+            this._value = SENTINEL;
+            this._shouldCompute = true;
+            this._dependencyUpdatedCallback = () => {
+                this.scheduleNotification();
+                this._shouldCompute = true;
+                notifyDependents(this);
+            };
+            registerDependent(observable, this._dependencyUpdatedCallback);
         }
         get value() {
-            if (this._shouldReCompute) {
-                this._shouldReCompute = false;
+            if (this._shouldCompute) {
+                this._shouldCompute = false;
                 this._value = this._compute(this._observable.value);
             }
             return this._value;
         }
     }
 
-    class MultiObservableSubscription {
+    class MultiObservableSubscription extends DeferredNotifier {
         _observables;
         _observer;
-        _subscriptions;
-        _pendingUpdates = false;
+        _dependencyUpdatedCallback;
+        _registrations;
         constructor(observables, observer) {
+            super();
             this._observables = observables;
             this._observer = observer;
-            this._subscriptions = [];
+            this._registrations = [];
+            this._dependencyUpdatedCallback = () => this.scheduleNotification();
             for (let i = 0; i < observables.length; ++i) {
-                this._subscriptions.push(observables[i].registerDependent(this));
+                this._registrations.push(registerDependent(observables[i], this._dependencyUpdatedCallback));
             }
         }
-        onDependencyUpdated() {
-            if (this._pendingUpdates)
-                return;
-            this._pendingUpdates = true;
-            DeferredUpdatesScheduler.schedule(this);
-        }
-        flushUpdates() {
-            if (!this._pendingUpdates)
-                return;
-            this._pendingUpdates = false;
+        onScheduleNotification() { }
+        onDispatchNotification() {
             this._observer(...this._observables.map(observable => observable.value));
         }
         unsubscribe() {
-            for (let i = 0; i < this._subscriptions.length; ++i) {
-                this._subscriptions[i].unsubscribe();
+            for (let i = 0; i < this._registrations.length; ++i) {
+                this._registrations[i].unregister();
             }
         }
     }
@@ -196,7 +206,7 @@ var Observable = (function (exports) {
     /**
      * Simple observable value implementation
      */
-    class ValImpl extends ObservableBase {
+    class Val extends ObservableBase {
         _value;
         constructor(initialValue) {
             super();
@@ -208,14 +218,18 @@ var Observable = (function (exports) {
         set value(newValue) {
             if (newValue === this._value)
                 return;
-            this.scheduleUpdate();
+            this.scheduleNotification();
             this._value = newValue;
-            this.notifyDependents();
+            notifyDependents(this);
         }
     }
 
+    Observable.prototype.computed = function (compute) {
+        return new ComputedSingle(this, compute);
+    };
+
     function val(initialValue) {
-        return new ValImpl(initialValue);
+        return new Val(initialValue);
     }
     function computed(source, compute) {
         return Array.isArray(source)
@@ -258,10 +272,10 @@ var Observable = (function (exports) {
         return { value, status, isRunning, isCompleted, isSuccess, isError, error, rerun: run };
     }
     function isObservable(value) {
-        return value instanceof ObservableBase;
+        return value instanceof Observable;
     }
     function isVal(value) {
-        return value instanceof ValImpl;
+        return value instanceof Val;
     }
 
     exports.computed = computed;

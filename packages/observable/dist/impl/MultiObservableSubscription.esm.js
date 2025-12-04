@@ -1,33 +1,28 @@
-import { DeferredUpdatesScheduler } from '../scheduling.esm.js';
+import { DeferredNotifier } from '../abstract/DeferredNotifier.esm.js';
+import { registerDependent } from '../tracking.esm.js';
 
-class MultiObservableSubscription {
+class MultiObservableSubscription extends DeferredNotifier {
     _observables;
     _observer;
-    _subscriptions;
-    _pendingUpdates = false;
+    _dependencyUpdatedCallback;
+    _registrations;
     constructor(observables, observer) {
+        super();
         this._observables = observables;
         this._observer = observer;
-        this._subscriptions = [];
+        this._registrations = [];
+        this._dependencyUpdatedCallback = () => this.scheduleNotification();
         for (let i = 0; i < observables.length; ++i) {
-            this._subscriptions.push(observables[i].registerDependent(this));
+            this._registrations.push(registerDependent(observables[i], this._dependencyUpdatedCallback));
         }
     }
-    onDependencyUpdated() {
-        if (this._pendingUpdates)
-            return;
-        this._pendingUpdates = true;
-        DeferredUpdatesScheduler.schedule(this);
-    }
-    flushUpdates() {
-        if (!this._pendingUpdates)
-            return;
-        this._pendingUpdates = false;
+    onScheduleNotification() { }
+    onDispatchNotification() {
         this._observer(...this._observables.map(observable => observable.value));
     }
     unsubscribe() {
-        for (let i = 0; i < this._subscriptions.length; ++i) {
-            this._subscriptions[i].unsubscribe();
+        for (let i = 0; i < this._registrations.length; ++i) {
+            this._registrations[i].unregister();
         }
     }
 }

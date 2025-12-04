@@ -1,62 +1,29 @@
-import type { IDependent, IHasUpdates, Observer, Subscription } from '../types';
+import type { Observer, Subscription } from '../types';
 
 import { Observable } from '../abstract/Observable';
-import { DeferredUpdatesScheduler } from '../scheduling';
 
 /**
  * Base class for observables
  * Handles subscriptions and dispatching updates
  */
-export abstract class ObservableBase<T> extends Observable<T> implements IHasUpdates {
+export abstract class ObservableBase<T> extends Observable<T> {
+    private _lastObserverId: number = 0;
     private _observers: Map<number, Observer<T>> | null = null;
-    private _dependents: Map<number, WeakRef<IDependent>> | null = null;
-    private _nextDependentId = 0;
-    private _nextSubscriptionId = 0;
     private _prevValue: T | null = null;
-    private _pendingUpdates = false;
 
-    public registerDependent(dependent: IDependent) {
-        this._dependents ??= new Map();
-        const id = ++this._nextDependentId;
-        this._dependents.set(id, new WeakRef(dependent));
-        return {
-            unsubscribe: () => {
-                this._dependents!.delete(id);
-            },
-        };
-    }
-
-    protected notifyDependents() {
-        if (!this._dependents) return;
-        for (const [id, ref] of this._dependents.entries()) {
-            const dependent = ref.deref();
-            if (dependent) {
-                dependent.onDependencyUpdated();
-            }
-            else {
-                this._dependents.delete(id);
-            }
-        }
-    }
-
-    protected scheduleUpdate() {
-        if (!this._observers) return;
-        if (this._pendingUpdates) return;
-        this._pendingUpdates = true;
+    protected override onScheduleNotification(): void {
         this._prevValue = this.value;
-        DeferredUpdatesScheduler.schedule(this);
     }
 
-    public flushUpdates() {
-        if (!this._pendingUpdates) return;
+    protected override onDispatchNotification(): void {
         const prevValue = this._prevValue;
-        const value = this.value;
-        this._pendingUpdates = false;
         this._prevValue = null;
-        if (value === prevValue) {
-            return;
-        }
-        for (const observer of this._observers!.values()) {
+        if (!this._observers?.size) return;
+
+        const value = this.value;
+        if (value === prevValue) return;
+
+        for (const observer of this._observers.values()) {
             try {
                 const result = observer(value);
                 if (result instanceof Promise) {
@@ -70,9 +37,10 @@ export abstract class ObservableBase<T> extends Observable<T> implements IHasUpd
     }
 
     public override subscribe(observer: Observer<T>): Subscription {
+        const id = ++this._lastObserverId;
         this._observers ??= new Map();
-        const id = ++this._nextSubscriptionId;
         this._observers.set(id, observer);
+
         return {
             unsubscribe: () => {
                 this._observers!.delete(id);

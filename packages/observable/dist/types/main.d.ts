@@ -1,4 +1,7 @@
-import type { Observable, ObservablesOf, Subscription, Task, TaskAction, Val } from './types';
+import type { ObservablesOf, Subscription, Task, TaskAction } from './types';
+import { Observable } from './abstract/Observable';
+import { Val } from './impl/Val';
+import './extensions';
 export declare function val<T>(initialValue: T): Val<T>;
 export declare function computed<T extends readonly unknown[], R>(observables: ObservablesOf<T>, compute: (...values: T) => R): Observable<R>;
 export declare function computed<T, R>(observable: Observable<T>, compute: (value: T) => R): Observable<R>;

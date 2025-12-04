@@ -1,11 +1,10 @@
-import type { Val } from '../types';
-
+import { notifyDependents } from '../tracking';
 import { ObservableBase } from './ObservableBase';
 
 /**
  * Simple observable value implementation
  */
-export class ValImpl<T> extends ObservableBase<T> implements Val<T> {
+export class Val<T> extends ObservableBase<T> {
     private _value: T;
 
     public constructor(initialValue: T) {
@@ -19,8 +18,8 @@ export class ValImpl<T> extends ObservableBase<T> implements Val<T> {
 
     public set value(newValue) {
         if (newValue === this._value) return;
-        this.scheduleUpdate();
+        this.scheduleNotification();
         this._value = newValue;
-        this.notifyDependents();
+        notifyDependents(this);
     }
 }

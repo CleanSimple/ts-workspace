@@ -1,42 +1,40 @@
-import type { IDependent, IHasUpdates, ObservablesOf, Subscription } from '../types';
-import type { ObservableBase } from './ObservableBase';
+import type { ObservablesOf, Registration, Subscription } from '../types';
 
-import { DeferredUpdatesScheduler } from '../scheduling';
+import { DeferredNotifier } from '../abstract/DeferredNotifier';
+import { registerDependent } from '../tracking';
 
-export class MultiObservableSubscription<T extends readonly unknown[]>
-    implements Subscription, IDependent, IHasUpdates
+export class MultiObservableSubscription<T extends readonly unknown[]> extends DeferredNotifier
+    implements Subscription
 {
     private readonly _observables: ObservablesOf<T>;
     private readonly _observer: (...values: T) => void;
-    private readonly _subscriptions: Subscription[];
-    private _pendingUpdates: boolean = false;
+    private readonly _dependencyUpdatedCallback: () => void;
+    private readonly _registrations: Registration[];
 
     public constructor(observables: ObservablesOf<T>, observer: (...values: T) => void) {
+        super();
         this._observables = observables;
         this._observer = observer;
-        this._subscriptions = [];
+        this._registrations = [];
+
+        this._dependencyUpdatedCallback = () => this.scheduleNotification();
+
         for (let i = 0; i < observables.length; ++i) {
-            this._subscriptions.push(
-                (observables[i] as ObservableBase<T>).registerDependent(this),
+            this._registrations.push(
+                registerDependent(observables[i], this._dependencyUpdatedCallback),
             );
         }
     }
 
-    public onDependencyUpdated() {
-        if (this._pendingUpdates) return;
-        this._pendingUpdates = true;
-        DeferredUpdatesScheduler.schedule(this);
-    }
+    protected override onScheduleNotification(): void {/* empty */}
 
-    public flushUpdates() {
-        if (!this._pendingUpdates) return;
-        this._pendingUpdates = false;
+    protected override onDispatchNotification(): void {
         this._observer(...this._observables.map(observable => observable.value) as unknown as T);
     }
 
     public unsubscribe() {
-        for (let i = 0; i < this._subscriptions.length; ++i) {
-            this._subscriptions[i].unsubscribe();
+        for (let i = 0; i < this._registrations.length; ++i) {
+            this._registrations[i].unregister();
         }
     }
 }

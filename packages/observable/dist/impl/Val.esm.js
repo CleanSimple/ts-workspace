@@ -1,9 +1,10 @@
+import { notifyDependents } from '../tracking.esm.js';
 import { ObservableBase } from './ObservableBase.esm.js';
 
 /**
  * Simple observable value implementation
  */
-class ValImpl extends ObservableBase {
+class Val extends ObservableBase {
     _value;
     constructor(initialValue) {
         super();
@@ -15,10 +16,10 @@ class ValImpl extends ObservableBase {
     set value(newValue) {
         if (newValue === this._value)
             return;
-        this.scheduleUpdate();
+        this.scheduleNotification();
         this._value = newValue;
-        this.notifyDependents();
+        notifyDependents(this);
     }
 }
 
-export { ValImpl };
+export { Val };

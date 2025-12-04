@@ -3,13 +3,11 @@ import type { Observable } from './abstract/Observable';
 export interface Subscription {
     unsubscribe: () => void;
 }
+export interface Registration {
+    unregister: () => void;
+}
 
 export type Observer<T> = (value: T) => void | Promise<void>;
-
-export interface Val<T> extends Observable<T> {
-    get value(): T;
-    set value(newValue: T);
-}
 
 export type TaskStatus = 'Running' | 'Success' | 'Error';
 export type TaskAction<T> = (params: { signal: AbortSignal }) => Promise<T>;
@@ -28,11 +26,3 @@ export interface Task<T> {
 export type ObservablesOf<T extends readonly unknown[]> = {
     [K in keyof T]: Observable<T[K]>;
 };
-
-export interface IDependent {
-    onDependencyUpdated: () => void;
-}
-
-export interface IHasUpdates {
-    flushUpdates: () => void;
-}

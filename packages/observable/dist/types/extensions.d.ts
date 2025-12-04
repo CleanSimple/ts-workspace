@@ -1,4 +1,4 @@
-import type { Observable } from './types';
+import { Observable } from './abstract/Observable';
 interface ObservableExtensions<T> {
     /**
      * A shorthand for creating a computed observable
@@ -13,12 +13,8 @@ interface ObservableExtensions<T> {
      */
     computed: <TComputed>(compute: (value: T) => TComputed) => Observable<TComputed>;
 }
-declare module './types' {
+declare module './abstract/Observable' {
     interface Observable<T> extends ObservableExtensions<T> {
-    }
-}
-declare module './impl/ObservableBase' {
-    interface ObservableBase<T> extends ObservableExtensions<T> {
     }
 }
 export {};
