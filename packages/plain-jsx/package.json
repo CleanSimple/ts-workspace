@@ -12,6 +12,9 @@
     ],
     "author": "Nour Nasser <nours02345@gmail.com>",
     "license": "MIT",
+    "publishConfig": {
+        "access": "public"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/CleanSimple/ts-workspace.git"
