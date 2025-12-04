@@ -12,6 +12,7 @@ export default defineConfig({
         commonjs(),
         typescript({
             tsconfig: './tsconfig.json',
+            noEmitOnError: true
         }),
         importAsString({
             include: [
