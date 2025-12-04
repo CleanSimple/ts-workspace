@@ -7,8 +7,8 @@ import { Stack } from './ui/Stack';
 
 const ComputedSingle: FunctionalComponent = () => {
     const count = val(0);
-    const double = count.computed(() => count.value * 2);
-    const quad = double.computed(() => double.value * 2);
+    const double = count.computed(count => count * 2);
+    const quad = double.computed(double => double * 2);
 
     const increment = () => count.value++;
     const decrement = () => count.value--;
