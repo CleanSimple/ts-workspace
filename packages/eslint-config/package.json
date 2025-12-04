@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/eslint-config",
-    "version": "1.0.7",
+    "version": "1.1.0",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "keywords": [
