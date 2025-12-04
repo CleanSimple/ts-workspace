@@ -1371,7 +1371,7 @@
             render(this.playerElement, this.skipDlgRoot);
         }
         get status() {
-            if (this.skipDlgRef.value) {
+            if (this.skipDlgRef.current) {
                 return 'skipping';
             }
             return this.videoElement.paused ? 'paused' : 'playing';
@@ -1404,8 +1404,8 @@
             }
         }
         toggleSkipDialog() {
-            if (this.skipDlgRef.value) {
-                this.skipDlgRef.value.cancel();
+            if (this.skipDlgRef.current) {
+                this.skipDlgRef.current.cancel();
                 return;
             }
             const wasPlaying = !this.videoElement.paused;
@@ -1428,7 +1428,7 @@
             this.skipDlgRoot.value = (jsx(SkipDlg, { ref: this.skipDlgRef, skipMins: skipMins, skipSecs: skipSecs, onAccept: handleAccept, onClosed: handleClosed }));
         }
         skipDialogAccept() {
-            this.skipDlgRef.value?.accept();
+            this.skipDlgRef.current?.accept();
         }
         skipForward() {
             this.videoElement.currentTime += 3;

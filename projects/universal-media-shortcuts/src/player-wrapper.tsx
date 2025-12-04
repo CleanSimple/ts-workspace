@@ -27,7 +27,7 @@ export class PlayerWrapper {
     }
 
     public get status() {
-        if (this.skipDlgRef.value) {
+        if (this.skipDlgRef.current) {
             return 'skipping';
         }
         return this.videoElement.paused ? 'paused' : 'playing';
@@ -66,8 +66,8 @@ export class PlayerWrapper {
     }
 
     public toggleSkipDialog() {
-        if (this.skipDlgRef.value) {
-            this.skipDlgRef.value.cancel();
+        if (this.skipDlgRef.current) {
+            this.skipDlgRef.current.cancel();
             return;
         }
 
@@ -105,7 +105,7 @@ export class PlayerWrapper {
     }
 
     public skipDialogAccept() {
-        this.skipDlgRef.value?.accept();
+        this.skipDlgRef.current?.accept();
     }
 
     public skipForward() {
