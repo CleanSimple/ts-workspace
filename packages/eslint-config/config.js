@@ -53,18 +53,12 @@ export default defineConfig([
         // additional rules
         rules: {
             '@typescript-eslint/no-import-type-side-effects': 'warn',
-            '@typescript-eslint/consistent-type-imports': ['warn', {
-                prefer: 'type-imports',
-                fixStyle: 'separate-type-imports',
-                disallowTypeAnnotations: true,
-            }],
-            '@typescript-eslint/consistent-type-exports': 'warn',
             '@typescript-eslint/method-signature-style': 'warn',
             "@typescript-eslint/no-empty-object-type": ["warn", {
                 allowInterfaces: 'always'
             }],
 
-            '@typescript-eslint/explicit-member-accessibility': 'error',
+            '@typescript-eslint/explicit-member-accessibility': 'warn',
             '@typescript-eslint/default-param-last': 'error',
             '@typescript-eslint/prefer-readonly': 'warn',
             '@typescript-eslint/class-methods-use-this': ['warn', {
@@ -82,6 +76,7 @@ export default defineConfig([
                 ],
                 'newlines-between': 'always',
             }],
+            'import/no-duplicates': 'warn',
             'import/consistent-type-specifier-style': ['warn', 'prefer-top-level'],
         },
     },
