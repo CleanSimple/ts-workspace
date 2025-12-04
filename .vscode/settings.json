@@ -16,6 +16,7 @@
         "iife",
         "jsdocify",
         "jsxs",
+        "Schedulable",
         "tampermonkey",
         "userscript"
     ],

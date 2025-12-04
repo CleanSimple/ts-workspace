@@ -19,7 +19,7 @@ export abstract class Schedulable {
 
     /* static members */
     private static _pendingItems: Schedulable[] = [];
-    private static _flushCycleCount: number = 0;
+    private static _cyclicScheduleCount: number = 0;
 
     private static flush(this: void) {
         const items = Schedulable._pendingItems;
@@ -34,15 +34,15 @@ export abstract class Schedulable {
 
         // detect cyclic scheduling
         if (Schedulable._pendingItems.length > 0) {
-            Schedulable._flushCycleCount++;
-            if (Schedulable._flushCycleCount >= 100) {
+            Schedulable._cyclicScheduleCount++;
+            if (Schedulable._cyclicScheduleCount >= 100) {
                 // break the cycle to avoid starving the event loop
                 Schedulable._pendingItems = [];
                 throw new Error('Too many nested updates');
             }
         }
         else {
-            Schedulable._flushCycleCount = 0;
+            Schedulable._cyclicScheduleCount = 0;
         }
     }
 }
