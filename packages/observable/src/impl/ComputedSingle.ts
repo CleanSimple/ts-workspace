@@ -1,13 +1,11 @@
-import type { Observable } from '../abstract/Observable';
-
+import { Observable } from '../abstract/Observable';
 import { SENTINEL } from '../sentinel';
 import { notifyDependents, registerDependent } from '../tracking';
-import { ObservableBase } from './ObservableBase';
 
 /**
  * Single source computed observable
  */
-export class ComputedSingle<T, R> extends ObservableBase<R> {
+export class ComputedSingle<T, R> extends Observable<R> {
     private readonly _observable: Observable<T>;
     private readonly _compute: (value: T) => R;
     private readonly _dependencyUpdatedCallback: () => void;

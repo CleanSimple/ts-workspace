@@ -1,13 +1,13 @@
 import type { ObservablesOf } from '../types';
 
+import { Observable } from '../abstract/Observable';
 import { SENTINEL } from '../sentinel';
 import { notifyDependents, registerDependent } from '../tracking';
-import { ObservableBase } from './ObservableBase';
 
 /**
  * Multi source computed observable
  */
-export class Computed<T extends readonly unknown[], R> extends ObservableBase<R> {
+export class Computed<T extends readonly unknown[], R> extends Observable<R> {
     private readonly _observables: ObservablesOf<T>;
     private readonly _compute: (...values: T) => R;
     private readonly _dependencyUpdatedCallback: () => void;

@@ -1,10 +1,10 @@
+import { Observable } from '../abstract/Observable';
 import { notifyDependents } from '../tracking';
-import { ObservableBase } from './ObservableBase';
 
 /**
  * Simple observable value implementation
  */
-export class Val<T> extends ObservableBase<T> {
+export class Val<T> extends Observable<T> {
     private _value: T;
 
     public constructor(initialValue: T) {

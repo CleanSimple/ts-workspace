@@ -1,4 +1,3 @@
-import type { Observable } from './abstract/Observable';
 import type { Registration } from './types';
 
 class TrackingInfo {
@@ -6,16 +5,13 @@ class TrackingInfo {
     public dependents = new Map<number, WeakRef<() => void>>();
 }
 
-const _TrackingMap = new WeakMap<Observable<unknown>, TrackingInfo>();
+const _TrackingMap = new WeakMap<object, TrackingInfo>();
 
-export function registerDependent(
-    observable: Observable<unknown>,
-    dependent: () => void,
-): Registration {
-    let trackingInfo = _TrackingMap.get(observable);
+export function registerDependent(dependency: object, dependent: () => void): Registration {
+    let trackingInfo = _TrackingMap.get(dependency);
     if (!trackingInfo) {
         trackingInfo = new TrackingInfo();
-        _TrackingMap.set(observable, trackingInfo);
+        _TrackingMap.set(dependency, trackingInfo);
     }
 
     const id = ++trackingInfo.lastDependentId;
@@ -28,8 +24,8 @@ export function registerDependent(
     };
 }
 
-export function notifyDependents(observable: Observable<unknown>): void {
-    const trackingInfo = _TrackingMap.get(observable);
+export function notifyDependents(dependency: object): void {
+    const trackingInfo = _TrackingMap.get(dependency);
     if (!trackingInfo) return;
     if (!trackingInfo.dependents.size) return;
 
