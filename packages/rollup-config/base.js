@@ -5,6 +5,8 @@ import { importAsString } from 'rollup-plugin-string-import';
 import typescript from '@rollup/plugin-typescript';
 import tsConfigPaths from "rollup-plugin-tsconfig-paths"
 
+const isWatch = process.env.ROLLUP_WATCH === 'true';
+
 export default defineConfig({
     plugins: [
         tsConfigPaths(),
@@ -12,7 +14,7 @@ export default defineConfig({
         commonjs(),
         typescript({
             tsconfig: './tsconfig.json',
-            noEmitOnError: true
+            noEmitOnError: !isWatch,
         }),
         importAsString({
             include: [
