@@ -1,5 +1,4 @@
 import { Signal } from '../abstract/Signal.esm.js';
-import { notifyDependents } from '../tracking.esm.js';
 
 /**
  * Simple value signal implementation
@@ -18,7 +17,7 @@ class Val extends Signal {
             return;
         this.schedule();
         this._value = newValue;
-        notifyDependents(this);
+        this.notifyDependents();
     }
 }
 

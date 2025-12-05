@@ -1,14 +1,15 @@
+import type { IDependent } from '../interfaces/IDependent';
 import type { Registration, SignalsOf, Subscription } from '../types';
 
 import { Schedulable } from '../abstract/Schedulable';
-import { registerDependent } from '../tracking';
+import { IDependency_registerDependent } from '../interfaces/IDependency';
+import { IDependent_onDependencyUpdated } from '../interfaces/IDependent';
 
 export class MultiSourceSubscription<T extends readonly unknown[]> extends Schedulable
-    implements Subscription
+    implements Subscription, IDependent
 {
     private readonly _signals: SignalsOf<T>;
     private readonly _observer: (...values: T) => void;
-    private readonly _dependencyUpdatedCallback: () => void;
     private readonly _registrations: Registration[];
 
     public constructor(signals: SignalsOf<T>, observer: (...values: T) => void) {
@@ -17,11 +18,9 @@ export class MultiSourceSubscription<T extends readonly unknown[]> extends Sched
         this._observer = observer;
         this._registrations = [];
 
-        this._dependencyUpdatedCallback = () => this.schedule();
-
         for (let i = 0; i < signals.length; ++i) {
             this._registrations.push(
-                registerDependent(signals[i], this._dependencyUpdatedCallback),
+                signals[i][IDependency_registerDependent](this),
             );
         }
     }
@@ -36,5 +35,10 @@ export class MultiSourceSubscription<T extends readonly unknown[]> extends Sched
         for (let i = 0; i < this._registrations.length; ++i) {
             this._registrations[i].unregister();
         }
+    }
+
+    /* IDependent */
+    public [IDependent_onDependencyUpdated]() {
+        this.schedule();
     }
 }

@@ -1,5 +1,4 @@
 import { Signal } from '../abstract/Signal';
-import { notifyDependents } from '../tracking';
 
 /**
  * Simple value signal implementation
@@ -20,6 +19,6 @@ export class Val<T> extends Signal<T> {
         if (newValue === this._value) return;
         this.schedule();
         this._value = newValue;
-        notifyDependents(this);
+        this.notifyDependents();
     }
 }

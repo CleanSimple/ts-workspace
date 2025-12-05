@@ -1,27 +1,32 @@
+import type { IDependent } from '../interfaces/IDependent';
+
 import { Signal } from '../abstract/Signal';
-import { notifyDependents, registerDependent } from '../tracking';
+import { IDependency_registerDependent } from '../interfaces/IDependency';
+import { IDependent_onDependencyUpdated } from '../interfaces/IDependent';
 
 /**
  * Proxy signal
  */
-export class ProxySignal<T> extends Signal<T> {
-    private readonly _dependencyUpdatedCallback: () => void;
+export class ProxySignal<T> extends Signal<T> implements IDependent {
+    private readonly _signal: Signal<T>;
     private _value: T;
 
     public constructor(signal: Signal<T>) {
         super();
+        this._signal = signal;
         this._value = signal.value;
 
-        this._dependencyUpdatedCallback = () => {
-            this.schedule();
-            this._value = signal.value;
-            notifyDependents(this);
-        };
-
-        registerDependent(signal, this._dependencyUpdatedCallback);
+        signal[IDependency_registerDependent](this);
     }
 
     public override get value(): T {
         return this._value;
+    }
+
+    /* IDependent */
+    public [IDependent_onDependencyUpdated]() {
+        this.schedule();
+        this._value = this._signal.value;
+        this.notifyDependents();
     }
 }

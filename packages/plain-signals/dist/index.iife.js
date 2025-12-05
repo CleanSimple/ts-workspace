@@ -1,6 +1,10 @@
 var PlainSignals = (function (exports) {
     'use strict';
 
+    const IDependency_registerDependent = Symbol('IDependency_registerDependent');
+
+    const IDependent_onDependencyUpdated = Symbol('IDependent_onDependencyUpdated');
+
     class Schedulable {
         _isScheduled = false;
         schedule() {
@@ -43,9 +47,24 @@ var PlainSignals = (function (exports) {
     const SignalSymbol = Symbol('Signal');
     class Signal extends Schedulable {
         [SignalSymbol] = true;
+        _lastDependentId = 0;
         _lastObserverId = 0;
+        _dependents = null;
         _observers = null;
         _prevValue = null;
+        notifyDependents() {
+            if (!this._dependents?.size)
+                return;
+            for (const [id, ref] of this._dependents.entries()) {
+                const dependent = ref.deref();
+                if (dependent) {
+                    dependent[IDependent_onDependencyUpdated]();
+                }
+                else {
+                    this._dependents.delete(id);
+                }
+            }
+        }
         onSchedule() {
             this._prevValue = this.value;
         }
@@ -79,123 +98,91 @@ var PlainSignals = (function (exports) {
                 },
             };
         }
+        /* IDependency */
+        [IDependency_registerDependent](dependent) {
+            const id = ++this._lastDependentId;
+            this._dependents ??= new Map();
+            this._dependents.set(id, new WeakRef(dependent));
+            return {
+                unregister: () => {
+                    this._dependents.delete(id);
+                },
+            };
+        }
     }
 
     const SENTINEL = Symbol('SENTINEL');
 
-    class TrackingInfo {
-        lastDependentId = 0;
-        dependents = new Map();
-    }
-    const _TrackingMap = new WeakMap();
-    function registerDependent(dependency, dependent) {
-        let trackingInfo = _TrackingMap.get(dependency);
-        if (!trackingInfo) {
-            trackingInfo = new TrackingInfo();
-            _TrackingMap.set(dependency, trackingInfo);
+    class ComputedSignal extends Signal {
+        _value;
+        _shouldCompute;
+        constructor() {
+            super();
+            this._value = SENTINEL;
+            this._shouldCompute = true;
         }
-        const id = ++trackingInfo.lastDependentId;
-        trackingInfo.dependents.set(id, new WeakRef(dependent));
-        return {
-            unregister: () => {
-                trackingInfo.dependents.delete(id);
-            },
-        };
-    }
-    function notifyDependents(dependency) {
-        const trackingInfo = _TrackingMap.get(dependency);
-        if (!trackingInfo)
-            return;
-        if (!trackingInfo.dependents.size)
-            return;
-        for (const [id, ref] of trackingInfo.dependents.entries()) {
-            const dependent = ref.deref();
-            if (dependent) {
-                dependent();
+        get value() {
+            if (this._shouldCompute) {
+                this._shouldCompute = false;
+                this._value = this.compute();
             }
-            else {
-                trackingInfo.dependents.delete(id);
-            }
+            return this._value;
+        }
+        /* IDependent */
+        [IDependent_onDependencyUpdated]() {
+            this.schedule();
+            this._shouldCompute = true;
+            this.notifyDependents();
         }
     }
 
     /**
      * Multi source computed signal
      */
-    class Computed extends Signal {
+    class Computed extends ComputedSignal {
         _signals;
         _compute;
-        _dependencyUpdatedCallback;
-        _value;
-        _shouldCompute;
         constructor(signals, compute) {
             super();
             this._signals = signals;
             this._compute = compute;
-            this._value = SENTINEL;
-            this._shouldCompute = true;
-            this._dependencyUpdatedCallback = () => {
-                this.schedule();
-                this._shouldCompute = true;
-                notifyDependents(this);
-            };
             for (let i = 0; i < signals.length; ++i) {
-                registerDependent(signals[i], this._dependencyUpdatedCallback);
+                signals[i][IDependency_registerDependent](this);
             }
         }
-        get value() {
-            if (this._shouldCompute) {
-                this._shouldCompute = false;
-                this._value = this._compute(...this._signals.map(signal => signal.value));
-            }
-            return this._value;
+        compute() {
+            return this._compute(...this._signals.map(signal => signal.value));
         }
     }
 
     /**
      * Single source computed signal
      */
-    class ComputedSingle extends Signal {
+    class ComputedSingle extends ComputedSignal {
         _signal;
         _compute;
-        _dependencyUpdatedCallback;
-        _value;
-        _shouldCompute;
         constructor(signal, compute) {
             super();
             this._signal = signal;
             this._compute = compute;
-            this._value = SENTINEL;
-            this._shouldCompute = true;
-            this._dependencyUpdatedCallback = () => {
-                this.schedule();
-                this._shouldCompute = true;
-                notifyDependents(this);
-            };
-            registerDependent(signal, this._dependencyUpdatedCallback);
+            signal[IDependency_registerDependent](this);
         }
-        get value() {
-            if (this._shouldCompute) {
-                this._shouldCompute = false;
-                this._value = this._compute(this._signal.value);
-            }
-            return this._value;
+        compute() {
+            return this._compute(this._signal.value);
         }
     }
 
     class MultiSourceSubscription extends Schedulable {
         _signals;
         _observer;
-        _dependencyUpdatedCallback;
         _registrations;
         constructor(signals, observer) {
             super();
             this._signals = signals;
             this._observer = observer;
             this._registrations = [];
-            this._dependencyUpdatedCallback = () => this.schedule();
             for (let i = 0; i < signals.length; ++i) {
-                this._registrations.push(registerDependent(signals[i], this._dependencyUpdatedCallback));
+                this._registrations.push(signals[i][IDependency_registerDependent](this));
             }
         }
         onSchedule() { }
@@ -206,6 +193,10 @@ var PlainSignals = (function (exports) {
             for (let i = 0; i < this._registrations.length; ++i) {
                 this._registrations[i].unregister();
             }
+        }
+        /* IDependent */
+        [IDependent_onDependencyUpdated]() {
+            this.schedule();
         }
     }
 
@@ -226,7 +217,7 @@ var PlainSignals = (function (exports) {
                 return;
             this.schedule();
             this._value = newValue;
-            notifyDependents(this);
+            this.notifyDependents();
         }
     }
 
@@ -238,20 +229,22 @@ var PlainSignals = (function (exports) {
      * Proxy signal
      */
     class ProxySignal extends Signal {
-        _dependencyUpdatedCallback;
+        _signal;
         _value;
         constructor(signal) {
             super();
+            this._signal = signal;
             this._value = signal.value;
-            this._dependencyUpdatedCallback = () => {
-                this.schedule();
-                this._value = signal.value;
-                notifyDependents(this);
-            };
-            registerDependent(signal, this._dependencyUpdatedCallback);
+            signal[IDependency_registerDependent](this);
         }
         get value() {
             return this._value;
+        }
+        /* IDependent */
+        [IDependent_onDependencyUpdated]() {
+            this.schedule();
+            this._value = this._signal.value;
+            this.notifyDependents();
         }
     }
 

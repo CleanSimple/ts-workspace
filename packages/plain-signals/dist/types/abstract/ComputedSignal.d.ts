@@ -1,13 +1,11 @@
 import type { IDependent } from '../interfaces/IDependent';
-import { Signal } from '../abstract/Signal';
 import { IDependent_onDependencyUpdated } from '../interfaces/IDependent';
-/**
- * Proxy signal
- */
-export declare class ProxySignal<T> extends Signal<T> implements IDependent {
-    private readonly _signal;
+import { Signal } from './Signal';
+export declare abstract class ComputedSignal<T> extends Signal<T> implements IDependent {
     private _value;
-    constructor(signal: Signal<T>);
+    protected _shouldCompute: boolean;
+    constructor();
+    protected abstract compute(): T;
     get value(): T;
     [IDependent_onDependencyUpdated](): void;
 }

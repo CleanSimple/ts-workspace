@@ -1,35 +1,20 @@
-import { Signal } from '../abstract/Signal.esm.js';
-import { SENTINEL } from '../sentinel.esm.js';
-import { notifyDependents, registerDependent } from '../tracking.esm.js';
+import { ComputedSignal } from '../abstract/ComputedSignal.esm.js';
+import { IDependency_registerDependent } from '../interfaces/IDependency.esm.js';
 
 /**
  * Single source computed signal
  */
-class ComputedSingle extends Signal {
+class ComputedSingle extends ComputedSignal {
     _signal;
     _compute;
-    _dependencyUpdatedCallback;
-    _value;
-    _shouldCompute;
     constructor(signal, compute) {
         super();
         this._signal = signal;
         this._compute = compute;
-        this._value = SENTINEL;
-        this._shouldCompute = true;
-        this._dependencyUpdatedCallback = () => {
-            this.schedule();
-            this._shouldCompute = true;
-            notifyDependents(this);
-        };
-        registerDependent(signal, this._dependencyUpdatedCallback);
+        signal[IDependency_registerDependent](this);
     }
-    get value() {
-        if (this._shouldCompute) {
-            this._shouldCompute = false;
-            this._value = this._compute(this._signal.value);
-        }
-        return this._value;
+    compute() {
+        return this._compute(this._signal.value);
     }
 }
 
