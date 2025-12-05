@@ -24,19 +24,20 @@ var PlainSignals = (function (exports) {
         /* static members */
         static _pendingItems = [];
         static _cyclicScheduleCount = 0;
+        static version = 0;
         static flush() {
             const items = Schedulable._pendingItems;
             Schedulable._pendingItems = [];
-            const n = items.length;
-            for (let i = n - 1; i >= 0; --i) {
+            Schedulable.version++;
+            for (let i = 0; i < items.length; ++i) {
                 const item = items[i];
+                item._isScheduled = false;
                 try {
                     item.onDispatch();
                 }
                 catch (e) {
                     console.error(e);
                 }
-                item._isScheduled = false;
             }
             // track cyclic scheduling
             if (Schedulable._pendingItems.length > 0) {
@@ -118,24 +119,24 @@ var PlainSignals = (function (exports) {
     const SENTINEL = Symbol('SENTINEL');
 
     class ComputedSignal extends Signal {
-        _value;
-        _shouldCompute;
-        constructor() {
-            super();
-            this._value = SENTINEL;
-            this._shouldCompute = true;
-        }
+        _value = SENTINEL;
+        _version = -1;
+        _isScheduling = false;
         get value() {
-            if (this._shouldCompute) {
-                this._shouldCompute = false;
+            if (this._isScheduling) {
+                return this._value;
+            }
+            if (this._version < Schedulable.version) {
+                this._version = Schedulable.version;
                 this._value = this.compute();
             }
             return this._value;
         }
         /* IDependent */
         [IDependent_onDependencyUpdated]() {
+            this._isScheduling = true;
             this.schedule();
-            this._shouldCompute = true;
+            this._isScheduling = false;
             this.notifyDependents();
         }
     }
@@ -232,7 +233,7 @@ var PlainSignals = (function (exports) {
     /**
      * Proxy signal
      */
-    class ProxySignal extends Signal {
+    class ReadOnlyVal extends Signal {
         _signal;
         _value;
         constructor(signal) {
@@ -253,7 +254,7 @@ var PlainSignals = (function (exports) {
     }
 
     Val.prototype.asReadOnly = function () {
-        return new ProxySignal(this);
+        return new ReadOnlyVal(this);
     };
 
     function val(initialValue) {

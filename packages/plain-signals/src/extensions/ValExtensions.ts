@@ -1,5 +1,5 @@
 import { Signal } from '../abstract/Signal';
-import { ProxySignal } from '../impl/ProxySignal';
+import { ReadOnlyVal } from '../impl/ReadOnlyVal';
 import { Val } from '../impl/Val';
 
 interface ValExtensions<T> {
@@ -15,5 +15,5 @@ declare module '../impl/Val' {
 }
 
 Val.prototype.asReadOnly = function<T>(this: Val<T>): Signal<T> {
-    return new ProxySignal(this);
+    return new ReadOnlyVal(this);
 };

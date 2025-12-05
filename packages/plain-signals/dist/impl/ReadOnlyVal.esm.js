@@ -5,7 +5,7 @@ import { IDependent_onDependencyUpdated } from '../interfaces/IDependent.esm.js'
 /**
  * Proxy signal
  */
-class ProxySignal extends Signal {
+class ReadOnlyVal extends Signal {
     _signal;
     _value;
     constructor(signal) {
@@ -25,4 +25,4 @@ class ProxySignal extends Signal {
     }
 }
 
-export { ProxySignal };
+export { ReadOnlyVal };
