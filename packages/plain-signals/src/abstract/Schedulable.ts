@@ -25,13 +25,14 @@ export abstract class Schedulable {
     /* static members */
     private static _pendingItems: Schedulable[] = [];
     private static _cyclicScheduleCount: number = 0;
+    protected static version: number = 0;
 
     private static flush(this: void) {
         const items = Schedulable._pendingItems;
         Schedulable._pendingItems = [];
+        Schedulable.version++;
 
-        const n = items.length;
-        for (let i = 0; i < n; ++i) {
+        for (let i = 0; i < items.length; ++i) {
             const item = items[i];
             item._isScheduled = false;
             try {
