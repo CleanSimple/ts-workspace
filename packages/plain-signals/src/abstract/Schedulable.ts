@@ -2,6 +2,11 @@ export abstract class Schedulable {
     private _isScheduled: boolean = false;
 
     protected schedule() {
+        if (Schedulable._cyclicScheduleCount >= 100) {
+            // break the cycle to avoid starving the event loop
+            throw new Error('Too many nested updates');
+        }
+
         if (this._isScheduled) return;
         this._isScheduled = true;
 
@@ -29,17 +34,17 @@ export abstract class Schedulable {
         for (let i = 0; i < n; ++i) {
             const item = items[i];
             item._isScheduled = false;
-            item.onDispatch();
+            try {
+                item.onDispatch();
+            }
+            catch (e) {
+                console.error(e);
+            }
         }
 
-        // detect cyclic scheduling
+        // track cyclic scheduling
         if (Schedulable._pendingItems.length > 0) {
             Schedulable._cyclicScheduleCount++;
-            if (Schedulable._cyclicScheduleCount >= 100) {
-                // break the cycle to avoid starving the event loop
-                Schedulable._pendingItems = [];
-                throw new Error('Too many nested updates');
-            }
         }
         else {
             Schedulable._cyclicScheduleCount = 0;
