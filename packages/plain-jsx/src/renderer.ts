@@ -56,7 +56,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNodeRoot, domNodes: RNode[] = []):
             continue;
         }
         // render strings
-        else if (typeof node === 'string' || typeof node === 'number') {
+        else if (typeof node === 'string' || typeof node === 'number' || typeof node === 'bigint') {
             const textNode = document.createTextNode(String(node));
             domNodes.push(textNode);
         }
@@ -253,13 +253,13 @@ class VNodeSignal extends VNodeBuiltinComponent {
         this.renderValue(this._value.value);
     }
 
-    private renderValue(jsxNode: JSXNode): void {
+    private renderValue(value: JSXNode): void {
         if (
-            (typeof jsxNode === 'string' || typeof jsxNode === 'number')
+            (typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint')
             && this._textNode
         ) {
             // optimized update path for text nodes
-            this._textNode.textContent = String(jsxNode);
+            this._textNode.textContent = String(value);
         }
         else {
             if (this.firstChild) {
@@ -268,7 +268,7 @@ class VNodeSignal extends VNodeBuiltinComponent {
             const vNode = new VNodeRoot();
             this.firstChild = this.lastChild = vNode;
             this._textNode = null;
-            const children = renderJSX(jsxNode, vNode);
+            const children = renderJSX(value, vNode);
             if (children.length === 1 && children[0] instanceof Text) {
                 this._textNode = children[0];
             }
