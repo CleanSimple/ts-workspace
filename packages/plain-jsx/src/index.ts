@@ -11,7 +11,7 @@ export { Fragment } from './components/Fragment';
 export { Show } from './components/Show';
 export { With } from './components/With';
 export { WithMany } from './components/WithMany';
-export { render } from './core';
+export { render } from './rendering';
 export { onCleanup, onMount, watch, watchMany } from './lifecycle';
 export { ref } from './ref';
 export { nextTick } from './scheduling';
