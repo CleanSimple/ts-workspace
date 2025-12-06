@@ -1,4 +1,4 @@
-import { For, render, type Val, val } from '@cleansimple/plain-jsx';
+import { For, render, val, type Val } from '@cleansimple/plain-jsx';
 
 const adjectives = [
     'pretty',
@@ -59,7 +59,7 @@ const nouns = [
 const random = (max: number) => Math.round(Math.random() * 1000) % max;
 
 let nextId = 1;
-type RowData = { id: number; label: Val<string>; selected: Val<boolean> };
+type RowData = { id: number; label: Val<string> };
 
 const buildData = (count: number) => {
     let data: RowData[] = new Array(count);
@@ -69,9 +69,8 @@ const buildData = (count: number) => {
                 nouns[random(nouns.length)]
             }`,
         );
-        const selected = val(false);
 
-        data[i] = { id: nextId++, label, selected };
+        data[i] = { id: nextId++, label };
     }
     return data;
 };
@@ -86,6 +85,7 @@ const Button = ({ id, text, fn }: { id: string; text: string; fn: () => void }) 
 
 const Main = () => {
     const data = val<RowData[]>([]);
+    const selected = val(-1);
     const run = () => data.value = buildData(1_000);
     const runLots = () => data.value = buildData(10_000);
     const add = () => data.value = [...data.value, ...buildData(1_000)];
@@ -104,14 +104,8 @@ const Main = () => {
             data.value = list;
         }
     };
-
-    let selectedRow: RowData | null = null;
     const selectRow = (row: RowData) => {
-        if (selectedRow) {
-            selectedRow.selected.value = false;
-        }
-        row.selected.value = true;
-        selectedRow = row;
+        selected.value = row.id;
     };
     const removeRow = (row: RowData) => {
         data.value = data.value.toSpliced(
@@ -142,27 +136,30 @@ const Main = () => {
             <table class='table table-hover table-striped test-data'>
                 <tbody>
                     <For of={data}>
-                        {({ item: row }) => (
-                            <tr class:danger={row.selected}>
-                                <td class='col-md-1'>
-                                    {row.id}
-                                </td>
-                                <td class='col-md-4'>
-                                    <a on:click={() => selectRow(row)}>
-                                        {row.label}
-                                    </a>
-                                </td>
-                                <td class='col-md-1'>
-                                    <a on:click={() => removeRow(row)}>
-                                        <span
-                                            class='glyphicon glyphicon-remove'
-                                            ariaHidden='true'
-                                        />
-                                    </a>
-                                </td>
-                                <td class='col-md-6' />
-                            </tr>
-                        )}
+                        {({ item: row }) => {
+                            const isSelected = selected.computed(selected => selected == row.id);
+                            return (
+                                <tr class:danger={isSelected}>
+                                    <td class='col-md-1'>
+                                        {row.id}
+                                    </td>
+                                    <td class='col-md-4'>
+                                        <a on:click={() => selectRow(row)}>
+                                            {row.label}
+                                        </a>
+                                    </td>
+                                    <td class='col-md-1'>
+                                        <a on:click={() => removeRow(row)}>
+                                            <span
+                                                class='glyphicon glyphicon-remove'
+                                                ariaHidden='true'
+                                            />
+                                        </a>
+                                    </td>
+                                    <td class='col-md-6' />
+                                </tr>
+                            );
+                        }}
                     </For>
                 </tbody>
             </table>
