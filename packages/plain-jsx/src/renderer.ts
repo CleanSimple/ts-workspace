@@ -16,7 +16,7 @@ import { setProps } from './dom';
 import { cleanupVNode, defineRef, setLifecycleContext } from './lifecycle';
 import { ReactiveNode, resolveReactiveNodes } from './reactive-node';
 import { RefImpl, RefValue } from './ref';
-import { nextTick } from './scheduling';
+import { nextTick } from './scheduler';
 import { splitNamespace } from './utils';
 
 const _lifecycleContext: LifecycleContext = {
