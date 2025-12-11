@@ -17,11 +17,9 @@ class Schedulable {
     /* static members */
     static _pendingItems = [];
     static _cyclicScheduleCount = 0;
-    static version = 0;
     static flush() {
         const items = Schedulable._pendingItems;
         Schedulable._pendingItems = [];
-        Schedulable.version++;
         for (let i = 0; i < items.length; ++i) {
             const item = items[i];
             item._isScheduled = false;

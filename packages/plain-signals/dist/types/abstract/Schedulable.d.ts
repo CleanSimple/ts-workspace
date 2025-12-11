@@ -5,6 +5,5 @@ export declare abstract class Schedulable {
     protected abstract onDispatch(): void;
     private static _pendingItems;
     private static _cyclicScheduleCount;
-    protected static version: number;
     private static flush;
 }
