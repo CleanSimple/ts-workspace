@@ -2,7 +2,7 @@ import type { Signal } from '@cleansimple/plain-signals';
 import type { Properties as CSS } from 'csstype';
 import type { ReactiveNode } from './reactive-node';
 import type { Ref } from './ref';
-export type JSXNode = Signal<JSXNode> | JSXElement | string | number | boolean | null | undefined | JSXNode[];
+export type JSXNode = Signal<JSXNode> | JSXElement | string | number | boolean | bigint | null | undefined | JSXNode[];
 export interface JSXElement {
     type: string | FunctionalComponent;
     props: PropsType;

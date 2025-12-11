@@ -18,9 +18,17 @@
         return { type, props };
     }
 
+    const IDependency_registerDependent = Symbol('IDependency_registerDependent');
+
+    const IDependent_onDependencyUpdated = Symbol('IDependent_onDependencyUpdated');
+
     class Schedulable {
         _isScheduled = false;
         schedule() {
+            if (Schedulable._cyclicScheduleCount >= 100) {
+                // break the cycle to avoid starving the event loop
+                throw new Error('Too many nested updates');
+            }
             if (this._isScheduled)
                 return;
             this._isScheduled = true;
@@ -33,23 +41,24 @@
         /* static members */
         static _pendingItems = [];
         static _cyclicScheduleCount = 0;
+        static version = 0;
         static flush() {
             const items = Schedulable._pendingItems;
             Schedulable._pendingItems = [];
-            const n = items.length;
-            for (let i = 0; i < n; ++i) {
+            Schedulable.version++;
+            for (let i = 0; i < items.length; ++i) {
                 const item = items[i];
                 item._isScheduled = false;
-                item.onDispatch();
+                try {
+                    item.onDispatch();
+                }
+                catch (e) {
+                    console.error(e);
+                }
             }
-            // detect cyclic scheduling
+            // track cyclic scheduling
             if (Schedulable._pendingItems.length > 0) {
                 Schedulable._cyclicScheduleCount++;
-                if (Schedulable._cyclicScheduleCount >= 100) {
-                    // break the cycle to avoid starving the event loop
-                    Schedulable._pendingItems = [];
-                    throw new Error('Too many nested updates');
-                }
             }
             else {
                 Schedulable._cyclicScheduleCount = 0;
@@ -60,9 +69,24 @@
     const SignalSymbol = Symbol('Signal');
     class Signal extends Schedulable {
         [SignalSymbol] = true;
+        _lastDependentId = 0;
         _lastObserverId = 0;
+        _dependents = null;
         _observers = null;
         _prevValue = null;
+        notifyDependents() {
+            if (!this._dependents?.size)
+                return;
+            for (const [id, ref] of this._dependents.entries()) {
+                const dependent = ref.deref();
+                if (dependent) {
+                    dependent[IDependent_onDependencyUpdated]();
+                }
+                else {
+                    this._dependents.delete(id);
+                }
+            }
+        }
         onSchedule() {
             this._prevValue = this.value;
         }
@@ -96,90 +120,72 @@
                 },
             };
         }
+        /* IDependency */
+        [IDependency_registerDependent](dependent) {
+            const id = ++this._lastDependentId;
+            this._dependents ??= new Map();
+            this._dependents.set(id, new WeakRef(dependent));
+            return {
+                unregister: () => {
+                    this._dependents.delete(id);
+                },
+            };
+        }
     }
 
     const SENTINEL = Symbol('SENTINEL');
 
-    class TrackingInfo {
-        lastDependentId = 0;
-        dependents = new Map();
-    }
-    const _TrackingMap = new WeakMap();
-    function registerDependent(dependency, dependent) {
-        let trackingInfo = _TrackingMap.get(dependency);
-        if (!trackingInfo) {
-            trackingInfo = new TrackingInfo();
-            _TrackingMap.set(dependency, trackingInfo);
+    class ComputedSignal extends Signal {
+        _value = SENTINEL;
+        _version = -1;
+        _isScheduling = false;
+        get value() {
+            if (this._isScheduling) {
+                return this._value;
+            }
+            if (this._version < Schedulable.version) {
+                this._version = Schedulable.version;
+                this._value = this.compute();
+            }
+            return this._value;
         }
-        const id = ++trackingInfo.lastDependentId;
-        trackingInfo.dependents.set(id, new WeakRef(dependent));
-        return {
-            unregister: () => {
-                trackingInfo.dependents.delete(id);
-            },
-        };
-    }
-    function notifyDependents(dependency) {
-        const trackingInfo = _TrackingMap.get(dependency);
-        if (!trackingInfo)
-            return;
-        if (!trackingInfo.dependents.size)
-            return;
-        for (const [id, ref] of trackingInfo.dependents.entries()) {
-            const dependent = ref.deref();
-            if (dependent) {
-                dependent();
-            }
-            else {
-                trackingInfo.dependents.delete(id);
-            }
+        /* IDependent */
+        [IDependent_onDependencyUpdated]() {
+            this._isScheduling = true;
+            this.schedule();
+            this._isScheduling = false;
+            this.notifyDependents();
         }
     }
 
     /**
      * Single source computed signal
      */
-    class ComputedSingle extends Signal {
+    class ComputedSingle extends ComputedSignal {
         _signal;
         _compute;
-        _dependencyUpdatedCallback;
-        _value;
-        _shouldCompute;
         constructor(signal, compute) {
             super();
             this._signal = signal;
             this._compute = compute;
-            this._value = SENTINEL;
-            this._shouldCompute = true;
-            this._dependencyUpdatedCallback = () => {
-                this.schedule();
-                this._shouldCompute = true;
-                notifyDependents(this);
-            };
-            registerDependent(signal, this._dependencyUpdatedCallback);
+            signal[IDependency_registerDependent](this);
         }
-        get value() {
-            if (this._shouldCompute) {
-                this._shouldCompute = false;
-                this._value = this._compute(this._signal.value);
-            }
-            return this._value;
+        compute() {
+            return this._compute(this._signal.value);
         }
     }
 
     class MultiSourceSubscription extends Schedulable {
         _signals;
         _observer;
-        _dependencyUpdatedCallback;
         _registrations;
         constructor(signals, observer) {
             super();
             this._signals = signals;
             this._observer = observer;
             this._registrations = [];
-            this._dependencyUpdatedCallback = () => this.schedule();
             for (let i = 0; i < signals.length; ++i) {
-                this._registrations.push(registerDependent(signals[i], this._dependencyUpdatedCallback));
+                this._registrations.push(signals[i][IDependency_registerDependent](this));
             }
         }
         onSchedule() { }
@@ -190,6 +196,10 @@
             for (let i = 0; i < this._registrations.length; ++i) {
                 this._registrations[i].unregister();
             }
+        }
+        /* IDependent */
+        [IDependent_onDependencyUpdated]() {
+            this.schedule();
         }
     }
 
@@ -210,7 +220,7 @@
                 return;
             this.schedule();
             this._value = newValue;
-            notifyDependents(this);
+            this.notifyDependents();
         }
     }
 
@@ -221,26 +231,28 @@
     /**
      * Proxy signal
      */
-    class ProxySignal extends Signal {
-        _dependencyUpdatedCallback;
+    class ReadOnlyVal extends Signal {
+        _signal;
         _value;
         constructor(signal) {
             super();
+            this._signal = signal;
             this._value = signal.value;
-            this._dependencyUpdatedCallback = () => {
-                this.schedule();
-                this._value = signal.value;
-                notifyDependents(this);
-            };
-            registerDependent(signal, this._dependencyUpdatedCallback);
+            signal[IDependency_registerDependent](this);
         }
         get value() {
             return this._value;
         }
+        /* IDependent */
+        [IDependent_onDependencyUpdated]() {
+            this.schedule();
+            this._value = this._signal.value;
+            this.notifyDependents();
+        }
     }
 
     Val.prototype.asReadOnly = function () {
-        return new ProxySignal(this);
+        return new ReadOnlyVal(this);
     };
 
     function val(initialValue) {
@@ -270,6 +282,33 @@
 
     function WithMany(_props) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
+    }
+
+    let _LifecycleContext = null;
+    function setLifecycleContext(lifecycleContext) {
+        _LifecycleContext = lifecycleContext;
+    }
+    function defineRef(ref) {
+        if (!_LifecycleContext) {
+            throw new Error('defineRef can only be called inside a functional component');
+        }
+        _LifecycleContext.ref = ref;
+    }
+    function cleanupVNode(vNode) {
+        let child = vNode.firstChild;
+        while (child) {
+            cleanupVNode(child);
+            child = child.next;
+        }
+        vNode.cleanup();
+    }
+
+    const RefValue = Symbol('RefValue');
+    class RefImpl {
+        [RefValue] = null;
+        get current() {
+            return this[RefValue];
+        }
     }
 
     function getLIS(arr) {
@@ -302,14 +341,6 @@
             k = predecessors[k];
         }
         return lis;
-    }
-
-    const RefValue = Symbol('RefValue');
-    class RefImpl {
-        [RefValue] = null;
-        get current() {
-            return this[RefValue];
-        }
     }
 
     const XMLNamespaces = {
@@ -540,25 +571,6 @@
         }
     }
 
-    let _LifecycleContext = null;
-    function setLifecycleContext(lifecycleContext) {
-        _LifecycleContext = lifecycleContext;
-    }
-    function defineRef(ref) {
-        if (!_LifecycleContext) {
-            throw new Error('defineRef can only be called inside a functional component');
-        }
-        _LifecycleContext.ref = ref;
-    }
-    function cleanupVNode(vNode) {
-        let child = vNode.firstChild;
-        while (child) {
-            cleanupVNode(child);
-            child = child.next;
-        }
-        vNode.cleanup();
-    }
-
     class ReactiveNode {
         _placeholder = document.createComment('');
         _children = [this._placeholder];
@@ -661,7 +673,7 @@
                 continue;
             }
             // render strings
-            else if (typeof node === 'string' || typeof node === 'number') {
+            else if (typeof node === 'string' || typeof node === 'number' || typeof node === 'bigint') {
                 const textNode = document.createTextNode(String(node));
                 domNodes.push(textNode);
             }
@@ -816,11 +828,11 @@
         render() {
             this.renderValue(this._value.value);
         }
-        renderValue(jsxNode) {
-            if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
+        renderValue(value) {
+            if ((typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint')
                 && this._textNode) {
                 // optimized update path for text nodes
-                this._textNode.textContent = String(jsxNode);
+                this._textNode.textContent = String(value);
             }
             else {
                 if (this.firstChild) {
@@ -829,7 +841,7 @@
                 const vNode = new VNodeRoot();
                 this.firstChild = this.lastChild = vNode;
                 this._textNode = null;
-                const children = renderJSX(jsxNode, vNode);
+                const children = renderJSX(value, vNode);
                 if (children.length === 1 && children[0] instanceof Text) {
                     this._textNode = children[0];
                 }

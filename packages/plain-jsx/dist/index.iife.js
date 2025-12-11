@@ -19,6 +19,68 @@ var PlainJSX = (function (exports, plainSignals) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
 
+    let _LifecycleContext = null;
+    function setLifecycleContext(lifecycleContext) {
+        _LifecycleContext = lifecycleContext;
+    }
+    function defineRef(ref) {
+        if (!_LifecycleContext) {
+            throw new Error('defineRef can only be called inside a functional component');
+        }
+        _LifecycleContext.ref = ref;
+    }
+    function onMount(fn) {
+        if (!_LifecycleContext) {
+            throw new Error('onMount can only be called inside a functional component');
+        }
+        if (_LifecycleContext.onMountCallback) {
+            throw new Error('onMount can only be called once');
+        }
+        _LifecycleContext.onMountCallback = fn;
+    }
+    function onCleanup(fn) {
+        if (!_LifecycleContext) {
+            throw new Error('onCleanup can only be called inside a functional component');
+        }
+        if (_LifecycleContext.onCleanupCallback) {
+            throw new Error('onCleanup can only be called once');
+        }
+        _LifecycleContext.onCleanupCallback = fn;
+    }
+    function watch(signal, observer) {
+        if (!_LifecycleContext) {
+            throw new Error('watch can only be called inside a functional component');
+        }
+        _LifecycleContext.subscriptions ??= [];
+        _LifecycleContext.subscriptions.push(signal.subscribe(observer));
+    }
+    function watchMany(signals, observer) {
+        if (!_LifecycleContext) {
+            throw new Error('watchMany can only be called inside a functional component');
+        }
+        _LifecycleContext.subscriptions ??= [];
+        _LifecycleContext.subscriptions.push(plainSignals.subscribe(signals, observer));
+    }
+    function cleanupVNode(vNode) {
+        let child = vNode.firstChild;
+        while (child) {
+            cleanupVNode(child);
+            child = child.next;
+        }
+        vNode.cleanup();
+    }
+
+    const RefValue = Symbol('RefValue');
+    function ref() {
+        return new RefImpl();
+    }
+    class RefImpl {
+        [RefValue] = null;
+        get current() {
+            return this[RefValue];
+        }
+    }
+
     function getLIS(arr) {
         const n = arr.length;
         const predecessors = new Int32Array(n);
@@ -49,17 +111,6 @@ var PlainJSX = (function (exports, plainSignals) {
             k = predecessors[k];
         }
         return lis;
-    }
-
-    const RefValue = Symbol('RefValue');
-    function ref() {
-        return new RefImpl();
-    }
-    class RefImpl {
-        [RefValue] = null;
-        get current() {
-            return this[RefValue];
-        }
     }
 
     const XMLNamespaces = {
@@ -290,57 +341,6 @@ var PlainJSX = (function (exports, plainSignals) {
         }
     }
 
-    let _LifecycleContext = null;
-    function setLifecycleContext(lifecycleContext) {
-        _LifecycleContext = lifecycleContext;
-    }
-    function defineRef(ref) {
-        if (!_LifecycleContext) {
-            throw new Error('defineRef can only be called inside a functional component');
-        }
-        _LifecycleContext.ref = ref;
-    }
-    function onMount(fn) {
-        if (!_LifecycleContext) {
-            throw new Error('onMount can only be called inside a functional component');
-        }
-        if (_LifecycleContext.onMountCallback) {
-            throw new Error('onMount can only be called once');
-        }
-        _LifecycleContext.onMountCallback = fn;
-    }
-    function onCleanup(fn) {
-        if (!_LifecycleContext) {
-            throw new Error('onCleanup can only be called inside a functional component');
-        }
-        if (_LifecycleContext.onCleanupCallback) {
-            throw new Error('onCleanup can only be called once');
-        }
-        _LifecycleContext.onCleanupCallback = fn;
-    }
-    function watch(signal, observer) {
-        if (!_LifecycleContext) {
-            throw new Error('watch can only be called inside a functional component');
-        }
-        _LifecycleContext.subscriptions ??= [];
-        _LifecycleContext.subscriptions.push(signal.subscribe(observer));
-    }
-    function watchMany(signals, observer) {
-        if (!_LifecycleContext) {
-            throw new Error('watchMany can only be called inside a functional component');
-        }
-        _LifecycleContext.subscriptions ??= [];
-        _LifecycleContext.subscriptions.push(plainSignals.subscribe(signals, observer));
-    }
-    function cleanupVNode(vNode) {
-        let child = vNode.firstChild;
-        while (child) {
-            cleanupVNode(child);
-            child = child.next;
-        }
-        vNode.cleanup();
-    }
-
     class ReactiveNode {
         _placeholder = document.createComment('');
         _children = [this._placeholder];
@@ -443,7 +443,7 @@ var PlainJSX = (function (exports, plainSignals) {
                 continue;
             }
             // render strings
-            else if (typeof node === 'string' || typeof node === 'number') {
+            else if (typeof node === 'string' || typeof node === 'number' || typeof node === 'bigint') {
                 const textNode = document.createTextNode(String(node));
                 domNodes.push(textNode);
             }
@@ -598,11 +598,11 @@ var PlainJSX = (function (exports, plainSignals) {
         render() {
             this.renderValue(this._value.value);
         }
-        renderValue(jsxNode) {
-            if ((typeof jsxNode === 'string' || typeof jsxNode === 'number')
+        renderValue(value) {
+            if ((typeof value === 'string' || typeof value === 'number' || typeof value === 'bigint')
                 && this._textNode) {
                 // optimized update path for text nodes
-                this._textNode.textContent = String(jsxNode);
+                this._textNode.textContent = String(value);
             }
             else {
                 if (this.firstChild) {
@@ -611,7 +611,7 @@ var PlainJSX = (function (exports, plainSignals) {
                 const vNode = new VNodeRoot();
                 this.firstChild = this.lastChild = vNode;
                 this._textNode = null;
-                const children = renderJSX(jsxNode, vNode);
+                const children = renderJSX(value, vNode);
                 if (children.length === 1 && children[0] instanceof Text) {
                     this._textNode = children[0];
                 }
