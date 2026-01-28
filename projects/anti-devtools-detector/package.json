@@ -1,0 +1,23 @@
+{
+    "name": "anti-devtools-detector",
+    "packageManager": "yarn@4.6.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "clean ./dist && rollup -c",
+        "dev": "rollup -c -w",
+        "lint": "eslint ./src",
+        "fmt": "dprint fmt ./src/**"
+    },
+    "devDependencies": {
+        "@cleansimple/dprint-config": "workspace:^",
+        "@cleansimple/eslint-config": "workspace:^",
+        "@cleansimple/rollup-config": "workspace:^",
+        "@cleansimple/typescript-config": "workspace:^",
+        "@types/tampermonkey": "^5.0.5",
+        "dprint": "0.50.2",
+        "eslint": "9.39.1",
+        "rollup": "4.52.4",
+        "typescript": "5.9.3"
+    }
+}
