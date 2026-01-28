@@ -83,7 +83,7 @@ __metadata:
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
     rollup: "npm:4.52.4"
-    typescript: "npm:^5.9.3"
+    typescript: "npm:5.9.3"
   languageName: unknown
   linkType: soft
 
