@@ -13,6 +13,11 @@
     display: none !important;
 }
 
+/* handle subtitles jumping on pause in jw-player */
+.ums-controls-hidden.jwplayer > .jw-wrapper > .jw-captions {
+    max-height: none !important;
+}
+
 /* handle dark backdrop in DoodStream player */
 .ums-controls-hidden.video-js > .vjs-text-track-display {
     background: none !important;
