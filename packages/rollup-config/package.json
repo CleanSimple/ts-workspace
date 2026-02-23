@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/rollup-config",
-    "version": "1.0.8",
+    "version": "1.0.9",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "keywords": [

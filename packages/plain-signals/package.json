@@ -1,6 +1,6 @@
 {
     "name": "@cleansimple/plain-signals",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "packageManager": "yarn@4.6.0",
     "type": "module",
     "keywords": [
