@@ -3,10 +3,10 @@
     "extends": "./base.json",
     "compilerOptions": {
         "lib": [
-            "ESNext",
-            "DOM",
-            "DOM.Iterable"
+            "ESNext"
         ],
-        "useDefineForClassFields": true
+        "types": [
+            "node"
+        ]
     }
 }

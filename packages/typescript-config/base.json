@@ -4,14 +4,15 @@
         "lib": ["ESNext"],
         "target": "ESNext",
         "module": "ESNext",
-        "moduleResolution": "bundler",
+        "skipLibCheck": true,
 
-        "removeComments": false,
+        "moduleResolution": "bundler",
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,
         "verbatimModuleSyntax": true,
         "moduleDetection": "force",
         "noEmit": true,
+        "removeComments": false,
 
         "strict": true,
         "noImplicitAny": true,
@@ -20,7 +21,6 @@
         "noImplicitOverride": true,
         "noPropertyAccessFromIndexSignature": true,
         "useUnknownInCatchVariables": true,
-        "exactOptionalPropertyTypes": true,
-        "skipLibCheck": true
+        "exactOptionalPropertyTypes": true
     }
 }
