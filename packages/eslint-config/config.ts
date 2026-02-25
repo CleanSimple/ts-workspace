@@ -1,13 +1,11 @@
-import { defineConfig, globalIgnores } from 'eslint/config';
 import eslint from '@eslint/js';
-import tseslint from 'typescript-eslint';
 import importPlugin from 'eslint-plugin-import';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import tseslint from 'typescript-eslint';
 
+type ConfigWithExtendsArray = Parameters<typeof defineConfig>[0];
 
-/**
- * @param {Parameters<defineConfig>[0]} config
- */
-const warnOnly = (config) => {
+const warnOnly = (config: ConfigWithExtendsArray): ConfigWithExtendsArray => {
     if (Array.isArray(config)) {
         return config.map((subConfig) => warnOnly(subConfig));
     }
@@ -18,19 +16,19 @@ const warnOnly = (config) => {
                 if (Array.isArray(ruleEntry)) {
                     const [severity, ...options] = ruleEntry;
                     ruleEntry = [
-                        severity === 'error' ? 'warn' : severity, ...options
+                        severity === 'error' ? 'warn' : severity,
+                        ...options,
                     ];
                 }
                 else if (ruleEntry === 'error') {
                     ruleEntry = 'warn';
                 }
                 return [ruleName, ruleEntry];
-            })
+            }),
         );
         return config;
     }
-}
-
+};
 
 export default defineConfig([
     globalIgnores(['dist']),
@@ -42,7 +40,7 @@ export default defineConfig([
             warnOnly(tseslint.configs.stylisticTypeChecked),
         ],
         plugins: {
-            "import": importPlugin,
+            'import': importPlugin,
         },
         languageOptions: {
             parserOptions: {
@@ -54,8 +52,8 @@ export default defineConfig([
         rules: {
             '@typescript-eslint/no-import-type-side-effects': 'warn',
             '@typescript-eslint/method-signature-style': 'warn',
-            "@typescript-eslint/no-empty-object-type": ["warn", {
-                allowInterfaces: 'always'
+            '@typescript-eslint/no-empty-object-type': ['warn', {
+                allowInterfaces: 'always',
             }],
 
             '@typescript-eslint/explicit-member-accessibility': 'warn',

@@ -16,15 +16,25 @@
         "type": "git",
         "url": "git+https://github.com/CleanSimple/ts-workspace.git"
     },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc -w"
+    },
     "exports": {
         ".": {
             "types": "./imports.d.ts"
         },
-        "./lib": "./lib.js",
-        "./userscript": "./userscript.js"
+        "./lib": {
+            "import": "./dist/configs/lib.js",
+            "types": "./dist/configs/lib.d.ts"
+        },
+        "./userscript": {
+            "import": "./dist/configs/userscript.js",
+            "types": "./dist/configs/userscript.d.ts"
+        }
     },
     "bin": {
-        "clean": "./bin/clean.js"
+        "clean": "./dist/bin/clean.js"
     },
     "dependencies": {
         "@rollup/plugin-commonjs": "^28.0.6",
@@ -36,6 +46,8 @@
         "tslib": "^2.8.1"
     },
     "devDependencies": {
+        "@cleansimple/typescript-config": "workspace:^",
+        "@types/node": "^25.3.0",
         "rollup": "4.52.4",
         "typescript": "5.9.3"
     },

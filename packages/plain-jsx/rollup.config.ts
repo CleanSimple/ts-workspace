@@ -1,9 +1,15 @@
 import baseConfig from '@cleansimple/rollup-config/lib';
+import { defineConfig } from 'rollup';
 
-export default [
+export default defineConfig([
     {
         ...baseConfig,
-        input: 'src/index.ts',
+        input: {
+            'index': 'src/index.ts',
+            'jsx-runtime': 'src/jsx-runtime.ts',
+            'jsx-dev-runtime': 'src/jsx-dev-runtime.ts',
+        },
+        external: ['@cleansimple/plain-signals'],
         output: [
             {
                 dir: 'dist',
@@ -16,12 +22,14 @@ export default [
     {
         ...baseConfig,
         input: 'src/index.ts',
+        external: ['@cleansimple/plain-signals'],
         output: [
             {
-                name: 'PlainSignals',
+                name: 'PlainJSX',
                 format: 'iife',
+                globals: { '@cleansimple/plain-signals': 'PlainSignals' },
                 file: './dist/index.iife.js',
             },
         ],
     },
-];
+]);

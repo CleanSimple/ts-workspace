@@ -1,9 +1,7 @@
 {
-    "extends": "@cleansimple/typescript-config/browser.json",
-    "include": ["src"],
-    "compilerOptions": {
-        "rootDir": "src",
-        "declaration": true,
-        "declarationDir": "./dist/types"
-    }
+    "files": [],
+    "references": [
+        { "path": "./tsconfig.lib.json" },
+        { "path": "./tsconfig.node.json" }
+    ]
 }

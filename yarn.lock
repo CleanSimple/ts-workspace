@@ -44,7 +44,9 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@cleansimple/eslint-config@workspace:packages/eslint-config"
   dependencies:
+    "@cleansimple/typescript-config": "workspace:^"
     "@eslint/js": "npm:^9.39.1"
+    "@types/node": "npm:^25.3.0"
     eslint: "npm:9.39.1"
     eslint-plugin-import: "npm:^2.32.0"
     typescript: "npm:5.9.3"
@@ -64,6 +66,7 @@ __metadata:
     "@cleansimple/plain-signals": "workspace:^"
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     csstype: "npm:^3.1.3"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
@@ -80,6 +83,7 @@ __metadata:
     "@cleansimple/eslint-config": "workspace:^"
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
     rollup: "npm:4.52.4"
@@ -91,9 +95,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@cleansimple/rollup-config@workspace:packages/rollup-config"
   dependencies:
+    "@cleansimple/typescript-config": "workspace:^"
     "@rollup/plugin-commonjs": "npm:^28.0.6"
     "@rollup/plugin-node-resolve": "npm:^16.0.1"
     "@rollup/plugin-typescript": "npm:^12.1.4"
+    "@types/node": "npm:^25.3.0"
     rollup: "npm:4.52.4"
     rollup-plugin-header: "npm:^1.0.0"
     rollup-plugin-string-import: "npm:^1.2.6"
@@ -104,7 +110,7 @@ __metadata:
     rollup: 4.52.4
     typescript: 5.9.3
   bin:
-    clean: ./bin/clean.js
+    clean: ./dist/bin/clean.js
   languageName: unknown
   linkType: soft
 
@@ -122,6 +128,7 @@ __metadata:
     "@cleansimple/eslint-config": "workspace:^"
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     "@yarnpkg/pnpify": "npm:^4.1.4"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
@@ -1580,6 +1587,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@rollup/plugin-typescript@npm:^12.3.0":
+  version: 12.3.0
+  resolution: "@rollup/plugin-typescript@npm:12.3.0"
+  dependencies:
+    "@rollup/pluginutils": "npm:^5.1.0"
+    resolve: "npm:^1.22.1"
+  peerDependencies:
+    rollup: ^2.14.0||^3.0.0||^4.0.0
+    tslib: "*"
+    typescript: ">=3.7.0"
+  peerDependenciesMeta:
+    rollup:
+      optional: true
+    tslib:
+      optional: true
+  checksum: 10c0/41d14e9a9792d8d9751c275cf87c2de796ddd1a64c96fedc622baad8cfbb1247537e37ae428e59e1850de7d7165941ee1a4030dbe9bebd5fbb38c5e4f751d8b5
+  languageName: node
+  linkType: hard
+
 "@rollup/pluginutils@npm:^4.1.2":
   version: 4.2.1
   resolution: "@rollup/pluginutils@npm:4.2.1"
@@ -1994,6 +2020,15 @@ __metadata:
   dependencies:
     undici-types: "npm:~5.26.4"
   checksum: 10c0/5524303171eee6788df45d736f5783b5bea27803a596b9cd5669f45487a619e5d8d41d56dd55b8c85c677ffd7c045edd8daea8c4b37e70290bee2a482fc605f6
+  languageName: node
+  linkType: hard
+
+"@types/node@npm:^25.3.0":
+  version: 25.3.0
+  resolution: "@types/node@npm:25.3.0"
+  dependencies:
+    undici-types: "npm:~7.18.0"
+  checksum: 10c0/7b2b18c9d68047157367fc2f786d4f166d22dc0ad9f82331ca02fb16f2f391854123dbe604dcb938cda119c87051e4bb71dcb9ece44a579f483a6f96d4bd41de
   languageName: node
   linkType: hard
 
@@ -2483,6 +2518,7 @@ __metadata:
     "@cleansimple/eslint-config": "workspace:^"
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     "@types/tampermonkey": "npm:^5.0.5"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
@@ -5543,6 +5579,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"jiti@npm:^2.6.1":
+  version: 2.6.1
+  resolution: "jiti@npm:2.6.1"
+  bin:
+    jiti: lib/jiti-cli.mjs
+  checksum: 10c0/79b2e96a8e623f66c1b703b98ec1b8be4500e1d217e09b09e343471bbb9c105381b83edbb979d01cef18318cc45ce6e153571b6c83122170eefa531c64b6789b
+  languageName: node
+  linkType: hard
+
 "js-tokens@npm:^4.0.0":
   version: 4.0.0
   resolution: "js-tokens@npm:4.0.0"
@@ -5821,6 +5866,7 @@ __metadata:
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
     "@cleansimple/utils-js": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     "@types/tampermonkey": "npm:^5.0.4"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
@@ -8760,12 +8806,15 @@ __metadata:
   resolution: "ts-workspace@workspace:."
   dependencies:
     "@cleansimple/dprint-config": "workspace:^"
+    "@rollup/plugin-typescript": "npm:^12.3.0"
     "@yarnpkg/types": "npm:^4.0.1"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
+    jiti: "npm:^2.6.1"
     lerna: "npm:^9.0.1"
     nx: "npm:22.0.3"
     rollup: "npm:4.52.4"
+    tslib: "npm:^2.8.1"
     typescript: "npm:5.9.3"
   languageName: unknown
   linkType: soft
@@ -9001,6 +9050,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"undici-types@npm:~7.18.0":
+  version: 7.18.2
+  resolution: "undici-types@npm:7.18.2"
+  checksum: 10c0/85a79189113a238959d7a647368e4f7c5559c3a404ebdb8fc4488145ce9426fcd82252a844a302798dfc0e37e6fb178ff481ed03bc4caf634c5757d9ef43521d
+  languageName: node
+  linkType: hard
+
 "unique-filename@npm:^4.0.0":
   version: 4.0.0
   resolution: "unique-filename@npm:4.0.0"
@@ -9029,6 +9085,7 @@ __metadata:
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
     "@cleansimple/utils-js": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     "@types/tampermonkey": "npm:^5.0.4"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
@@ -9076,6 +9133,7 @@ __metadata:
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
     "@cleansimple/utils-js": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     "@types/tampermonkey": "npm:^5.0.4"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
@@ -9512,6 +9570,7 @@ __metadata:
     "@cleansimple/plain-jsx": "workspace:^"
     "@cleansimple/rollup-config": "workspace:^"
     "@cleansimple/typescript-config": "workspace:^"
+    "@types/node": "npm:^25.3.0"
     "@types/tampermonkey": "npm:^5.0.4"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"

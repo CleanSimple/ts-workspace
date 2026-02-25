@@ -25,8 +25,8 @@
         }
     },
     "scripts": {
-        "build": "clean ./dist && rollup -c",
-        "dev": "rollup -c -w",
+        "build": "clean ./dist && rollup -c --configPlugin @rollup/plugin-typescript",
+        "dev": "rollup -c -w --configPlugin @rollup/plugin-typescript",
         "lint": "eslint ./src",
         "fmt": "dprint fmt ./src/**"
     },
@@ -35,6 +35,7 @@
         "@cleansimple/eslint-config": "workspace:^",
         "@cleansimple/rollup-config": "workspace:^",
         "@cleansimple/typescript-config": "workspace:^",
+        "@types/node": "^25.3.0",
         "dprint": "0.50.2",
         "eslint": "9.39.1",
         "rollup": "4.52.4",

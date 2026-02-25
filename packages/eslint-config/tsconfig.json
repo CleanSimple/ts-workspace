@@ -1,0 +1,4 @@
+{
+    "extends": "@cleansimple/typescript-config/node.json",
+    "include": ["config.ts"]
+}

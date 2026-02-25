@@ -1,6 +1,7 @@
 import baseConfig from '@cleansimple/rollup-config/lib';
+import { defineConfig } from 'rollup';
 
-export default {
+export default defineConfig({
     ...baseConfig,
     input: 'src/index.ts',
     output: [
@@ -14,4 +15,4 @@ export default {
             file: './dist/index.iife.js',
         },
     ],
-};
+});

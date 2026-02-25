@@ -1,13 +1,14 @@
 import baseConfig from '@cleansimple/rollup-config/userscript';
+import { defineConfig } from 'rollup';
 
-export default {
+export default defineConfig({
     ...baseConfig,
     input: 'src/main.ts',
     output: [
         {
-            name: 'AntiDevToolsDetector',
+            name: 'UMS',
             format: 'iife',
             file: './dist/index.js',
         },
     ],
-};
+});

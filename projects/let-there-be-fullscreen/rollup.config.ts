@@ -1,6 +1,7 @@
 import baseConfig from '@cleansimple/rollup-config/userscript';
+import { defineConfig } from 'rollup';
 
-export default {
+export default defineConfig({
     ...baseConfig,
     input: 'src/main.ts',
     output: [
@@ -10,4 +11,4 @@ export default {
             file: './dist/index.js',
         },
     ],
-};
+});

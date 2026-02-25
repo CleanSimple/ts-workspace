@@ -1,9 +1,7 @@
 {
-    "extends": "@cleansimple/typescript-config/browser.js",
-    "include": ["src"],
-    "compilerOptions": {
-        "rootDir": "src",
-        "jsx": "react-jsx",
-        "jsxImportSource": "@cleansimple/plain-jsx"
-    }
+    "files": [],
+    "references": [
+        { "path": "./tsconfig.userscript.json" },
+        { "path": "./tsconfig.node.json" }
+    ]
 }

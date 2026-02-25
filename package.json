@@ -17,12 +17,15 @@
     ],
     "devDependencies": {
         "@cleansimple/dprint-config": "workspace:^",
+        "@rollup/plugin-typescript": "^12.3.0",
         "@yarnpkg/types": "^4.0.1",
         "dprint": "0.50.2",
         "eslint": "9.39.1",
+        "jiti": "^2.6.1",
         "lerna": "^9.0.1",
         "nx": "22.0.3",
         "rollup": "4.52.4",
+        "tslib": "^2.8.1",
         "typescript": "5.9.3"
     }
 }

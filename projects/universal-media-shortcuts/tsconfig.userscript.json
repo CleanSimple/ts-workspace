@@ -1,0 +1,10 @@
+{
+    "extends": "@cleansimple/typescript-config/browser.json",
+    "include": ["src"],
+    "compilerOptions": {
+        "rootDir": "src",
+        "types": ["tampermonkey"],
+        "jsx": "react-jsx",
+        "jsxImportSource": "@cleansimple/plain-jsx"
+    }
+}

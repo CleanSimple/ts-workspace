@@ -1,0 +1,9 @@
+{
+    "extends": "@cleansimple/typescript-config/node.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        "noEmit": false,
+        "declaration": true
+    },
+    "include": ["src"]
+}
