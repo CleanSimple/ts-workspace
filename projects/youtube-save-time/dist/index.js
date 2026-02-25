@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         YouTube Save Time
-// @version      2.12.0
+// @version      2.12.1
 // @description  Save the current time to the url so it's safe to navigate to other pages and return to where you left off!
 // @author       Nour Nasser
 // @namespace    https://github.com/Nourz1234
@@ -41,11 +41,9 @@
         /* static members */
         static _pendingItems = [];
         static _cyclicScheduleCount = 0;
-        static version = 0;
         static flush() {
             const items = Schedulable._pendingItems;
             Schedulable._pendingItems = [];
-            Schedulable.version++;
             for (let i = 0; i < items.length; ++i) {
                 const item = items[i];
                 item._isScheduled = false;
@@ -137,23 +135,18 @@
 
     class ComputedSignal extends Signal {
         _value = SENTINEL;
-        _version = -1;
-        _isScheduling = false;
+        _shouldCompute = true;
         get value() {
-            if (this._isScheduling) {
-                return this._value;
-            }
-            if (this._version < Schedulable.version) {
-                this._version = Schedulable.version;
+            if (this._shouldCompute) {
+                this._shouldCompute = false;
                 this._value = this.compute();
             }
             return this._value;
         }
         /* IDependent */
         [IDependent_onDependencyUpdated]() {
-            this._isScheduling = true;
             this.schedule();
-            this._isScheduling = false;
+            this._shouldCompute = true;
             this.notifyDependents();
         }
     }

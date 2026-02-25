@@ -252,7 +252,7 @@
     display: none !important;
 }
 
-/* handle subtitles jumping on pause in jwplayer */
+/* handle subtitles jumping on pause in jw-player */
 .ums-controls-hidden.jwplayer > .jw-wrapper > .jw-captions {
     max-height: none !important;
 }
