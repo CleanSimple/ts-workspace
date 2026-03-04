@@ -4,9 +4,9 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "build": "clean ./dist && rollup -c --configPlugin @rollup/plugin-typescript",
-        "dev": "rollup -c -w --configPlugin @rollup/plugin-typescript",
-        "lint": "eslint ./src",
+        "build": "clean ./dist && ts-rollup -c",
+        "dev": "ts-rollup -c -w",
+        "lint": "eslint",
         "fmt": "dprint fmt ./src/**"
     },
     "devDependencies": {

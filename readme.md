@@ -35,10 +35,10 @@ yarn add dprint eslint rollup typescript @types/node -D
 yarn add @cleansimple/rollup-config @cleansimple/typescript-config @cleansimple/eslint-config @cleansimple/dprint-config -D
 ```
 
-External projects should also run this if using typescript configs:
+### Install jiti for ESLint TypeScript configuration support (Optional):
 
 ```
-yarn add jiti tslib @rollup/plugin-typescript -D
+yarn add jiti -D
 ```
 
 ### Install Tampermonkey types (Optional):

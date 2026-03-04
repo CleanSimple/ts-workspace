@@ -22,9 +22,9 @@
         }
     },
     "scripts": {
-        "build": "clean ./dist && rollup -c --configPlugin @rollup/plugin-typescript && yarn jsdocify",
-        "dev": "rollup -c -w --configPlugin @rollup/plugin-typescript",
-        "lint": "eslint ./src",
+        "build": "clean ./dist && ts-rollup -c && yarn jsdocify",
+        "dev": "ts-rollup -c -w",
+        "lint": "eslint",
         "fmt": "dprint fmt ./src/**",
         "jsdocify": "yarn pnpify ts-to-jsdoc --project tsconfig.jsdocify.json"
     },

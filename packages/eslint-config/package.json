@@ -16,8 +16,15 @@
         "type": "git",
         "url": "git+https://github.com/CleanSimple/ts-workspace.git"
     },
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc -w"
+    },
     "exports": {
-        "./config": "./config.ts"
+        "./config": {
+            "default": "./dist/config.js",
+            "types": "./dist/config.d.ts"
+        }
     },
     "dependencies": {
         "@eslint/js": "^9.39.1",

@@ -100,6 +100,7 @@ __metadata:
     "@rollup/plugin-node-resolve": "npm:^16.0.1"
     "@rollup/plugin-typescript": "npm:^12.1.4"
     "@types/node": "npm:^25.3.0"
+    jiti: "npm:^2.6.1"
     rollup: "npm:4.52.4"
     rollup-plugin-header: "npm:^1.0.0"
     rollup-plugin-string-import: "npm:^1.2.6"
@@ -111,6 +112,7 @@ __metadata:
     typescript: 5.9.3
   bin:
     clean: ./dist/bin/clean.js
+    ts-rollup: ./dist/bin/ts-rollup.js
   languageName: unknown
   linkType: soft
 
@@ -1584,25 +1586,6 @@ __metadata:
     tslib:
       optional: true
   checksum: 10c0/b5bf7f54794d0b33ae5441c5aa202a95beb7068c206f40102f94997e888756c06c2bfe00517eb74a58771078432f94e8a34e99f5c6dbf89a22b49431b83c4798
-  languageName: node
-  linkType: hard
-
-"@rollup/plugin-typescript@npm:^12.3.0":
-  version: 12.3.0
-  resolution: "@rollup/plugin-typescript@npm:12.3.0"
-  dependencies:
-    "@rollup/pluginutils": "npm:^5.1.0"
-    resolve: "npm:^1.22.1"
-  peerDependencies:
-    rollup: ^2.14.0||^3.0.0||^4.0.0
-    tslib: "*"
-    typescript: ">=3.7.0"
-  peerDependenciesMeta:
-    rollup:
-      optional: true
-    tslib:
-      optional: true
-  checksum: 10c0/41d14e9a9792d8d9751c275cf87c2de796ddd1a64c96fedc622baad8cfbb1247537e37ae428e59e1850de7d7165941ee1a4030dbe9bebd5fbb38c5e4f751d8b5
   languageName: node
   linkType: hard
 
@@ -8806,7 +8789,6 @@ __metadata:
   resolution: "ts-workspace@workspace:."
   dependencies:
     "@cleansimple/dprint-config": "workspace:^"
-    "@rollup/plugin-typescript": "npm:^12.3.0"
     "@yarnpkg/types": "npm:^4.0.1"
     dprint: "npm:0.50.2"
     eslint: "npm:9.39.1"
@@ -8814,7 +8796,6 @@ __metadata:
     lerna: "npm:^9.0.1"
     nx: "npm:22.0.3"
     rollup: "npm:4.52.4"
-    tslib: "npm:^2.8.1"
     typescript: "npm:5.9.3"
   languageName: unknown
   linkType: soft

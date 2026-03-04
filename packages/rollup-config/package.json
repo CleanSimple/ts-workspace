@@ -25,21 +25,23 @@
             "types": "./imports.d.ts"
         },
         "./lib": {
-            "import": "./dist/configs/lib.js",
-            "types": "./dist/configs/lib.d.ts"
+            "default": "./dist/lib.js",
+            "types": "./dist/lib.d.ts"
         },
         "./userscript": {
-            "import": "./dist/configs/userscript.js",
-            "types": "./dist/configs/userscript.d.ts"
+            "default": "./dist/userscript.js",
+            "types": "./dist/userscript.d.ts"
         }
     },
     "bin": {
-        "clean": "./dist/bin/clean.js"
+        "clean": "./dist/bin/clean.js",
+        "ts-rollup": "./dist/bin/ts-rollup.js"
     },
     "dependencies": {
         "@rollup/plugin-commonjs": "^28.0.6",
         "@rollup/plugin-node-resolve": "^16.0.1",
         "@rollup/plugin-typescript": "^12.1.4",
+        "jiti": "^2.6.1",
         "rollup-plugin-header": "^1.0.0",
         "rollup-plugin-string-import": "^1.2.6",
         "rollup-plugin-tsconfig-paths": "^1.5.2",
