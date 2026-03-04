@@ -1,8 +1,17 @@
 {
     "name": "userscript",
+    "version": "1.0.0",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",
+    "displayName": "Sample Project",
+    "description": "Sample Project",
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "userscript": {
+        "namespace": "https://github.com/CleanSimple",
+        "match": ["https://www.google.com.eg/"],
+        "icon": "https://www.google.com/s2/favicons?sz=64&domain=google.com.eg"
+    },
     "scripts": {
         "build": "clean ./dist && ts-rollup -c",
         "dev": "ts-rollup -c -w",

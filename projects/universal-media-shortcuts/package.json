@@ -1,8 +1,22 @@
 {
     "name": "universal-media-shortcuts",
+    "version": "0.26.0",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",
+    "displayName": "Universal Media Shortcuts",
+    "description": "Adds custom shortcuts to all video players",
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "userscript": {
+        "namespace": "https://github.com/CleanSimple",
+        "match": ["*://*/*"],
+        "run-at": "document-start",
+        "grant": [
+            "GM_addStyle",
+            "GM_getValue",
+            "GM_setValue"
+        ]
+    },
     "scripts": {
         "build": "clean ./dist && ts-rollup -c",
         "dev": "ts-rollup -c -w",

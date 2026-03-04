@@ -1,8 +1,18 @@
 {
     "name": "anti-devtools-detector",
+    "version": "0.1.0",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",
+    "displayName": "Anti-DevTools Detector!",
+    "description": "Stops those pesky dev tools detectors",
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "userscript": {
+        "namespace": "https://github.com/CleanSimple",
+        "match": ["*://*/*"],
+        "run-at": "document-start",
+        "grant": ["none"]
+    },
     "scripts": {
         "build": "clean ./dist && ts-rollup -c",
         "dev": "ts-rollup -c -w",

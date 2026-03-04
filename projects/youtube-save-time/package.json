@@ -1,8 +1,19 @@
 {
     "name": "youtube-save-time",
+    "version": "2.12.1",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",
+    "displayName": "YouTube Save Time",
+    "description": "Save the current time to the url so it's safe to navigate to other pages and return to where you left off!",
+    "author": "Nour Nasser <nours02345@gmail.com>",
+    "userscript": {
+        "namespace": "https://github.com/CleanSimple",
+        "match": ["https://www.youtube.com/*"],
+        "icon": "https://www.google.com/s2/favicons?sz=64&domain=youtube.com",
+        "run-at": "document-end",
+        "noframes": true
+    },
     "scripts": {
         "build": "clean ./dist && ts-rollup -c",
         "dev": "ts-rollup -c -w",
