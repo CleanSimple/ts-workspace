@@ -25,12 +25,12 @@
             "types": "./imports.d.ts"
         },
         "./lib": {
-            "default": "./dist/lib.js",
-            "types": "./dist/lib.d.ts"
+            "types": "./dist/lib.d.ts",
+            "default": "./dist/lib.js"
         },
         "./userscript": {
-            "default": "./dist/userscript.js",
-            "types": "./dist/userscript.d.ts"
+            "types": "./dist/userscript.d.ts",
+            "default": "./dist/userscript.js"
         }
     },
     "bin": {

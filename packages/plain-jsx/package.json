@@ -21,16 +21,16 @@
     },
     "exports": {
         ".": {
-            "import": "./dist/index.esm.js",
-            "types": "./dist/types/index.d.ts"
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/index.esm.js"
         },
         "./jsx-runtime": {
-            "import": "./dist/jsx-runtime.esm.js",
-            "types": "./dist/types/jsx-runtime.d.ts"
+            "types": "./dist/types/jsx-runtime.d.ts",
+            "import": "./dist/jsx-runtime.esm.js"
         },
         "./jsx-dev-runtime": {
-            "import": "./dist/jsx-dev-runtime.esm.js",
-            "types": "./dist/types/jsx-dev-runtime.d.ts"
+            "types": "./dist/types/jsx-dev-runtime.d.ts",
+            "import": "./dist/jsx-dev-runtime.esm.js"
         }
     },
     "scripts": {

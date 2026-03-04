@@ -20,8 +20,8 @@
     },
     "exports": {
         ".": {
-            "import": "./dist/index.esm.js",
-            "types": "./dist/types/index.d.ts"
+            "types": "./dist/types/index.d.ts",
+            "import": "./dist/index.esm.js"
         }
     },
     "scripts": {

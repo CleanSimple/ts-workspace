@@ -22,8 +22,8 @@
     },
     "exports": {
         "./config": {
-            "default": "./dist/config.js",
-            "types": "./dist/config.d.ts"
+            "types": "./dist/config.d.ts",
+            "default": "./dist/config.js"
         }
     },
     "dependencies": {
