@@ -1,17 +1,17 @@
-import type { FunctionalComponent } from '.';
+import type { FunctionalComponent } from './types';
 
 export const RefValue = Symbol('RefValue');
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ElementOrComponent = Element | FunctionalComponent<never, any>;
 
 export interface Ref<T extends object> {
     get current(): T | null;
 }
 
-export function ref<
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    T extends Element | FunctionalComponent<never, any>,
->(): Ref<T extends FunctionalComponent<never, infer TRef> ? TRef : T> {
-    return new RefImpl();
-}
+type RefFor<T extends ElementOrComponent> = Ref<
+    T extends FunctionalComponent<never, infer TRef> ? TRef : T
+>;
 
 export class RefImpl<T extends object> implements Ref<T> {
     public [RefValue]: T | null = null;
@@ -19,4 +19,8 @@ export class RefImpl<T extends object> implements Ref<T> {
     public get current(): T | null {
         return this[RefValue];
     }
+}
+
+export function ref<T extends ElementOrComponent>(): RefFor<T> {
+    return new RefImpl();
 }

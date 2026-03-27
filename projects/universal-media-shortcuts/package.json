@@ -9,7 +9,9 @@
     "author": "Nour Nasser <nours02345@gmail.com>",
     "userscript": {
         "namespace": "https://github.com/CleanSimple",
-        "match": ["*://*/*"],
+        "match": [
+            "*://*/*"
+        ],
         "run-at": "document-start",
         "grant": [
             "GM_addStyle",

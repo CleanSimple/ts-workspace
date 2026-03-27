@@ -9,7 +9,9 @@
     "author": "Nour Nasser <nours02345@gmail.com>",
     "userscript": {
         "namespace": "https://github.com/CleanSimple",
-        "match": ["https://www.google.com.eg/"],
+        "match": [
+            "https://www.google.com.eg/"
+        ],
         "icon": "https://www.google.com/s2/favicons?sz=64&domain=google.com.eg"
     },
     "scripts": {

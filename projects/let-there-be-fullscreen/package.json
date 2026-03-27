@@ -9,9 +9,13 @@
     "author": "Nour Nasser <nours02345@gmail.com>",
     "userscript": {
         "namespace": "https://github.com/CleanSimple",
-        "match": ["*://*/*"],
+        "match": [
+            "*://*/*"
+        ],
         "run-at": "document-start",
-        "grant": ["GM_addStyle"]
+        "grant": [
+            "GM_addStyle"
+        ]
     },
     "scripts": {
         "build": "clean ./dist && ts-rollup -c",

@@ -21,16 +21,20 @@
     },
     "exports": {
         ".": {
-            "types": "./dist/types/index.d.ts",
-            "import": "./dist/index.esm.js"
+            "types": "./dist/full/types/index.d.ts",
+            "import": "./dist/full/index.esm.js"
+        },
+        "./slim": {
+            "types": "./dist/slim/types/index.d.ts",
+            "import": "./dist/slim/index.esm.js"
         },
         "./jsx-runtime": {
-            "types": "./dist/types/jsx-runtime.d.ts",
-            "import": "./dist/jsx-runtime.esm.js"
+            "types": "./dist/jsx-runtime/types/jsx-runtime.d.ts",
+            "import": "./dist/jsx-runtime/jsx-runtime.esm.js"
         },
         "./jsx-dev-runtime": {
-            "types": "./dist/types/jsx-dev-runtime.d.ts",
-            "import": "./dist/jsx-dev-runtime.esm.js"
+            "types": "./dist/jsx-runtime/types/jsx-dev-runtime.d.ts",
+            "import": "./dist/jsx-runtime/jsx-dev-runtime.esm.js"
         }
     },
     "scripts": {
@@ -48,10 +52,13 @@
         "@cleansimple/eslint-config": "workspace:^",
         "@cleansimple/rollup-config": "workspace:^",
         "@cleansimple/typescript-config": "workspace:^",
+        "@rollup/plugin-replace": "^6.0.3",
         "@types/node": "^25.3.0",
         "dprint": "0.50.2",
         "eslint": "9.39.1",
         "rollup": "4.52.4",
+        "rollup-plugin-dts": "^6.4.1",
+        "tslib": "^2.8.1",
         "typescript": "5.9.3"
     }
 }
