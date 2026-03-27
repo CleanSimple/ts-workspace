@@ -33,6 +33,9 @@ function generateHeader(pkg: PackageJson) {
         ? `${pkg.author.name} <${pkg.author.email}>`.trim()
         : pkg.author;
     header += formatOption('author', author);
+    if (pkg.license) {
+        header += formatOption('license', pkg.license);
+    }
     if (!pkg.userscript) return header;
 
     if (pkg.userscript.namespace) {

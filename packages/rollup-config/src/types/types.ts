@@ -8,6 +8,7 @@ export interface PackageJson {
         email: string;
         url: string;
     };
+    license?: string;
     userscript?: {
         icon?: string;
         namespace?: string;
