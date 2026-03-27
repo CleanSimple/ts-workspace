@@ -1,6 +1,6 @@
 {
     "name": "let-there-be-full-screen",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",
