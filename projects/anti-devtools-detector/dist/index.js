@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Anti-DevTools Detector!
 // @description        Stops those pesky dev tools detectors
-// @version            0.1.3
+// @version            0.1.4
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*

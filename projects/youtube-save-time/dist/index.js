@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               YouTube Save Time
 // @description        Save the current time to the url so it's safe to navigate to other pages and return to where you left off!
-// @version            2.12.4
+// @version            2.12.5
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              https://www.youtube.com/*

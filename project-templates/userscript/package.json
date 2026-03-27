@@ -1,6 +1,6 @@
 {
     "name": "userscript",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",
