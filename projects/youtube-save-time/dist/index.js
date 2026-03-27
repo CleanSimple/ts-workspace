@@ -13,8 +13,6 @@
 (function () {
     'use strict';
 
-    const Fragment = 'Fragment';
-
     function jsx(type, props) {
         return { type, props };
     }
@@ -265,6 +263,8 @@
     function For(_props) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
     }
+
+    const Fragment = 'Fragment';
 
     function Show(_props) {
         throw new Error('This component cannot be called directly — it must be used through the render function.');
@@ -710,16 +710,16 @@
                 // render components
                 else {
                     const VNodeConstructor = BuiltinComponentMap.get(node.type);
-                    // render built-in components
                     if (VNodeConstructor) {
+                        // render built-in components
                         const reactiveNode = new ReactiveNode();
                         const vNode = new VNodeConstructor(reactiveNode, node.props);
                         appendVNodeChild(parent, vNode);
                         vNode.render();
                         domNodes.push(reactiveNode);
                     }
-                    // render functional components
                     else {
+                        // render functional components
                         setLifecycleContext(_lifecycleContext);
                         const jsxNode = node.type(node.props, { defineRef });
                         setLifecycleContext(null);
