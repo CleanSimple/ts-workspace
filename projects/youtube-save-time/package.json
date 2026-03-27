@@ -20,7 +20,8 @@
         "build": "clean ./dist && ts-rollup -c",
         "dev": "ts-rollup -c -w",
         "lint": "eslint",
-        "fmt": "dprint fmt ./src/**"
+        "fmt": "dprint fmt ./src/**",
+        "version": "yarn build && git add dist"
     },
     "dependencies": {
         "@cleansimple/plain-jsx": "workspace:^"
