@@ -3,7 +3,11 @@ export interface PackageJson {
     displayName: string;
     description: string;
     version: string;
-    author: string;
+    author: string | {
+        name: string;
+        email: string;
+        url: string;
+    };
     userscript?: {
         icon?: string;
         namespace?: string;
@@ -13,5 +17,8 @@ export interface PackageJson {
         connect?: string | string[];
         match?: string | string[];
         grant?: string | string[];
+        updateURL?: string;
+        downloadURL?: string;
+        supportURL?: string;
     };
 }

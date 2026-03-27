@@ -24,7 +24,10 @@ function generateHeader(pkg) {
     header += formatOption('name', pkg.displayName);
     header += formatOption('description', pkg.description);
     header += formatOption('version', pkg.version);
-    header += formatOption('author', pkg.author);
+    const author = typeof pkg.author === 'object'
+        ? `${pkg.author.name} <${pkg.author.email}>`.trim()
+        : pkg.author;
+    header += formatOption('author', author);
     if (!pkg.userscript)
         return header;
     if (pkg.userscript.namespace) {
@@ -50,6 +53,15 @@ function generateHeader(pkg) {
     }
     if (pkg.userscript.grant) {
         header += formatOption('grant', pkg.userscript.grant);
+    }
+    if (pkg.userscript.updateURL) {
+        header += formatOption('updateURL', pkg.userscript.updateURL);
+    }
+    if (pkg.userscript.downloadURL) {
+        header += formatOption('downloadURL', pkg.userscript.downloadURL);
+    }
+    if (pkg.userscript.supportURL) {
+        header += formatOption('supportURL', pkg.userscript.supportURL);
     }
     header += `// ==/UserScript==\n\n`;
     return header;
