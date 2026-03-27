@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Let there be fullscreen!
 // @description        Adds a full screen button to your iframes! (Because the web is complex and sometimes your fullscreen button doesn't work.)
-// @version            0.2.0
+// @version            0.2.1
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*

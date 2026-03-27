@@ -1,6 +1,6 @@
 {
     "name": "youtube-save-time",
-    "version": "2.12.1",
+    "version": "2.12.2",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",
