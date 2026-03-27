@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Sample Project
 // @description        Sample Project
-// @version            1.0.1
+// @version            1.0.2
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              https://www.google.com.eg/
