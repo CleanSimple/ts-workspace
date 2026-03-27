@@ -1,4 +1,4 @@
-import { render } from '@cleansimple/plain-jsx';
+import { render } from '@cleansimple/plain-jsx/slim';
 import { SaveTimeButton } from './SaveTimeButton';
 
 const observer = new MutationObserver(onPageContentChanged);
