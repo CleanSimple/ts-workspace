@@ -4,7 +4,7 @@ import type { ShowProps } from './components/Show';
 import type { WithProps } from './components/With';
 import type { ValuesOf, WithManyProps } from './components/WithMany';
 import type { LifecycleContext } from './lifecycle';
-import type { Action, JSXNode, Predicate, PropsType, RNode, VNode } from './types';
+import type { Action, DOMNode, JSXNode, Predicate, PropsType, RNode, VNode } from './types';
 
 import { isSignal, subscribe, val } from '@cleansimple/plain-signals';
 import { For } from './components/For';
@@ -28,17 +28,21 @@ const _lifecycleContext: LifecycleContext = {
 
 const _renderedRoots: VNodeRoot[] = [];
 
+const resolveChildren = __FullBuild__
+    ? resolveReactiveNodes
+    : (children: RNode[]) => children as DOMNode[];
+
 export function render(root: Element, jsxNode: JSXNode): { dispose: Action } {
     const vNode = new VNodeRoot();
     const children = renderJSX(jsxNode, vNode);
     _renderedRoots.push(vNode);
-    root.append(...resolveReactiveNodes(children));
+    root.append(...resolveChildren(children));
     return {
         dispose: () => {
             const index = _renderedRoots.indexOf(vNode);
             if (index === -1) return;
             cleanupVNode(vNode);
-            for (const child of resolveReactiveNodes(children)) {
+            for (const child of resolveChildren(children)) {
                 root.removeChild(child);
             }
             _renderedRoots.splice(index, 1);
@@ -61,7 +65,7 @@ function renderJSX(jsxNode: JSXNode, parent: VNodeRoot, domNodes: RNode[] = []):
             domNodes.push(textNode);
         }
         // render signals
-        else if (isSignal(node)) {
+        else if (__FullBuild__ && isSignal(node)) {
             const reactiveNode = new ReactiveNode();
             const vNode = new VNodeSignal(reactiveNode, node);
             appendVNodeChild(parent, vNode);
@@ -97,13 +101,13 @@ function renderJSX(jsxNode: JSXNode, parent: VNodeRoot, domNodes: RNode[] = []):
                 }
 
                 const children = renderJSX(node.props.children, parent);
-                domElement.append(...resolveReactiveNodes(children));
+                domElement.append(...resolveChildren(children));
 
                 domNodes.push(domElement);
             }
             // render components
             else {
-                const VNodeConstructor = BuiltinComponentMap.get(node.type);
+                const VNodeConstructor = __FullBuild__ && BuiltinComponentMap.get(node.type);
                 if (VNodeConstructor) {
                     // render built-in components
                     const reactiveNode = new ReactiveNode();

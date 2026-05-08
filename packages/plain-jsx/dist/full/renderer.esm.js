@@ -18,18 +18,20 @@ const _lifecycleContext = {
     onCleanupCallback: null,
 };
 const _renderedRoots = [];
+const resolveChildren = resolveReactiveNodes
+    ;
 function render(root, jsxNode) {
     const vNode = new VNodeRoot();
     const children = renderJSX(jsxNode, vNode);
     _renderedRoots.push(vNode);
-    root.append(...resolveReactiveNodes(children));
+    root.append(...resolveChildren(children));
     return {
         dispose: () => {
             const index = _renderedRoots.indexOf(vNode);
             if (index === -1)
                 return;
             cleanupVNode(vNode);
-            for (const child of resolveReactiveNodes(children)) {
+            for (const child of resolveChildren(children)) {
                 root.removeChild(child);
             }
             _renderedRoots.splice(index, 1);
@@ -82,7 +84,7 @@ function renderJSX(jsxNode, parent, domNodes = []) {
                     parent.registerSubscriptions(subscriptions);
                 }
                 const children = renderJSX(node.props.children, parent);
-                domElement.append(...resolveReactiveNodes(children));
+                domElement.append(...resolveChildren(children));
                 domNodes.push(domElement);
             }
             // render components

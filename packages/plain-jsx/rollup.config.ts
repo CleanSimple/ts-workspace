@@ -10,7 +10,14 @@ const builds = {
         input: {
             'index': 'src/index.ts',
         },
-        plugins: [],
+        plugins: [
+            replace({
+                preventAssignment: true,
+                values: {
+                    '__FullBuild__': 'true',
+                },
+            }),
+        ],
     },
     'slim': {
         input: {
@@ -20,12 +27,8 @@ const builds = {
             replace({
                 preventAssignment: true,
                 values: {
-                    'isSignal(value)': 'false',
-                    'isSignal(node)': 'false',
-                    'resolveReactiveNodes(children)': 'children',
-                    'BuiltinComponentMap.get(node.type)': 'false',
+                    '__FullBuild__': 'false',
                 },
-                exclude: ['src/reactive-node.ts'],
             }),
         ],
     },
