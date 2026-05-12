@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               YouTube Save Time
 // @description        Save the current time to the url so it's safe to navigate to other pages and return to where you left off!
-// @version            2.12.5
+// @version            2.12.6
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              https://www.youtube.com/*
@@ -197,18 +197,19 @@
         onCleanupCallback: null,
     };
     const _renderedRoots = [];
+    const resolveChildren = (children) => children;
     function render(root, jsxNode) {
         const vNode = new VNodeRoot();
         const children = renderJSX(jsxNode, vNode);
         _renderedRoots.push(vNode);
-        root.append(...children);
+        root.append(...resolveChildren(children));
         return {
             dispose: () => {
                 const index = _renderedRoots.indexOf(vNode);
                 if (index === -1)
                     return;
                 cleanupVNode(vNode);
-                for (const child of children) {
+                for (const child of resolveChildren(children)) {
                     root.removeChild(child);
                 }
                 _renderedRoots.splice(index, 1);
@@ -253,7 +254,7 @@
                         parent.registerSubscriptions(subscriptions);
                     }
                     const children = renderJSX(node.props.children, parent);
-                    domElement.append(...children);
+                    domElement.append(...resolveChildren(children));
                     domNodes.push(domElement);
                 }
                 // render components
