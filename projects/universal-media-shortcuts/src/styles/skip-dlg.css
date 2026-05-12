@@ -24,6 +24,7 @@
     font-weight: initial;
     font-style: initial;
     color: var(--text-color);
+    z-index: 1000000;
 
     * {
         font-family: inherit;
