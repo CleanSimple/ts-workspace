@@ -40,7 +40,7 @@
             configurable: false,
         });
     })();
-    // handle detection based on source map fetching
+    // handle detection that is based on source map loading
     (function () {
         // Why is it possible to have a document with a null body? That I can't fathom. ¯\_(ツ)_/¯
         if (!document.body)
@@ -57,7 +57,7 @@
             return realAppendChild(child);
         };
     })();
-    // handle detection based on console logging
+    // handle detection that is based on console logging
     (function (window) {
         const dummyFunc = () => {
             heh();
@@ -72,12 +72,24 @@
         console.clear = dummyFunc;
         console.table = dummyFunc;
     })(window);
+    // handle detection that is based on inner vs outer window size comparison
+    (function (window) {
+        Object.defineProperty(window, 'outerWidth', {
+            get: function () {
+                return window.innerWidth;
+            },
+        });
+        Object.defineProperty(window, 'outerHeight', {
+            get: function () {
+                return window.innerHeight;
+            },
+        });
+    })(window);
     // for experimenting
     // window.addEventListener("beforeunload", (event) => {
     //     event.preventDefault();
     //     return (event.returnValue = "");
     // });
-    // alert("ass");
     // function onChange(mutationList, observer) {
     //     for (let mutation of mutationList) {
     //         console.log(logTitle, "Mutation:", mutation);
