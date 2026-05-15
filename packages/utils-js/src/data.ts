@@ -27,13 +27,14 @@ export function remapData(data: DataRow[], mapping: Mapping): DataRow[] {
     );
 }
 
-export function dropDuplicates(
-    data: DataRow[],
-    key: string | ((row: DataRow) => unknown),
-): DataRow[] {
-    return [
-        ...new Map(
-            data.map(row => [key instanceof Function ? key(row) : row[key], row]),
-        ).values(),
-    ];
+export function deduplicate<T>(data: T[], key?: ((item: T) => unknown) | keyof T): T[] {
+    if (key === undefined) {
+        return new Map(data.map(item => [item, item])).values().toArray();
+    } else if (typeof key === 'string') {
+        return new Map(data.map(item => [item[key], item])).values().toArray();
+    } else if (typeof key === 'function') {
+        return new Map(data.map(item => [key(item), item])).values().toArray();
+    } else {
+        throw new Error('Invalid key type');
+    }
 }

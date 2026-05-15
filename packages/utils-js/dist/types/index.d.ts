@@ -1,5 +1,5 @@
-export type * from './arr';
 export type * from './types';
+import './arr';
 export * from './async';
 export * from './csv';
 export * from './data';

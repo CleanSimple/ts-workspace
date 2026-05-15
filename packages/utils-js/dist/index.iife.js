@@ -1,6 +1,25 @@
 var Utils = (function (exports) {
     'use strict';
 
+    Array.prototype.first = function () {
+        return this[0];
+    };
+    Array.prototype.last = function () {
+        return this[this.length - 1];
+    };
+    Array.prototype.insertAt = function (index, ...items) {
+        return this.splice(index, 0, ...items);
+    };
+    Array.prototype.removeAt = function (index) {
+        return this.splice(index, 1)[0];
+    };
+    Array.prototype.remove = function (item) {
+        const index = this.indexOf(item);
+        if (index !== -1) {
+            this.splice(index, 1);
+        }
+    };
+
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
     }
@@ -62,10 +81,19 @@ var Utils = (function (exports) {
     function remapData(data, mapping) {
         return data.map(row => Object.fromEntries(Object.entries(row).map(([key, val]) => [mapping[key] || key, val])));
     }
-    function dropDuplicates(data, key) {
-        return [
-            ...new Map(data.map(row => [key instanceof Function ? key(row) : row[key], row])).values(),
-        ];
+    function deduplicate(data, key) {
+        if (key === undefined) {
+            return new Map(data.map(item => [item, item])).values().toArray();
+        }
+        else if (typeof key === 'string') {
+            return new Map(data.map(item => [item[key], item])).values().toArray();
+        }
+        else if (typeof key === 'function') {
+            return new Map(data.map(item => [key(item), item])).values().toArray();
+        }
+        else {
+            throw new Error('Invalid key type');
+        }
     }
 
     /**
@@ -380,10 +408,10 @@ var Utils = (function (exports) {
     exports.dateToTimeString = dateToTimeString;
     exports.dateToWeekDay = dateToWeekDay;
     exports.debounce = debounce;
+    exports.deduplicate = deduplicate;
     exports.downloadArrayBuffer = downloadArrayBuffer;
     exports.downloadBlob = downloadBlob;
     exports.downloadText = downloadText;
-    exports.dropDuplicates = dropDuplicates;
     exports.fail = fail;
     exports.fileSelect = fileSelect;
     exports.getCurrentQueryParams = getCurrentQueryParams;

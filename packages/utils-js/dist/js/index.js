@@ -1,3 +1,4 @@
+import './arr';
 export * from './async';
 export * from './csv';
 export * from './data';

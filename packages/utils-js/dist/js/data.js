@@ -23,14 +23,24 @@ export function remapData(data, mapping) {
     return data.map(row => Object.fromEntries(Object.entries(row).map(([key, val]) => [mapping[key] || key, val])));
 }
 /**
- * @param {DataRow[]} data
- * @param {string | ((row: DataRow) => unknown)} key
- * @returns {DataRow[]}
+ * @template T
+ * @param {T[]} data
+ * @param {((item: T) => unknown) | keyof T} [key]
+ * @returns {T[]}
  */
-export function dropDuplicates(data, key) {
-    return [
-        ...new Map(data.map(row => [key instanceof Function ? key(row) : row[key], row])).values(),
-    ];
+export function deduplicate(data, key) {
+    if (key === undefined) {
+        return new Map(data.map(item => [item, item])).values().toArray();
+    }
+    else if (typeof key === 'string') {
+        return new Map(data.map(item => [item[key], item])).values().toArray();
+    }
+    else if (typeof key === 'function') {
+        return new Map(data.map(item => [key(item), item])).values().toArray();
+    }
+    else {
+        throw new Error('Invalid key type');
+    }
 }
 /** @typedef {Record<string, unknown>} DataRow */
 /** @typedef {Record<string, string>} Mapping */
