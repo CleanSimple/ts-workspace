@@ -1,6 +1,6 @@
 {
     "name": "universal-media-shortcuts",
-    "version": "0.26.5",
+    "version": "0.26.6",
     "packageManager": "yarn@4.6.0",
     "private": true,
     "type": "module",

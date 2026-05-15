@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Sample Project
 // @description        Sample Project
-// @version            1.0.4
+// @version            1.0.5
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              https://www.google.com.eg/
@@ -10,6 +10,25 @@
 
 (function () {
     'use strict';
+
+    Array.prototype.first = function () {
+        return this[0];
+    };
+    Array.prototype.last = function () {
+        return this[this.length - 1];
+    };
+    Array.prototype.insertAt = function (index, ...items) {
+        return this.splice(index, 0, ...items);
+    };
+    Array.prototype.removeAt = function (index) {
+        return this.splice(index, 1)[0];
+    };
+    Array.prototype.remove = function (item) {
+        const index = this.indexOf(item);
+        if (index !== -1) {
+            this.splice(index, 1);
+        }
+    };
 
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
