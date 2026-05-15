@@ -1,31 +1,36 @@
+type QuoteMode = 'auto' | 'always';
+
 interface CsvEscapeOptions {
-    quoteAll?: boolean;
+    quoteMode?: QuoteMode;
 }
 
-export function csvEscape(string: string, { quoteAll = false }: CsvEscapeOptions = {}): string {
+const EscapeChars = [',', '"', '\r', '\n'];
+
+export function csvEscape(string: string, { quoteMode = 'auto' }: CsvEscapeOptions = {}): string {
     if (typeof string !== 'string') {
         string = String(string);
     }
 
-    const escapeChars = [',', '"', '\r', '\n'];
+    const wrapInQuotes = quoteMode == 'always' ? true : EscapeChars.some(x => string.includes(x));
+    if (wrapInQuotes) {
+        string = string.replaceAll('"', '""'); // escape double quotes
+        string = `"${string}"`;
+    }
 
-    const wrapInQuotes = quoteAll ? true : escapeChars.some(x => string.includes(x));
-
-    string = string.replaceAll('"', '""'); // escape double quotes
-    return wrapInQuotes ? `"${string}"` : string;
+    return string;
 }
 
 interface CsvFromArrayOptions {
     eol?: '\r' | '\n' | '\r\n';
-    quoteAll?: boolean;
+    quoteMode?: QuoteMode;
 }
 
 export function csvFromArray(
     array: string[][],
-    { eol = '\r\n', quoteAll = false }: CsvFromArrayOptions = {},
+    { eol = '\r\n', quoteMode = 'auto' }: CsvFromArrayOptions = {},
 ): string {
     return array.map(
-        row => row.map(cell => csvEscape(cell, { quoteAll })).join(','),
+        row => row.map(cell => csvEscape(cell, { quoteMode })).join(','),
     ).join(eol);
 }
 

@@ -55,14 +55,12 @@ export function dateToWeekDay(date: Date): string {
  * // prints +0200 (No DST) or +0300 (DST)
  */
 export function getTimezoneOffset(timeZone: string, date: Date): string {
-    function padded(num: number) {
-        const sign = num < 0 ? '-' : '+';
-        return sign + Math.abs(num).toString().padStart(4, '0');
-    }
+    const timeZoneName = new Intl.DateTimeFormat(LOCALE, { timeZone, timeZoneName: 'longOffset' })
+        .formatToParts(date)
+        .find(part => part.type === 'timeZoneName')!
+        .value;
 
-    const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-    const tzDate = new Date(date.toLocaleString('en-US', { timeZone }));
-    return padded(Math.round((tzDate.getTime() - utcDate.getTime()) / 6e4 / 60 * 100));
+    return timeZoneName.replace('GMT', '').replace(':', '');
 }
 
 export function getToday(): Date {
