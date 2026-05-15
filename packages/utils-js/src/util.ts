@@ -35,14 +35,10 @@ export function download(
     const elem = document.createElement('a');
 
     elem.href = downloadUrl;
-    if (options.filename) {
-        elem.download = options.filename;
-    }
+    elem.download = options.filename ?? '';
     elem.style.display = 'none';
 
-    document.body.appendChild(elem);
     elem.click();
-    document.body.removeChild(elem);
 
     URL.revokeObjectURL(downloadUrl);
 }
