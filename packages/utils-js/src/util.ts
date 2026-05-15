@@ -47,13 +47,18 @@ export function download(
     URL.revokeObjectURL(downloadUrl);
 }
 
-export async function fileSelect(accept = '', multiple = false): Promise<FileList | null> {
+interface FileSelectOptions {
+    accept?: string;
+    multiple?: boolean;
+}
+
+export async function fileSelect(options: FileSelectOptions = {}): Promise<FileList | null> {
     return new Promise((resolve) => {
         const input = document.createElement('input');
 
         input.type = 'file';
-        input.accept = accept;
-        input.multiple = multiple;
+        input.accept = options.accept ?? '';
+        input.multiple = options.multiple ?? false;
 
         const onFileSelect = () => {
             window.removeEventListener('focus', onFileSelect);
