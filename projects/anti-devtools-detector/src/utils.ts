@@ -6,7 +6,8 @@ export const log = console.log.bind(null, LogTitle);
 export const info = console.info.bind(null, LogTitle);
 
 export function heh() {
-    log('heh ¬‿¬');
+    const stack = new Error().stack;
+    log('heh ¬‿¬', stack);
 }
 
 export function createVerboseProxyForObject(obj: object) {
