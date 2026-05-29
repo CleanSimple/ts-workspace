@@ -11,24 +11,35 @@
 (function () {
     'use strict';
 
-    Array.prototype.first = function () {
-        return this[0];
-    };
-    Array.prototype.last = function () {
-        return this[this.length - 1];
-    };
-    Array.prototype.insertAt = function (index, ...items) {
-        return this.splice(index, 0, ...items);
-    };
-    Array.prototype.removeAt = function (index) {
-        return this.splice(index, 1)[0];
-    };
-    Array.prototype.remove = function (item) {
-        const index = this.indexOf(item);
-        if (index !== -1) {
-            this.splice(index, 1);
+    function extendPrototype(prototype, properties) {
+        for (const key of Object.keys(properties)) {
+            const desc = Object.getOwnPropertyDescriptor(properties, key);
+            desc.enumerable = false;
+            Object.defineProperty(prototype, key, desc);
         }
-    };
+    }
+
+    const arrayExtensions = () => ({
+        first() {
+            return this[0];
+        },
+        last() {
+            return this[this.length - 1];
+        },
+        insertAt(index, ...items) {
+            return this.splice(index, 0, ...items);
+        },
+        removeAt(index) {
+            return this.splice(index, 1)[0];
+        },
+        remove(item) {
+            const index = this.indexOf(item);
+            if (index !== -1) {
+                this.splice(index, 1);
+            }
+        },
+    });
+    extendPrototype(Array.prototype, arrayExtensions());
 
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
