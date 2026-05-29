@@ -1,4 +1,6 @@
-import { debounce, isElementVisible } from '@cleansimple/utils-js';
+import type { FullscreenMessage } from './types';
+
+import { debounce, isElementVisible, isTopFrame } from '@cleansimple/utils-js';
 
 GM_addStyle(`
 .ltbf-btn {
@@ -15,8 +17,43 @@ GM_addStyle(`
   z-index: 10000;
 }`);
 
+const Magic = 'let-there-be-fullscreen';
+
 const observer = new MutationObserver(debounce(addButton, 1000));
 observer.observe(document.body, { childList: true, subtree: true });
+
+if (isTopFrame()) {
+    document.addEventListener('fullscreenchange', () => {
+        const isFullscreen = document.fullscreenElement !== null;
+        broadcastMessage(
+            window,
+            {
+                magic: Magic,
+                name: 'fullscreen',
+                value: isFullscreen,
+            } satisfies FullscreenMessage,
+        );
+    });
+}
+
+window.addEventListener('message', event => {
+    if (!isFullscreenEvent(event.data)) {
+        return;
+    }
+
+    onFullscreenChange(event.data.value);
+});
+
+function isFullscreenEvent(value: unknown): value is FullscreenMessage {
+    return (value != null && typeof value === 'object' && 'magic' in value
+        && value.magic === Magic && 'name' in value && value.name === 'fullscreen');
+}
+
+function onFullscreenChange(isFullscreen: boolean) {
+    document.querySelectorAll<HTMLButtonElement>('.ltbf-btn').forEach(button => {
+        button.style.display = isFullscreen ? 'none' : 'block';
+    });
+}
 
 function createFullScreenButtonForIframe(iframe: HTMLIFrameElement) {
     const button = document.createElement('button');
@@ -40,4 +77,13 @@ function addButton() {
             iframe.insertAdjacentElement('afterend', createFullScreenButtonForIframe(iframe));
             iframe.dataset['canFullscreen'] = 'true';
         });
+}
+
+function broadcastMessage(win: Window, message: unknown, targetOrigin: string = '*') {
+    win.postMessage(message, targetOrigin);
+
+    // eslint-disable-next-line @typescript-eslint/prefer-for-of
+    for (let i = 0; i < win.frames.length; i++) {
+        broadcastMessage(win.frames[i], message, targetOrigin);
+    }
 }

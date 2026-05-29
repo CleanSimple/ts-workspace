@@ -12,24 +12,49 @@
 (function () {
     'use strict';
 
-    Array.prototype.first = function () {
-        return this[0];
-    };
-    Array.prototype.last = function () {
-        return this[this.length - 1];
-    };
-    Array.prototype.insertAt = function (index, ...items) {
-        return this.splice(index, 0, ...items);
-    };
-    Array.prototype.removeAt = function (index) {
-        return this.splice(index, 1)[0];
-    };
-    Array.prototype.remove = function (item) {
-        const index = this.indexOf(item);
-        if (index !== -1) {
-            this.splice(index, 1);
+    function debounce(func, timeout) {
+        let timeoutId = 0;
+        return ((...args) => {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(func, timeout, ...args);
+        });
+    }
+    function extendPrototype(prototype, properties) {
+        for (const key of Object.keys(properties)) {
+            const desc = Object.getOwnPropertyDescriptor(properties, key);
+            desc.enumerable = false;
+            Object.defineProperty(prototype, key, desc);
         }
-    };
+    }
+
+    const arrayExtensions = () => ({
+        first() {
+            return this[0];
+        },
+        last() {
+            return this[this.length - 1];
+        },
+        insertAt(index, ...items) {
+            return this.splice(index, 0, ...items);
+        },
+        removeAt(index) {
+            return this.splice(index, 1)[0];
+        },
+        remove(item) {
+            const index = this.indexOf(item);
+            if (index !== -1) {
+                this.splice(index, 1);
+            }
+        },
+    });
+    extendPrototype(Array.prototype, arrayExtensions());
+
+    /**
+     * checks if a window is the top window (not an iframe)
+     */
+    function isTopFrame(win = window) {
+        return win === win.parent;
+    }
     function isElementVisible(elem) {
         if (elem.offsetParent === null || elem.ariaHidden === 'true') {
             return false;
@@ -49,13 +74,6 @@
             || left > scrollableWidth
             || top > scrollableHeight);
     }
-    function debounce(func, timeout) {
-        let timeoutId = 0;
-        return ((...args) => {
-            clearTimeout(timeoutId);
-            timeoutId = setTimeout(func, timeout, ...args);
-        });
-    }
 
     GM_addStyle(`
 .ltbf-btn {
@@ -71,8 +89,34 @@
   background: blue;
   z-index: 10000;
 }`);
+    const Magic = 'let-there-be-fullscreen';
     const observer = new MutationObserver(debounce(addButton, 1000));
     observer.observe(document.body, { childList: true, subtree: true });
+    if (isTopFrame()) {
+        document.addEventListener('fullscreenchange', () => {
+            const isFullscreen = document.fullscreenElement !== null;
+            broadcastMessage(window, {
+                magic: Magic,
+                name: 'fullscreen',
+                value: isFullscreen,
+            });
+        });
+    }
+    window.addEventListener('message', event => {
+        if (!isFullscreenEvent(event.data)) {
+            return;
+        }
+        onFullscreenChange(event.data.value);
+    });
+    function isFullscreenEvent(value) {
+        return (value != null && typeof value === 'object' && 'magic' in value
+            && value.magic === Magic && 'name' in value && value.name === 'fullscreen');
+    }
+    function onFullscreenChange(isFullscreen) {
+        document.querySelectorAll('.ltbf-btn').forEach(button => {
+            button.style.display = isFullscreen ? 'none' : 'block';
+        });
+    }
     function createFullScreenButtonForIframe(iframe) {
         const button = document.createElement('button');
         button.textContent = 'Fullscreen!';
@@ -93,6 +137,13 @@
             iframe.insertAdjacentElement('afterend', createFullScreenButtonForIframe(iframe));
             iframe.dataset['canFullscreen'] = 'true';
         });
+    }
+    function broadcastMessage(win, message, targetOrigin = '*') {
+        win.postMessage(message, targetOrigin);
+        // eslint-disable-next-line @typescript-eslint/prefer-for-of
+        for (let i = 0; i < win.frames.length; i++) {
+            broadcastMessage(win.frames[i], message, targetOrigin);
+        }
     }
 
 })();
