@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Anti-DevTools Detector!
 // @description        Stops those pesky dev tools detectors
-// @version            0.2.0
+// @version            0.3.0
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*
@@ -18,7 +18,8 @@
     const log = console.log.bind(null, LogTitle);
     const info = console.info.bind(null, LogTitle);
     function heh() {
-        log('heh ¬‿¬');
+        const stack = new Error().stack;
+        log('heh ¬‿¬', stack);
     }
 
     (function (window) {
@@ -59,27 +60,81 @@
     })();
     // handle detection that is based on console logging
     (function (window) {
-        const dummyFunc = () => {
-            heh();
-            // throw new Error();
+        const validateInput = (...args) => {
+            if (args.length === 1 && args[0]) {
+                const value = args[0];
+                if (Object.prototype.hasOwnProperty.call(value, 'toString')) {
+                    if (value instanceof Date) {
+                        info('Intercepted date to string detection.');
+                        return false;
+                    }
+                    else if (value instanceof RegExp) {
+                        info('Intercepted regex to string detection.');
+                        return false;
+                    }
+                    else if (typeof value === 'function') {
+                        info('Intercepted function to string detection.');
+                        return false;
+                    }
+                }
+                if (value instanceof Element && Object.prototype.hasOwnProperty.call(value, 'id')) {
+                    info('Intercepted element define id detection.');
+                    return false;
+                }
+            }
+            return true;
         };
         const console = window.console;
-        console.log = dummyFunc;
-        console.debug = dummyFunc;
-        console.info = dummyFunc;
-        console.warn = dummyFunc;
-        console.error = dummyFunc;
-        console.clear = dummyFunc;
-        console.table = dummyFunc;
+        const realLog = console.log.bind(null);
+        const realWarn = console.warn.bind(null);
+        const realInfo = console.info.bind(null);
+        console.log = (...args) => {
+            if (!validateInput(...args))
+                return;
+            realLog(...args);
+        };
+        console.info = (...args) => {
+            if (!validateInput(...args))
+                return;
+            realInfo(...args);
+        };
+        console.warn = (...args) => {
+            if (!validateInput(...args))
+                return;
+            realWarn(...args);
+        };
+        console.clear = () => {
+            info('Intercepted console.clear().');
+        };
+        console.table = () => {
+            info('Intercepted console.table().');
+        };
+    })(window);
+    // handle detection timers
+    (function (window) {
+        const realSetInterval = window.setInterval.bind(null);
+        // To prevent breakage we create fake interval.
+        // The long timeout is meant to improve performance, although I am not really sure that it does
+        const fakeInterval = () => realSetInterval(() => { }, 24 * 60 * 60 * 1000);
+        window.setInterval = (handler, timeout, ...args) => {
+            const handlerSource = handler.toString();
+            if (handlerSource.includes('.detect(')) {
+                info('Intercepted detection timer.');
+                return fakeInterval();
+            }
+            return realSetInterval(handler, timeout, ...args);
+        };
     })(window);
     // handle detection that is based on inner vs outer window size comparison
     (function (window) {
         Object.defineProperty(window, 'outerWidth', {
+            configurable: false,
             get: function () {
                 return window.innerWidth;
             },
         });
         Object.defineProperty(window, 'outerHeight', {
+            configurable: false,
             get: function () {
                 return window.innerHeight;
             },
