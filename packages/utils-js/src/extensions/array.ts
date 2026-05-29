@@ -1,3 +1,5 @@
+import { extendPrototype } from '../util';
+
 interface ArrayExtensions<T> {
     first: () => T | undefined;
     last: () => T | undefined;
@@ -32,4 +34,4 @@ const arrayExtensions = <T>(): ArrayExtensions<T> => ({
     },
 });
 
-Object.assign(Array.prototype, arrayExtensions());
+extendPrototype(Array.prototype, arrayExtensions());

@@ -35,65 +35,29 @@ export function base64Encode(string) {
     return window.btoa(binaryString);
 }
 /**
- * @param {string} filename
- * @param {string} content
- * @param {string} mimeType
+ * @param {string | Blob | ArrayBuffer} content
+ * @param {DownloadOptions} [options={}]
  * @returns {void}
  */
-export function downloadText(filename, content, mimeType) {
+export function download(content, options = {}) {
+    const downloadUrl = URL.createObjectURL(new Blob([content], options.mimeType ? { type: options.mimeType } : {}));
     const elem = document.createElement('a');
-    elem.href = `data:${mimeType};base64,` + base64Encode(content);
-    elem.download = filename;
+    elem.href = downloadUrl;
+    elem.download = options.filename ?? '';
     elem.style.display = 'none';
-    document.body.appendChild(elem);
     elem.click();
-    document.body.removeChild(elem);
+    URL.revokeObjectURL(downloadUrl);
 }
 /**
- * @param {string} filename
- * @param {Blob} content
- * @param {string} mimeType
- * @returns {void}
- */
-export function downloadBlob(filename, content, mimeType) {
-    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
-    const elem = document.createElement('a');
-    elem.href = url;
-    elem.download = filename;
-    elem.style.display = 'none';
-    document.body.appendChild(elem);
-    elem.click();
-    document.body.removeChild(elem);
-    URL.revokeObjectURL(url);
-}
-/**
- * @param {string} filename
- * @param {ArrayBuffer} content
- * @param {string} mimeType
- * @returns {void}
- */
-export function downloadArrayBuffer(filename, content, mimeType) {
-    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
-    const elem = document.createElement('a');
-    elem.href = url;
-    elem.download = filename;
-    elem.style.display = 'none';
-    document.body.appendChild(elem);
-    elem.click();
-    document.body.removeChild(elem);
-    URL.revokeObjectURL(url);
-}
-/**
- * @param {string} [accept='']
- * @param {boolean} [multiple=false]
+ * @param {FileSelectOptions} [options={}]
  * @returns {Promise<FileList | null>}
  */
-export async function fileSelect(accept = '', multiple = false) {
+export async function fileSelect(options = {}) {
     return new Promise((resolve) => {
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = accept;
-        input.multiple = multiple;
+        input.accept = options.accept ?? '';
+        input.multiple = options.multiple ?? false;
         const onFileSelect = () => {
             window.removeEventListener('focus', onFileSelect);
             setTimeout(() => {
@@ -134,3 +98,25 @@ export function isObject(value) {
         && value !== null
         && Object.getPrototypeOf(value) === Object.prototype;
 }
+/**
+ * @param {object} prototype
+ * @param {object} properties
+ * @returns {void}
+ */
+export function extendPrototype(prototype, properties) {
+    for (const key of Object.keys(properties)) {
+        const desc = Object.getOwnPropertyDescriptor(properties, key);
+        desc.enumerable = false;
+        Object.defineProperty(prototype, key, desc);
+    }
+}
+/**
+ * @typedef {Object} DownloadOptions
+ * @property {string} [filename]
+ * @property {string} [mimeType]
+ */
+/**
+ * @typedef {Object} FileSelectOptions
+ * @property {string} [accept]
+ * @property {boolean} [multiple]
+ */

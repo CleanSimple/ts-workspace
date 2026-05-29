@@ -77,13 +77,11 @@ export function dateToWeekDay(date) {
  * @returns {string}
  */
 export function getTimezoneOffset(timeZone, date) {
-    function padded(num) {
-        const sign = num < 0 ? '-' : '+';
-        return sign + Math.abs(num).toString().padStart(4, '0');
-    }
-    const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-    const tzDate = new Date(date.toLocaleString('en-US', { timeZone }));
-    return padded(Math.round((tzDate.getTime() - utcDate.getTime()) / 6e4 / 60 * 100));
+    const timeZoneName = new Intl.DateTimeFormat(LOCALE, { timeZone, timeZoneName: 'longOffset' })
+        .formatToParts(date)
+        .find(part => part.type === 'timeZoneName')
+        .value;
+    return timeZoneName.replace('GMT', '').replace(':', '');
 }
 /**
  * @returns {Date}

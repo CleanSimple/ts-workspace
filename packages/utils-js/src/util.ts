@@ -87,3 +87,11 @@ export function isObject(value: unknown): value is Record<string, unknown> {
         && value !== null
         && Object.getPrototypeOf(value) === Object.prototype;
 }
+
+export function extendPrototype(prototype: object, properties: object) {
+    for (const key of Object.keys(properties)) {
+        const desc = Object.getOwnPropertyDescriptor(properties, key)!;
+        desc.enumerable = false;
+        Object.defineProperty(prototype, key, desc);
+    }
+}

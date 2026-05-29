@@ -1,21 +1,89 @@
-Array.prototype.first = function () {
-    return this[0];
-};
-Array.prototype.last = function () {
-    return this[this.length - 1];
-};
-Array.prototype.insertAt = function (index, ...items) {
-    return this.splice(index, 0, ...items);
-};
-Array.prototype.removeAt = function (index) {
-    return this.splice(index, 1)[0];
-};
-Array.prototype.remove = function (item) {
-    const index = this.indexOf(item);
-    if (index !== -1) {
-        this.splice(index, 1);
+function hasKey(obj, key) {
+    return key in obj;
+}
+function fail(error) {
+    throw error;
+}
+function rndInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function base64Encode(string) {
+    const bytes = new TextEncoder().encode(string);
+    const binaryString = Array.from(bytes)
+        .map(byte => String.fromCharCode(byte))
+        .join('');
+    return window.btoa(binaryString);
+}
+function download(content, options = {}) {
+    const downloadUrl = URL.createObjectURL(new Blob([content], options.mimeType ? { type: options.mimeType } : {}));
+    const elem = document.createElement('a');
+    elem.href = downloadUrl;
+    elem.download = options.filename ?? '';
+    elem.style.display = 'none';
+    elem.click();
+    URL.revokeObjectURL(downloadUrl);
+}
+async function fileSelect(options = {}) {
+    return new Promise((resolve) => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = options.accept ?? '';
+        input.multiple = options.multiple ?? false;
+        const onFileSelect = () => {
+            window.removeEventListener('focus', onFileSelect);
+            setTimeout(() => {
+                resolve(input.files);
+            }, 1000);
+        };
+        window.addEventListener('focus', onFileSelect);
+        input.click();
+    });
+}
+function debounce(func, timeout) {
+    let timeoutId = 0;
+    return ((...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(func, timeout, ...args);
+    });
+}
+function isPrimitive(value) {
+    return (value === null
+        || (typeof value !== 'object' && typeof value !== 'function'));
+}
+function isObject(value) {
+    return typeof value === 'object'
+        && value !== null
+        && Object.getPrototypeOf(value) === Object.prototype;
+}
+function extendPrototype(prototype, properties) {
+    for (const key of Object.keys(properties)) {
+        const desc = Object.getOwnPropertyDescriptor(properties, key);
+        desc.enumerable = false;
+        Object.defineProperty(prototype, key, desc);
     }
-};
+}
+
+const arrayExtensions = () => ({
+    first() {
+        return this[0];
+    },
+    last() {
+        return this[this.length - 1];
+    },
+    insertAt(index, ...items) {
+        return this.splice(index, 0, ...items);
+    },
+    removeAt(index) {
+        return this.splice(index, 1)[0];
+    },
+    remove(item) {
+        const index = this.indexOf(item);
+        if (index !== -1) {
+            this.splice(index, 1);
+        }
+    },
+});
+extendPrototype(Array.prototype, arrayExtensions());
 
 async function sleep(milliseconds) {
     return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -46,17 +114,20 @@ async function poll(getter, predicate, { timeoutMs = 0, intervalMs = 100 } = {})
     return value;
 }
 
-function csvEscape(string, { quoteAll = false } = {}) {
+const EscapeChars = [',', '"', '\r', '\n'];
+function csvEscape(string, { quoteMode = 'auto' } = {}) {
     if (typeof string !== 'string') {
         string = String(string);
     }
-    const escapeChars = [',', '"', '\r', '\n'];
-    const wrapInQuotes = quoteAll ? true : escapeChars.some(x => string.includes(x));
-    string = string.replaceAll('"', '""'); // escape double quotes
-    return wrapInQuotes ? `"${string}"` : string;
+    const wrapInQuotes = quoteMode == 'always' ? true : EscapeChars.some(x => string.includes(x));
+    if (wrapInQuotes) {
+        string = string.replaceAll('"', '""'); // escape double quotes
+        string = `"${string}"`;
+    }
+    return string;
 }
-function csvFromArray(array, { eol = '\r\n', quoteAll = false } = {}) {
-    return array.map(row => row.map(cell => csvEscape(cell, { quoteAll })).join(',')).join(eol);
+function csvFromArray(array, { eol = '\r\n', quoteMode = 'auto' } = {}) {
+    return array.map(row => row.map(cell => csvEscape(cell, { quoteMode })).join(',')).join(eol);
 }
 function csvToArray(csvString, { eol = '\r\n' } = {}) {
     const escape = (string) => string.replaceAll(',', '<COMMA>')
@@ -229,13 +300,11 @@ function dateToWeekDay(date) {
  * // prints +0200 (No DST) or +0300 (DST)
  */
 function getTimezoneOffset(timeZone, date) {
-    function padded(num) {
-        const sign = num < 0 ? '-' : '+';
-        return sign + Math.abs(num).toString().padStart(4, '0');
-    }
-    const utcDate = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-    const tzDate = new Date(date.toLocaleString('en-US', { timeZone }));
-    return padded(Math.round((tzDate.getTime() - utcDate.getTime()) / 6e4 / 60 * 100));
+    const timeZoneName = new Intl.DateTimeFormat(LOCALE, { timeZone, timeZoneName: 'longOffset' })
+        .formatToParts(date)
+        .find(part => part.type === 'timeZoneName')
+        .value;
+    return timeZoneName.replace('GMT', '').replace(':', '');
 }
 function getToday() {
     const now = new Date();
@@ -297,95 +366,14 @@ function queryStringFromObject(obj) {
         .join('&');
 }
 
-function hasKey(obj, key) {
-    return key in obj;
-}
-function fail(error) {
-    throw error;
-}
-function rndInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-function base64Encode(string) {
-    const bytes = new TextEncoder().encode(string);
-    const binaryString = Array.from(bytes)
-        .map(byte => String.fromCharCode(byte))
-        .join('');
-    return window.btoa(binaryString);
-}
-function downloadText(filename, content, mimeType) {
-    const elem = document.createElement('a');
-    elem.href = `data:${mimeType};base64,` + base64Encode(content);
-    elem.download = filename;
-    elem.style.display = 'none';
-    document.body.appendChild(elem);
-    elem.click();
-    document.body.removeChild(elem);
-}
-function downloadBlob(filename, content, mimeType) {
-    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
-    const elem = document.createElement('a');
-    elem.href = url;
-    elem.download = filename;
-    elem.style.display = 'none';
-    document.body.appendChild(elem);
-    elem.click();
-    document.body.removeChild(elem);
-    URL.revokeObjectURL(url);
-}
-function downloadArrayBuffer(filename, content, mimeType) {
-    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
-    const elem = document.createElement('a');
-    elem.href = url;
-    elem.download = filename;
-    elem.style.display = 'none';
-    document.body.appendChild(elem);
-    elem.click();
-    document.body.removeChild(elem);
-    URL.revokeObjectURL(url);
-}
-async function fileSelect(accept = '', multiple = false) {
-    return new Promise((resolve) => {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = accept;
-        input.multiple = multiple;
-        const onFileSelect = () => {
-            window.removeEventListener('focus', onFileSelect);
-            setTimeout(() => {
-                resolve(input.files);
-            }, 1000);
-        };
-        window.addEventListener('focus', onFileSelect);
-        input.click();
-    });
-}
-function debounce(func, timeout) {
-    let timeoutId = 0;
-    return ((...args) => {
-        clearTimeout(timeoutId);
-        timeoutId = setTimeout(func, timeout, ...args);
-    });
-}
-function isPrimitive(value) {
-    return (value === null
-        || (typeof value !== 'object' && typeof value !== 'function'));
-}
-function isObject(value) {
-    return typeof value === 'object'
-        && value !== null
-        && Object.getPrototypeOf(value) === Object.prototype;
-}
-
 function setInputValue(input, value) {
     const proto = Object.getPrototypeOf(input);
     const valuePD = Object.getOwnPropertyDescriptor(proto, 'value');
     valuePD?.set?.call(input, value);
     input.dispatchEvent(new Event('change', { bubbles: true }));
 }
-
-const ReactAutomation = {
+var reactAutomation = {
     setInputValue,
 };
 
-export { ReactAutomation, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, deduplicate, downloadArrayBuffer, downloadBlob, downloadText, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, queryTextNodes, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };
+export { reactAutomation as ReactAutomation, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, deduplicate, download, extendPrototype, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, queryTextNodes, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };

@@ -1,12 +1,13 @@
+type QuoteMode = 'auto' | 'always';
 interface CsvEscapeOptions {
-    quoteAll?: boolean;
+    quoteMode?: QuoteMode;
 }
-export declare function csvEscape(string: string, { quoteAll }?: CsvEscapeOptions): string;
+export declare function csvEscape(string: string, { quoteMode }?: CsvEscapeOptions): string;
 interface CsvFromArrayOptions {
     eol?: '\r' | '\n' | '\r\n';
-    quoteAll?: boolean;
+    quoteMode?: QuoteMode;
 }
-export declare function csvFromArray(array: string[][], { eol, quoteAll }?: CsvFromArrayOptions): string;
+export declare function csvFromArray(array: string[][], { eol, quoteMode }?: CsvFromArrayOptions): string;
 interface CsvToArrayOptions {
     eol?: '\r' | '\n' | '\r\n';
 }

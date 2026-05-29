@@ -1,24 +1,27 @@
+const EscapeChars = [',', '"', '\r', '\n'];
 /**
  * @param {string} string
  * @param {CsvEscapeOptions}
  * @returns {string}
  */
-export function csvEscape(string, { quoteAll = false } = {}) {
+export function csvEscape(string, { quoteMode = 'auto' } = {}) {
     if (typeof string !== 'string') {
         string = String(string);
     }
-    const escapeChars = [',', '"', '\r', '\n'];
-    const wrapInQuotes = quoteAll ? true : escapeChars.some(x => string.includes(x));
-    string = string.replaceAll('"', '""'); // escape double quotes
-    return wrapInQuotes ? `"${string}"` : string;
+    const wrapInQuotes = quoteMode == 'always' ? true : EscapeChars.some(x => string.includes(x));
+    if (wrapInQuotes) {
+        string = string.replaceAll('"', '""'); // escape double quotes
+        string = `"${string}"`;
+    }
+    return string;
 }
 /**
  * @param {string[][]} array
  * @param {CsvFromArrayOptions}
  * @returns {string}
  */
-export function csvFromArray(array, { eol = '\r\n', quoteAll = false } = {}) {
-    return array.map(row => row.map(cell => csvEscape(cell, { quoteAll })).join(',')).join(eol);
+export function csvFromArray(array, { eol = '\r\n', quoteMode = 'auto' } = {}) {
+    return array.map(row => row.map(cell => csvEscape(cell, { quoteMode })).join(',')).join(eol);
 }
 /**
  * @param {string} csvString
@@ -35,14 +38,15 @@ export function csvToArray(csvString, { eol = '\r\n' } = {}) {
     csvString = csvString.replaceAll(/"((?:[^"]|"")*)(?:"|$)/gs, (_match, group1) => typeof group1 === 'string' ? escape(group1) : '').replaceAll('""', '"'); // unescape double quotes
     return csvString.split(eol).map(row => row.split(',').map(unescape));
 }
+/** @typedef {'auto' | 'always'} QuoteMode */
 /**
  * @typedef {Object} CsvEscapeOptions
- * @property {boolean} [quoteAll]
+ * @property {QuoteMode} [quoteMode]
  */
 /**
  * @typedef {Object} CsvFromArrayOptions
  * @property {'\r' | '\n' | '\r\n'} [eol]
- * @property {boolean} [quoteAll]
+ * @property {QuoteMode} [quoteMode]
  */
 /**
  * @typedef {Object} CsvToArrayOptions

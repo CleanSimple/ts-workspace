@@ -1,4 +1,4 @@
-import './arr';
+import './extensions/array';
 export * from './async';
 export * from './csv';
 export * from './data';
@@ -7,7 +7,5 @@ export * from './image';
 export * from './time';
 export * from './url';
 export * from './util';
-import { setInputValue } from './react.automation';
-export const ReactAutomation = {
-    setInputValue,
-};
+import ReactAutomation from './react-automation';
+export { ReactAutomation };
