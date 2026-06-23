@@ -14,24 +14,35 @@
 (function () {
     'use strict';
 
-    Array.prototype.first = function () {
-        return this[0];
-    };
-    Array.prototype.last = function () {
-        return this[this.length - 1];
-    };
-    Array.prototype.insertAt = function (index, ...items) {
-        return this.splice(index, 0, ...items);
-    };
-    Array.prototype.removeAt = function (index) {
-        return this.splice(index, 1)[0];
-    };
-    Array.prototype.remove = function (item) {
-        const index = this.indexOf(item);
-        if (index !== -1) {
-            this.splice(index, 1);
+    function extendPrototype(prototype, properties) {
+        for (const key of Object.keys(properties)) {
+            const desc = Object.getOwnPropertyDescriptor(properties, key);
+            desc.enumerable = false;
+            Object.defineProperty(prototype, key, desc);
         }
-    };
+    }
+
+    const arrayExtensions = () => ({
+        first() {
+            return this[0];
+        },
+        last() {
+            return this[this.length - 1];
+        },
+        insertAt(index, ...items) {
+            return this.splice(index, 0, ...items);
+        },
+        removeAt(index) {
+            return this.splice(index, 1)[0];
+        },
+        remove(item) {
+            const index = this.indexOf(item);
+            if (index !== -1) {
+                this.splice(index, 1);
+            }
+        },
+    });
+    extendPrototype(Array.prototype, arrayExtensions());
 
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -264,9 +275,12 @@
 .ums-ui-hidden.jwplayer > .jw-wrapper > :not(.jw-media, .jw-captions),
 .ums-ui-hidden.video-js > :not(video, .vjs-text-track-display),
 .ums-ui-hidden.plyr > :not(.plyr__video-wrapper),
-.ums-ui-hidden.ytd-player > .html5-video-player > :not(.html5-video-container, .ytp-caption-window-container),
+.ums-ui-hidden.ytd-player
+    > .html5-video-player
+    > :not(.html5-video-container, .ytp-caption-window-container),
 .ums-ui-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
-.ums-ui-hidden[class*="Container-module"][class*="player"] > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
+.ums-ui-hidden[class*="Container-module"][class*="player"]
+    > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
 .ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)) {
     display: none !important;
 }
@@ -277,12 +291,11 @@
 .ums-cc-hidden.plyr > .plyr__video-wrapper,
 .ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container,
 .ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
-.ums-cc-hidden[class*="Container-module"][class*="player"] > [class*="VideoLayout-module"][class*="captions"],
+.ums-cc-hidden[class*="Container-module"][class*="player"]
+    > [class*="VideoLayout-module"][class*="captions"],
 .ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
     display: none !important;
 }
-
-
 
 /* --- Patches --- */
 /* handle subtitles jumping on pause in jw-player */
@@ -1347,7 +1360,7 @@
         '.ytd-player', // YouTube player
         '.pjscssed', // PlayerJS
         '[class*="Container-module"][class*="player"]',
-        "#videasy-player-wrapper" // Videasy player
+        '#videasy-player-wrapper', // Videasy player
     ].join(',');
 
     const UpDown = ({ value = 1, minValue = 0, maxValue = 99, ...props }) => {
