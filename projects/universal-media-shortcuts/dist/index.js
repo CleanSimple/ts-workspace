@@ -14,35 +14,24 @@
 (function () {
     'use strict';
 
-    function extendPrototype(prototype, properties) {
-        for (const key of Object.keys(properties)) {
-            const desc = Object.getOwnPropertyDescriptor(properties, key);
-            desc.enumerable = false;
-            Object.defineProperty(prototype, key, desc);
+    Array.prototype.first = function () {
+        return this[0];
+    };
+    Array.prototype.last = function () {
+        return this[this.length - 1];
+    };
+    Array.prototype.insertAt = function (index, ...items) {
+        return this.splice(index, 0, ...items);
+    };
+    Array.prototype.removeAt = function (index) {
+        return this.splice(index, 1)[0];
+    };
+    Array.prototype.remove = function (item) {
+        const index = this.indexOf(item);
+        if (index !== -1) {
+            this.splice(index, 1);
         }
-    }
-
-    const arrayExtensions = () => ({
-        first() {
-            return this[0];
-        },
-        last() {
-            return this[this.length - 1];
-        },
-        insertAt(index, ...items) {
-            return this.splice(index, 0, ...items);
-        },
-        removeAt(index) {
-            return this.splice(index, 1)[0];
-        },
-        remove(item) {
-            const index = this.indexOf(item);
-            if (index !== -1) {
-                this.splice(index, 1);
-            }
-        },
-    });
-    extendPrototype(Array.prototype, arrayExtensions());
+    };
 
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -51,7 +40,7 @@
     const Hotkeys = [
         {
             code: 'BracketRight',
-            handler: (context) => context.playerWrapper.toggleControlsVisibility(),
+            handler: (context) => context.playerWrapper.toggleUIVisibility(),
             noDefault: true,
             noOtherHandlers: true,
         },
@@ -267,42 +256,48 @@
 }
 `;
 
-    var styles = `/* hiding controls */
-.ums-controls-hidden * {
+    var styles = `/* --- Hiding Controls  --- */
+.ums-ui-hidden * {
     cursor: none !important;
 }
 
-.ums-controls-hidden.jwplayer > .jw-wrapper > :not(.jw-media, .jw-captions),
-.ums-controls-hidden.video-js > :not(video, .vjs-text-track-display),
-.ums-controls-hidden.plyr > :not(.plyr__video-wrapper),
-.ums-controls-hidden.ytd-player
-    > .html5-video-player
-    > :not(.html5-video-container, .ytp-caption-window-container),
-.ums-controls-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
-.ums-controls-hidden[class*="Container-module"][class*="player"]
-    > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]) {
+.ums-ui-hidden.jwplayer > .jw-wrapper > :not(.jw-media, .jw-captions),
+.ums-ui-hidden.video-js > :not(video, .vjs-text-track-display),
+.ums-ui-hidden.plyr > :not(.plyr__video-wrapper),
+.ums-ui-hidden.ytd-player > .html5-video-player > :not(.html5-video-container, .ytp-caption-window-container),
+.ums-ui-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
+.ums-ui-hidden[class*="Container-module"][class*="player"] > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
+.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)) {
     display: none !important;
 }
 
-/* handle subtitles jumping on pause in jw-player */
-.ums-controls-hidden.jwplayer > .jw-wrapper > .jw-captions {
-    max-height: none !important;
-}
-
-/* handle dark backdrop in DoodStream player */
-.ums-controls-hidden.video-js > .vjs-text-track-display {
-    background: none !important;
-}
-
-/* hiding subtitles */
+/* --- Hiding Subtitles --- */
 .ums-cc-hidden.jwplayer > .jw-wrapper > .jw-captions,
 .ums-cc-hidden.video-js > .vjs-text-track-display,
 .ums-cc-hidden.plyr > .plyr__video-wrapper,
 .ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container,
 .ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
-.ums-cc-hidden[class*="Container-module"][class*="player"]
-    > [class*="VideoLayout-module"][class*="captions"] {
+.ums-cc-hidden[class*="Container-module"][class*="player"] > [class*="VideoLayout-module"][class*="captions"],
+.ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
     display: none !important;
+}
+
+
+
+/* --- Patches --- */
+/* handle subtitles jumping on pause in jw-player */
+.ums-ui-hidden.jwplayer > .jw-wrapper > .jw-captions {
+    max-height: none !important;
+}
+
+/* handle dark backdrop in DoodStream player */
+.ums-ui-hidden.video-js > .vjs-text-track-display {
+    background: none !important;
+}
+
+/* handle subtitles jumping on pause in Videasy player */
+.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
+    bottom: 1.5rem;
 }
 `;
 
@@ -1352,6 +1347,7 @@
         '.ytd-player', // YouTube player
         '.pjscssed', // PlayerJS
         '[class*="Container-module"][class*="player"]',
+        "#videasy-player-wrapper" // Videasy player
     ].join(',');
 
     const UpDown = ({ value = 1, minValue = 0, maxValue = 99, ...props }) => {
@@ -1434,22 +1430,12 @@
         focus() {
             this.videoElement.focus();
         }
-        toggleControlsVisibility() {
-            if (this.playerElement.classList.contains('ums-controls-hidden')) {
-                this.playerElement.classList.remove('ums-controls-hidden');
-            }
-            else {
-                this.playerElement.classList.add('ums-controls-hidden');
-            }
+        toggleUIVisibility() {
+            this.playerElement.classList.toggle('ums-ui-hidden');
             this.videoElement.focus();
         }
         toggleCaptionsVisibility() {
-            if (this.playerElement.classList.contains('ums-cc-hidden')) {
-                this.playerElement.classList.remove('ums-cc-hidden');
-            }
-            else {
-                this.playerElement.classList.add('ums-cc-hidden');
-            }
+            this.playerElement.classList.toggle('ums-cc-hidden');
         }
         toggleSkipDialog() {
             if (this.skipDlgRef.current) {

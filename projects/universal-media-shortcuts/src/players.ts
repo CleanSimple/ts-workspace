@@ -5,4 +5,5 @@ export const PlayersSelector = [
     '.ytd-player', // YouTube player
     '.pjscssed', // PlayerJS
     '[class*="Container-module"][class*="player"]',
+    '#videasy-player-wrapper', // Videasy player
 ].join(',');

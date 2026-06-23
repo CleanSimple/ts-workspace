@@ -1,4 +1,4 @@
-/* hiding controls */
+/* --- Hiding Controls  --- */
 .ums-ui-hidden * {
     cursor: none !important;
 }
@@ -11,10 +11,24 @@
     > :not(.html5-video-container, .ytp-caption-window-container),
 .ums-ui-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
 .ums-ui-hidden[class*="Container-module"][class*="player"]
-    > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]) {
+    > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
+.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)) {
     display: none !important;
 }
 
+/* --- Hiding Subtitles --- */
+.ums-cc-hidden.jwplayer > .jw-wrapper > .jw-captions,
+.ums-cc-hidden.video-js > .vjs-text-track-display,
+.ums-cc-hidden.plyr > .plyr__video-wrapper,
+.ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container,
+.ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
+.ums-cc-hidden[class*="Container-module"][class*="player"]
+    > [class*="VideoLayout-module"][class*="captions"],
+.ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
+    display: none !important;
+}
+
+/* --- Patches --- */
 /* handle subtitles jumping on pause in jw-player */
 .ums-ui-hidden.jwplayer > .jw-wrapper > .jw-captions {
     max-height: none !important;
@@ -25,13 +39,7 @@
     background: none !important;
 }
 
-/* hiding subtitles */
-.ums-cc-hidden.jwplayer > .jw-wrapper > .jw-captions,
-.ums-cc-hidden.video-js > .vjs-text-track-display,
-.ums-cc-hidden.plyr > .plyr__video-wrapper,
-.ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container,
-.ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
-.ums-cc-hidden[class*="Container-module"][class*="player"]
-    > [class*="VideoLayout-module"][class*="captions"] {
-    display: none !important;
+/* handle subtitles jumping on pause in Videasy player */
+.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
+    bottom: 1.5rem;
 }
