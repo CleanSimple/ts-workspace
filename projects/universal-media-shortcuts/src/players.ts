@@ -2,6 +2,7 @@ export const PlayersSelector = [
     '.jwplayer',
     '.video-js',
     '.plyr',
-    '.ytd-player', // youtube player
+    '.ytd-player', // YouTube player
     '.pjscssed', // PlayerJS
+    '[class*="Container-module"][class*="player"]',
 ].join(',');

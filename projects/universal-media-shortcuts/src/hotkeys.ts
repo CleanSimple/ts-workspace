@@ -3,7 +3,7 @@ import type { Hotkey } from './types';
 export const Hotkeys: Hotkey[] = [
     {
         code: 'BracketRight',
-        handler: (context) => context.playerWrapper.toggleControlsVisibility(),
+        handler: (context) => context.playerWrapper.toggleUIVisibility(),
         noDefault: true,
         noOtherHandlers: true,
     },

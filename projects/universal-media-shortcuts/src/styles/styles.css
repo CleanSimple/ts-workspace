@@ -1,32 +1,37 @@
 /* hiding controls */
-.ums-controls-hidden * {
+.ums-ui-hidden * {
     cursor: none !important;
 }
 
-.ums-controls-hidden.jwplayer > .jw-wrapper > :not(.jw-media, .jw-captions),
-.ums-controls-hidden.video-js > :not(video, .vjs-text-track-display),
-.ums-controls-hidden.plyr > :not(.plyr__video-wrapper),
-.ums-controls-hidden.ytd-player
+.ums-ui-hidden.jwplayer > .jw-wrapper > :not(.jw-media, .jw-captions),
+.ums-ui-hidden.video-js > :not(video, .vjs-text-track-display),
+.ums-ui-hidden.plyr > :not(.plyr__video-wrapper),
+.ums-ui-hidden.ytd-player
     > .html5-video-player
     > :not(.html5-video-container, .ytp-caption-window-container),
-.ums-controls-hidden.pjscssed > :not(:has(> video)) {
+.ums-ui-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
+.ums-ui-hidden[class*="Container-module"][class*="player"]
+    > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]) {
     display: none !important;
 }
 
 /* handle subtitles jumping on pause in jw-player */
-.ums-controls-hidden.jwplayer > .jw-wrapper > .jw-captions {
+.ums-ui-hidden.jwplayer > .jw-wrapper > .jw-captions {
     max-height: none !important;
 }
 
 /* handle dark backdrop in DoodStream player */
-.ums-controls-hidden.video-js > .vjs-text-track-display {
+.ums-ui-hidden.video-js > .vjs-text-track-display {
     background: none !important;
 }
 
 /* hiding subtitles */
 .ums-cc-hidden.jwplayer > .jw-wrapper > .jw-captions,
 .ums-cc-hidden.video-js > .vjs-text-track-display,
-/* .ums-cc-hidden.plyr> :not(.plyr__video-wrapper), */
-.ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container {
+.ums-cc-hidden.plyr > .plyr__video-wrapper,
+.ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container,
+.ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
+.ums-cc-hidden[class*="Container-module"][class*="player"]
+    > [class*="VideoLayout-module"][class*="captions"] {
     display: none !important;
 }

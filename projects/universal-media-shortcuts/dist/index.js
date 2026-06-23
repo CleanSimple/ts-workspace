@@ -278,7 +278,9 @@
 .ums-controls-hidden.ytd-player
     > .html5-video-player
     > :not(.html5-video-container, .ytp-caption-window-container),
-.ums-controls-hidden.pjscssed > :not(:has(> video)) {
+.ums-controls-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
+.ums-controls-hidden[class*="Container-module"][class*="player"]
+    > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]) {
     display: none !important;
 }
 
@@ -295,8 +297,11 @@
 /* hiding subtitles */
 .ums-cc-hidden.jwplayer > .jw-wrapper > .jw-captions,
 .ums-cc-hidden.video-js > .vjs-text-track-display,
-/* .ums-cc-hidden.plyr> :not(.plyr__video-wrapper), */
-.ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container {
+.ums-cc-hidden.plyr > .plyr__video-wrapper,
+.ums-cc-hidden.ytd-player > .html5-video-player > .ytp-caption-window-container,
+.ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
+.ums-cc-hidden[class*="Container-module"][class*="player"]
+    > [class*="VideoLayout-module"][class*="captions"] {
     display: none !important;
 }
 `;
@@ -1344,8 +1349,9 @@
         '.jwplayer',
         '.video-js',
         '.plyr',
-        '.ytd-player', // youtube player
+        '.ytd-player', // YouTube player
         '.pjscssed', // PlayerJS
+        '[class*="Container-module"][class*="player"]',
     ].join(',');
 
     const UpDown = ({ value = 1, minValue = 0, maxValue = 99, ...props }) => {

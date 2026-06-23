@@ -45,24 +45,13 @@ export class PlayerWrapper {
         this.videoElement.focus();
     }
 
-    public toggleControlsVisibility() {
-        if (this.playerElement.classList.contains('ums-controls-hidden')) {
-            this.playerElement.classList.remove('ums-controls-hidden');
-        }
-        else {
-            this.playerElement.classList.add('ums-controls-hidden');
-        }
-
+    public toggleUIVisibility() {
+        this.playerElement.classList.toggle('ums-ui-hidden');
         this.videoElement.focus();
     }
 
     public toggleCaptionsVisibility() {
-        if (this.playerElement.classList.contains('ums-cc-hidden')) {
-            this.playerElement.classList.remove('ums-cc-hidden');
-        }
-        else {
-            this.playerElement.classList.add('ums-cc-hidden');
-        }
+        this.playerElement.classList.toggle('ums-cc-hidden');
     }
 
     public toggleSkipDialog() {
