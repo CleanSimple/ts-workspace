@@ -35,7 +35,7 @@
         "@cleansimple/eslint-config": "workspace:^",
         "@cleansimple/rollup-config": "workspace:^",
         "@cleansimple/typescript-config": "workspace:^",
-        "@types/node": "^25.3.0",
+        "@types/node": "25.3.0",
         "dprint": "0.50.2",
         "eslint": "9.39.1",
         "rollup": "4.52.4",

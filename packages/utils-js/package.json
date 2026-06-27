@@ -33,12 +33,12 @@
         "@cleansimple/eslint-config": "workspace:^",
         "@cleansimple/rollup-config": "workspace:^",
         "@cleansimple/typescript-config": "workspace:^",
-        "@types/node": "^25.3.0",
-        "@yarnpkg/pnpify": "^4.1.4",
+        "@types/node": "25.3.0",
+        "@yarnpkg/pnpify": "4.1.4",
         "dprint": "0.50.2",
         "eslint": "9.39.1",
         "rollup": "4.52.4",
-        "ts-to-jsdoc": "^2.4.0",
+        "ts-to-jsdoc": "2.4.0",
         "typescript": "5.9.3"
     }
 }
