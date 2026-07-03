@@ -41,5 +41,12 @@
 
 /* handle subtitles jumping on pause in Videasy player */
 .ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
-    bottom: 1.5rem;
+    bottom: 1.5rem !important;
+}
+
+/* handle grayscale filter and zoom effects when paused in PlayerJS player */
+.ums-ui-hidden.pjscssed > :has(video),
+.ums-ui-hidden.pjscssed > :has(video) > video {
+    transform: none !important;
+    filter: none !important;
 }
