@@ -3,7 +3,6 @@ const { defineConfig } = require('@yarnpkg/types');
 
 module.exports = defineConfig({
     async constraints({ Yarn }) {
-
         /**
          * ensures that all workspaces use the same version as the root workspace
          * @param {string} dependencyName
@@ -16,10 +15,12 @@ module.exports = defineConfig({
             }
 
             for (const dep of deps) {
-                if (dep === rootDep)
+                if (dep === rootDep) {
                     continue;
-                if (dep.type === "peerDependencies")
+                }
+                if (dep.type === 'peerDependencies') {
                     continue;
+                }
 
                 dep.update(rootDep.range);
             }
@@ -27,14 +28,15 @@ module.exports = defineConfig({
 
         // locks dependencies to exact version
         for (const dep of Yarn.dependencies()) {
-            if (dep.type === "peerDependencies")
-                continue
+            if (dep.type === 'peerDependencies') {
+                continue;
+            }
             dep.update(dep.range.replace(/^[*^~]/, ''));
         }
 
-        enforceVersion("dprint");
-        enforceVersion("eslint");
-        enforceVersion("rollup");
-        enforceVersion("typescript");
+        enforceVersion('dprint');
+        enforceVersion('eslint');
+        enforceVersion('rollup');
+        enforceVersion('typescript');
     },
 });
