@@ -48,14 +48,24 @@ function matchState(evt: KeyboardEvent, hotkey: Hotkey, context: VideoContext) {
     }
 }
 
-function makeHandler<TEvent extends Event, T extends (e: TEvent, context: VideoContext) => void>(
-    eventHandler: T,
-) {
+function makeHandler<
+    TEvent extends Event,
+    T extends (e: TEvent, context: VideoContext) => void,
+>(eventHandler: T) {
     return (e: TEvent) => {
-        for (const video of document.querySelectorAll('video')) {
-            const context = VideoContextManager.getContext(e, video);
+        if (e.target instanceof HTMLVideoElement) {
+            const context = VideoContextManager.getContext(e.target);
             if (context) {
                 eventHandler(e, context);
+            }
+        }
+        else {
+            for (const video of document.querySelectorAll('video')) {
+                const context = VideoContextManager.getContext(video);
+                if (context?.playerWrapper.isEventSource(e)) {
+                    eventHandler(e, context);
+                    break;
+                }
             }
         }
     };
@@ -89,6 +99,10 @@ function handleKeyUp(e: KeyboardEvent, _context: VideoContext) {
     e.stopImmediatePropagation();
 }
 
+function handleClick(e: MouseEvent, context: VideoContext) {
+    context.playerWrapper.focus();
+}
+
 async function handleFullscreenChange(e: Event, context: VideoContext) {
     if (document.fullscreenElement) {
         await sleep(100);
@@ -99,6 +113,7 @@ async function handleFullscreenChange(e: Event, context: VideoContext) {
 document.addEventListener('keydown', makeHandler(handleKeyDown), { capture: true });
 document.addEventListener('keyup', makeHandler(handleKeyUp), { capture: true });
 document.addEventListener('keypress', makeHandler(handleKeyPress), { capture: true });
+document.addEventListener('click', makeHandler(handleClick), { capture: true });
 document.addEventListener('fullscreenchange', makeHandler(handleFullscreenChange), {
     capture: true,
 });
