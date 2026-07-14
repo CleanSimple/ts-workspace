@@ -12,7 +12,8 @@
 .ums-ui-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
 .ums-ui-hidden[class*="Container-module"][class*="player"]
     > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
-.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)) {
+.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)),
+app-watch.ums-ui-hidden .videoplayer > :not(video) {
     display: none !important;
 }
 
@@ -26,6 +27,11 @@
     > [class*="VideoLayout-module"][class*="captions"],
 .ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
     display: none !important;
+}
+
+app-watch.ums-cc-hidden .videoplayer > video::cue {
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
 /* --- Patches --- */
