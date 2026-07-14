@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Universal Media Shortcuts
 // @description        Adds custom shortcuts to all video players
-// @version            0.27.2
+// @version            0.28.0
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*
@@ -281,7 +281,8 @@
 .ums-ui-hidden.pjscssed > :not(:has(> video), #pjs_player_parent_subtitle),
 .ums-ui-hidden[class*="Container-module"][class*="player"]
     > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
-.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)) {
+.ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)),
+app-watch.ums-ui-hidden .videoplayer > :not(video) {
     display: none !important;
 }
 
@@ -295,6 +296,11 @@
     > [class*="VideoLayout-module"][class*="captions"],
 .ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
     display: none !important;
+}
+
+app-watch.ums-cc-hidden .videoplayer > video::cue {
+    visibility: hidden !important;
+    pointer-events: none !important;
 }
 
 /* --- Patches --- */
@@ -1368,6 +1374,7 @@
         '.pjscssed', // PlayerJS
         '[class*="Container-module"][class*="player"]',
         '#videasy-player-wrapper', // Videasy player
+        'app-watch', // KissKH player
     ].join(',');
 
     const UpDown = ({ value = 1, minValue = 0, maxValue = 99, ...props }) => {
@@ -1515,22 +1522,24 @@
         }
     }
 
+    function isValidContext(context) {
+        return context.playerWrapper !== undefined;
+    }
     class VideoContextManager {
         static _ContextCache = new WeakMap();
-        static getContext(event, video) {
-            const cachedContext = VideoContextManager._ContextCache.get(video);
-            if (cachedContext?.playerWrapper.isEventSource(event)) {
-                return cachedContext;
+        static getContext(video) {
+            let context = VideoContextManager._ContextCache.get(video);
+            if (!context) {
+                context = {};
+                const playerWrapper = PlayerWrapper.Create(video);
+                if (playerWrapper) {
+                    context.playerWrapper = playerWrapper;
+                }
+                VideoContextManager._ContextCache.set(video, context);
             }
-            const playerWrapper = PlayerWrapper.Create(video);
-            if (playerWrapper === null) {
+            if (!isValidContext(context)) {
                 return null;
             }
-            if (!playerWrapper.isEventSource(event)) {
-                return null;
-            }
-            const context = { playerWrapper };
-            VideoContextManager._ContextCache.set(video, context);
             return context;
         }
     }
@@ -1570,10 +1579,19 @@
     }
     function makeHandler(eventHandler) {
         return (e) => {
-            for (const video of document.querySelectorAll('video')) {
-                const context = VideoContextManager.getContext(e, video);
+            if (e.target instanceof HTMLVideoElement) {
+                const context = VideoContextManager.getContext(e.target);
                 if (context) {
                     eventHandler(e, context);
+                }
+            }
+            else {
+                for (const video of document.querySelectorAll('video')) {
+                    const context = VideoContextManager.getContext(video);
+                    if (context?.playerWrapper.isEventSource(e)) {
+                        eventHandler(e, context);
+                        break;
+                    }
                 }
             }
         };
@@ -1601,6 +1619,9 @@
         e.preventDefault();
         e.stopImmediatePropagation();
     }
+    function handleClick(e, context) {
+        context.playerWrapper.focus();
+    }
     async function handleFullscreenChange(e, context) {
         if (document.fullscreenElement) {
             await sleep(100);
@@ -1610,6 +1631,7 @@
     document.addEventListener('keydown', makeHandler(handleKeyDown), { capture: true });
     document.addEventListener('keyup', makeHandler(handleKeyUp), { capture: true });
     document.addEventListener('keypress', makeHandler(handleKeyPress), { capture: true });
+    document.addEventListener('click', makeHandler(handleClick), { capture: true });
     document.addEventListener('fullscreenchange', makeHandler(handleFullscreenChange), {
         capture: true,
     });
