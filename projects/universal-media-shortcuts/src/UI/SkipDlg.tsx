@@ -40,7 +40,6 @@ export const SkipDlg: FunctionalComponent<SkipDlgProps, SkipDlg> = (
 
     return (
         <div class='skip-dlg-container'>
-            <div class='backdrop'></div>
             <div class='skip-dlg'>
                 <div class='title'>
                     <label>Skip</label>

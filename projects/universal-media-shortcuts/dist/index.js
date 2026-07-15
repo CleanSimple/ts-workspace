@@ -177,7 +177,7 @@
 .skip-dlg-container {
     all: revert;
 
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
@@ -185,7 +185,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition-duration: 0.2s;
+    background: rgba(0, 0, 0, 0.8);
     /* font */
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     font-size: initial;
@@ -200,13 +200,6 @@
         font-weight: inherit;
         font-style: inherit;
         color: inherit;
-    }
-
-    .backdrop {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.8);
-        width: 100%;
-        height: 100%;
     }
 }
 
@@ -1420,7 +1413,7 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
             close();
         }
         defineRef({ cancel: handleCancel, accept: handleOk });
-        return (jsx("div", { class: 'skip-dlg-container', children: [jsx("div", { class: 'backdrop' }), jsx("div", { class: 'skip-dlg', children: [jsx("div", { class: 'title', children: jsx("label", { children: "Skip" }) }), jsx("div", { class: 'body', children: [jsx("div", { style: { display: 'flex', flexDirection: 'row', alignItems: 'baseline' }, children: [jsx("label", { children: "Mins:" }), jsx(UpDown, { value: skipMins, style: { marginLeft: '5px' } }), jsx("label", { style: { marginLeft: '5px' }, children: "Secs:" }), jsx(UpDown, { value: skipSecs, maxValue: 59, style: { marginLeft: '5px' } })] }), jsx("div", { class: 'actions-container', style: { marginTop: '5px' }, children: [jsx("button", { "on:click": handleCancel, children: "Cancel" }), jsx("button", { style: { marginRight: '5px' }, "on:click": handleOk, children: "Ok" })] })] })] })] }));
+        return (jsx("div", { class: 'skip-dlg-container', children: jsx("div", { class: 'skip-dlg', children: [jsx("div", { class: 'title', children: jsx("label", { children: "Skip" }) }), jsx("div", { class: 'body', children: [jsx("div", { style: { display: 'flex', flexDirection: 'row', alignItems: 'baseline' }, children: [jsx("label", { children: "Mins:" }), jsx(UpDown, { value: skipMins, style: { marginLeft: '5px' } }), jsx("label", { style: { marginLeft: '5px' }, children: "Secs:" }), jsx(UpDown, { value: skipSecs, maxValue: 59, style: { marginLeft: '5px' } })] }), jsx("div", { class: 'actions-container', style: { marginTop: '5px' }, children: [jsx("button", { "on:click": handleCancel, children: "Cancel" }), jsx("button", { style: { marginRight: '5px' }, "on:click": handleOk, children: "Ok" })] })] })] }) }));
     };
 
     class PlayerWrapper {
@@ -1435,11 +1428,9 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
         playerElement;
         videoElement;
         skipDlgRef = ref();
-        skipDlgRoot = val(null);
         constructor(playerElement, videoElement) {
             this.playerElement = playerElement;
             this.videoElement = videoElement;
-            render(this.playerElement, this.skipDlgRoot);
         }
         get status() {
             if (this.skipDlgRef.current) {
@@ -1470,8 +1461,12 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
                 return;
             }
             const wasPlaying = !this.videoElement.paused;
+            const wasUiHidden = this.playerElement.classList.contains('ums-ui-hidden');
             if (wasPlaying) {
                 this.videoElement.pause();
+            }
+            if (wasUiHidden) {
+                this.toggleUIVisibility();
             }
             const skipMins = GM_getValue('MinsValue', 1);
             const skipSecs = GM_getValue('SecsValue', 0);
@@ -1484,9 +1479,12 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
                 if (wasPlaying) {
                     void this.videoElement.play();
                 }
-                this.skipDlgRoot.value = null;
+                if (wasUiHidden) {
+                    this.toggleUIVisibility();
+                }
+                skipDlgRender.dispose();
             };
-            this.skipDlgRoot.value = (jsx(SkipDlg, { ref: this.skipDlgRef, skipMins: skipMins, skipSecs: skipSecs, onAccept: handleAccept, onClosed: handleClosed }));
+            const skipDlgRender = render(document.fullscreenElement ?? this.playerElement, jsx(SkipDlg, { ref: this.skipDlgRef, skipMins: skipMins, skipSecs: skipSecs, onAccept: handleAccept, onClosed: handleClosed }));
         }
         skipDialogAccept() {
             this.skipDlgRef.current?.accept();

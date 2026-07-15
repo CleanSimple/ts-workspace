@@ -1,6 +1,4 @@
-import type { JSX } from '@cleansimple/plain-jsx';
-
-import { ref, render, val } from '@cleansimple/plain-jsx';
+import { ref, render } from '@cleansimple/plain-jsx';
 import { PlayersSelector } from './players';
 import { SkipDlg } from './UI/SkipDlg';
 
@@ -17,13 +15,10 @@ export class PlayerWrapper {
     private readonly playerElement: HTMLElement;
     private readonly videoElement: HTMLVideoElement;
     private readonly skipDlgRef = ref<typeof SkipDlg>();
-    private readonly skipDlgRoot = val<JSX.Element | null>(null);
 
     private constructor(playerElement: HTMLElement, videoElement: HTMLVideoElement) {
         this.playerElement = playerElement;
         this.videoElement = videoElement;
-
-        render(this.playerElement, this.skipDlgRoot);
     }
 
     public get status() {
@@ -61,8 +56,12 @@ export class PlayerWrapper {
         }
 
         const wasPlaying = !this.videoElement.paused;
+        const wasUiHidden = this.playerElement.classList.contains('ums-ui-hidden');
         if (wasPlaying) {
             this.videoElement.pause();
+        }
+        if (wasUiHidden) {
+            this.toggleUIVisibility();
         }
 
         const skipMins = GM_getValue('MinsValue', 1);
@@ -79,17 +78,21 @@ export class PlayerWrapper {
             if (wasPlaying) {
                 void this.videoElement.play();
             }
-            this.skipDlgRoot.value = null;
+            if (wasUiHidden) {
+                this.toggleUIVisibility();
+            }
+            skipDlgRender.dispose();
         };
 
-        this.skipDlgRoot.value = (
+        const skipDlgRender = render(
+            document.fullscreenElement ?? this.playerElement,
             <SkipDlg
                 ref={this.skipDlgRef}
                 skipMins={skipMins}
                 skipSecs={skipSecs}
                 onAccept={handleAccept}
                 onClosed={handleClosed}
-            />
+            />,
         );
     }
 

@@ -9,7 +9,7 @@
 .skip-dlg-container {
     all: revert;
 
-    position: fixed;
+    position: absolute;
     top: 0;
     left: 0;
     width: 100%;
@@ -17,7 +17,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    transition-duration: 0.2s;
+    background: rgba(0, 0, 0, 0.8);
     /* font */
     font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     font-size: initial;
@@ -32,13 +32,6 @@
         font-weight: inherit;
         font-style: inherit;
         color: inherit;
-    }
-
-    .backdrop {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.8);
-        width: 100%;
-        height: 100%;
     }
 }
 
