@@ -17,3 +17,11 @@ export interface Hotkey {
     noDefault: boolean;
     noOtherHandlers: boolean;
 }
+
+export interface RequestFullscreenMessage {
+    type: 'request-fullscreen';
+}
+
+export interface ExitFullscreenMessage {
+    type: 'exit-fullscreen';
+}

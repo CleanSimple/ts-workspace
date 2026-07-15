@@ -28,12 +28,18 @@ export class PlayerWrapper {
         return this.videoElement.paused ? 'paused' : 'playing';
     }
 
-    public isEventSource(event: Event): boolean {
-        if (event.target instanceof HTMLElement) {
+    public isEventSource(event: Event, mode: 'player' | 'video' = 'player'): boolean {
+        if (event.target instanceof HTMLElement === false) {
+            return false;
+        }
+
+        if (mode === 'player') {
             return event.target === this.playerElement || event.target === this.videoElement
                 || this.playerElement.contains(event.target);
         }
-        return false;
+        else {
+            return event.target === this.videoElement;
+        }
     }
 
     public focus() {
@@ -135,5 +141,9 @@ export class PlayerWrapper {
 
     public speedReset() {
         this.videoElement.playbackRate = 1;
+    }
+
+    public async requestFullscreen() {
+        await this.playerElement.requestFullscreen();
     }
 }

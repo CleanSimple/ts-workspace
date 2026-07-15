@@ -1,10 +1,19 @@
-import type { Hotkey, VideoContext } from './types';
+import type { VideoContext } from './types';
 
-import { sleep } from '@cleansimple/utils-js';
+import { isTopFrame } from '@cleansimple/utils-js';
+import { queueAsyncHandler } from './handler-queue';
 import { Hotkeys } from './hotkeys';
 import skipDlgStyles from './styles/skip-dlg.css';
 import styles from './styles/styles.css';
 import upDownControlStyles from './styles/up-down-control.css';
+import {
+    exitFullscreenMessage,
+    isExitFullscreenMessage,
+    isRequestFullscreenMessage,
+    matchKey,
+    matchState,
+    requestFullscreenMessage,
+} from './utils';
 import { VideoContextManager } from './video-context-manager';
 
 type LogType = typeof console.info;
@@ -15,38 +24,6 @@ log('Starting...', window.location.href);
 GM_addStyle(styles);
 GM_addStyle(upDownControlStyles);
 GM_addStyle(skipDlgStyles);
-
-function matchKey(evt: KeyboardEvent, hotkey: Hotkey) {
-    const { key, code, ctrlKey = false, altKey = false, shiftKey = false } = hotkey;
-
-    const modifiersMatch = ctrlKey === evt.ctrlKey && altKey === evt.altKey
-        && shiftKey == evt.shiftKey;
-    if (!modifiersMatch) {
-        return false;
-    }
-
-    if (key) {
-        return key === evt.key;
-    }
-    else if (code) {
-        return code === evt.code;
-    }
-    return false;
-}
-
-function matchState(evt: KeyboardEvent, hotkey: Hotkey, context: VideoContext) {
-    const { when = 'default' } = hotkey;
-    switch (when) {
-        case 'default':
-            return ['playing', 'paused'].includes(context.playerWrapper.status);
-        case 'playing':
-            return context.playerWrapper.status === 'playing';
-        case 'paused':
-            return context.playerWrapper.status === 'paused';
-        case 'skipping':
-            return context.playerWrapper.status === 'skipping';
-    }
-}
 
 function makeHandler<
     TEvent extends Event,
@@ -103,17 +80,80 @@ function handleClick(e: MouseEvent, context: VideoContext) {
     context.playerWrapper.focus();
 }
 
-async function handleFullscreenChange(e: Event, context: VideoContext) {
-    if (document.fullscreenElement) {
-        await sleep(100);
-        context.playerWrapper.focus();
+let inMemoryFullscreenState: boolean = false;
+async function handleDoubleClick(e: MouseEvent, context: VideoContext) {
+    if (!context.playerWrapper.isEventSource(e, 'video')) {
+        return;
     }
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    context.playerWrapper.focus();
+
+    inMemoryFullscreenState = !inMemoryFullscreenState;
+    try {
+        if (inMemoryFullscreenState) {
+            await context.playerWrapper.requestFullscreen();
+        }
+        else {
+            await document.exitFullscreen();
+        }
+    }
+    catch {
+        if (!isTopFrame()) {
+            if (inMemoryFullscreenState) {
+                window.parent.postMessage(requestFullscreenMessage(), '*');
+            }
+            else {
+                window.parent.postMessage(exitFullscreenMessage(), '*');
+            }
+        }
+    }
+}
+
+async function handleRequestFullscreen(e: MessageEvent) {
+    if (!isTopFrame()) {
+        // bubble up
+        window.parent.postMessage(e.data, '*');
+        return;
+    }
+
+    if (document.fullscreenElement) {
+        return;
+    }
+
+    for (const iframe of document.querySelectorAll('iframe')) {
+        if (iframe.contentWindow === e.source) {
+            await iframe.requestFullscreen();
+            break;
+        }
+    }
+}
+
+async function handleExitFullscreen(e: MessageEvent) {
+    if (!isTopFrame()) {
+        // bubble up
+        window.parent.postMessage(e.data, '*');
+        return;
+    }
+    if (!document.fullscreenElement) {
+        return;
+    }
+
+    await document.exitFullscreen();
 }
 
 document.addEventListener('keydown', makeHandler(handleKeyDown), { capture: true });
 document.addEventListener('keyup', makeHandler(handleKeyUp), { capture: true });
 document.addEventListener('keypress', makeHandler(handleKeyPress), { capture: true });
 document.addEventListener('click', makeHandler(handleClick), { capture: true });
-document.addEventListener('fullscreenchange', makeHandler(handleFullscreenChange), {
-    capture: true,
+document.addEventListener('dblclick', makeHandler(handleDoubleClick), { capture: true });
+window.addEventListener('message', event => {
+    if (isRequestFullscreenMessage(event.data)) {
+        queueAsyncHandler(() => handleRequestFullscreen(event));
+    }
+    if (isExitFullscreenMessage(event.data)) {
+        queueAsyncHandler(() => handleExitFullscreen(event));
+    }
 });
