@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Sample Project
 // @description        Sample Project
-// @version            1.0.8
+// @version            1.0.9
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              https://www.google.com.eg/
@@ -12,10 +12,10 @@
     'use strict';
 
     function extendPrototype(prototype, properties) {
-        for (const key of Object.keys(properties)) {
-            const desc = Object.getOwnPropertyDescriptor(properties, key);
+        for (const propertyName of Object.getOwnPropertyNames(properties)) {
+            const desc = Object.getOwnPropertyDescriptor(properties, propertyName);
             desc.enumerable = false;
-            Object.defineProperty(prototype, key, desc);
+            Object.defineProperty(prototype, propertyName, desc);
         }
     }
 
