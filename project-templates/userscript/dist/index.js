@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Sample Project
 // @description        Sample Project
-// @version            1.0.9
+// @version            1.0.10
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              https://www.google.com.eg/
@@ -13,6 +13,9 @@
 
     function extendPrototype(prototype, properties) {
         for (const propertyName of Object.getOwnPropertyNames(properties)) {
+            if (propertyName === 'constructor') {
+                continue;
+            }
             const desc = Object.getOwnPropertyDescriptor(properties, propertyName);
             desc.enumerable = false;
             Object.defineProperty(prototype, propertyName, desc);

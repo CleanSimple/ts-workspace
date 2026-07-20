@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Let there be fullscreen!
 // @description        Adds a full screen button to your iframes! (Because the web is complex and sometimes your fullscreen button doesn't work.)
-// @version            0.3.2
+// @version            0.3.3
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*
@@ -21,6 +21,9 @@
     }
     function extendPrototype(prototype, properties) {
         for (const propertyName of Object.getOwnPropertyNames(properties)) {
+            if (propertyName === 'constructor') {
+                continue;
+            }
             const desc = Object.getOwnPropertyDescriptor(properties, propertyName);
             desc.enumerable = false;
             Object.defineProperty(prototype, propertyName, desc);

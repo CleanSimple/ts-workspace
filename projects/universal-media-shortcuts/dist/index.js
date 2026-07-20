@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Universal Media Shortcuts
 // @description        Adds custom shortcuts to all video players
-// @version            0.29.1
+// @version            0.29.2
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*
@@ -16,6 +16,9 @@
 
     function extendPrototype(prototype, properties) {
         for (const propertyName of Object.getOwnPropertyNames(properties)) {
+            if (propertyName === 'constructor') {
+                continue;
+            }
             const desc = Object.getOwnPropertyDescriptor(properties, propertyName);
             desc.enumerable = false;
             Object.defineProperty(prototype, propertyName, desc);
