@@ -56,10 +56,10 @@ function isObject(value) {
         && Object.getPrototypeOf(value) === Object.prototype;
 }
 function extendPrototype(prototype, properties) {
-    for (const key of Object.keys(properties)) {
-        const desc = Object.getOwnPropertyDescriptor(properties, key);
+    for (const propertyName of Object.getOwnPropertyNames(properties)) {
+        const desc = Object.getOwnPropertyDescriptor(properties, propertyName);
         desc.enumerable = false;
-        Object.defineProperty(prototype, key, desc);
+        Object.defineProperty(prototype, propertyName, desc);
     }
 }
 
