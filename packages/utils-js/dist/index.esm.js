@@ -57,6 +57,9 @@ function isObject(value) {
 }
 function extendPrototype(prototype, properties) {
     for (const propertyName of Object.getOwnPropertyNames(properties)) {
+        if (propertyName === 'constructor') {
+            continue;
+        }
         const desc = Object.getOwnPropertyDescriptor(properties, propertyName);
         desc.enumerable = false;
         Object.defineProperty(prototype, propertyName, desc);
