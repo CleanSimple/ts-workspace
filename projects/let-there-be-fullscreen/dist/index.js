@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Let there be fullscreen!
 // @description        Adds a full screen button to your iframes! (Because the web is complex and sometimes your fullscreen button doesn't work.)
-// @version            0.3.3
+// @version            0.3.4
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*
@@ -56,7 +56,7 @@
      * checks if a window is the top window (not an iframe)
      */
     function isTopFrame(win = window) {
-        return win === win.parent;
+        return win === win.top;
     }
     function isElementVisible(elem) {
         if (elem.offsetParent === null || elem.ariaHidden === 'true') {
@@ -77,6 +77,9 @@
             || left > scrollableWidth
             || top > scrollableHeight);
     }
+
+    typeof DedicatedWorkerGlobalScope !== 'undefined'
+        && globalThis instanceof DedicatedWorkerGlobalScope;
 
     GM_addStyle(`
 .ltbf-btn {

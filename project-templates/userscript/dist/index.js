@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Sample Project
 // @description        Sample Project
-// @version            1.0.10
+// @version            1.0.11
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              https://www.google.com.eg/
@@ -47,6 +47,9 @@
     async function sleep(milliseconds) {
         return new Promise(resolve => setTimeout(resolve, milliseconds));
     }
+
+    typeof DedicatedWorkerGlobalScope !== 'undefined'
+        && globalThis instanceof DedicatedWorkerGlobalScope;
 
     async function main() {
         // comment
