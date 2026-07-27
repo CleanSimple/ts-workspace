@@ -1,19 +1,11 @@
 import type { VideoContext } from './types';
 
-import { isTopFrame } from '@cleansimple/utils-js';
-import { queueAsyncHandler } from './handler-queue';
+import { addMessageHandler, isTopFrame, sendMessage } from '@cleansimple/utils-js';
 import { Hotkeys } from './hotkeys';
 import skipDlgStyles from './styles/skip-dlg.css';
 import styles from './styles/styles.css';
 import upDownControlStyles from './styles/up-down-control.css';
-import {
-    exitFullscreenMessage,
-    isExitFullscreenMessage,
-    isRequestFullscreenMessage,
-    matchKey,
-    matchState,
-    requestFullscreenMessage,
-} from './utils';
+import { matchKey, matchState } from './utils';
 import { VideoContextManager } from './video-context-manager';
 
 type LogType = typeof console.info;
@@ -80,7 +72,6 @@ function handleClick(e: MouseEvent, context: VideoContext) {
     context.playerWrapper.focus();
 }
 
-let inMemoryFullscreenState: boolean = false;
 async function handleDoubleClick(e: MouseEvent, context: VideoContext) {
     if (!context.playerWrapper.isEventSource(e, 'video')) {
         return;
@@ -89,59 +80,30 @@ async function handleDoubleClick(e: MouseEvent, context: VideoContext) {
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    context.playerWrapper.focus();
-
-    inMemoryFullscreenState = !inMemoryFullscreenState;
+    const isFullscreen = isTopFrame()
+        ? document.fullscreenElement !== null
+        : await sendMessage(window.parent, 'is-fullscreen', void 0, {
+            targetOrigin: '*',
+        });
     try {
-        if (inMemoryFullscreenState) {
-            await context.playerWrapper.requestFullscreen();
+        if (isFullscreen) {
+            await document.exitFullscreen();
         }
         else {
-            await document.exitFullscreen();
+            await context.playerWrapper.requestFullscreen();
         }
     }
     catch {
         if (!isTopFrame()) {
-            if (inMemoryFullscreenState) {
-                window.parent.postMessage(requestFullscreenMessage(), '*');
-            }
-            else {
-                window.parent.postMessage(exitFullscreenMessage(), '*');
-            }
+            await sendMessage(
+                window.parent,
+                isFullscreen ? 'exit-fullscreen' : 'request-fullscreen',
+                void 0,
+                { targetOrigin: '*' },
+            );
         }
     }
-}
-
-async function handleRequestFullscreen(e: MessageEvent) {
-    if (!isTopFrame()) {
-        // bubble up
-        window.parent.postMessage(e.data, '*');
-        return;
-    }
-
-    if (document.fullscreenElement) {
-        return;
-    }
-
-    for (const iframe of document.querySelectorAll('iframe')) {
-        if (iframe.contentWindow === e.source) {
-            await iframe.requestFullscreen();
-            break;
-        }
-    }
-}
-
-async function handleExitFullscreen(e: MessageEvent) {
-    if (!isTopFrame()) {
-        // bubble up
-        window.parent.postMessage(e.data, '*');
-        return;
-    }
-    if (!document.fullscreenElement) {
-        return;
-    }
-
-    await document.exitFullscreen();
+    context.playerWrapper.focus();
 }
 
 document.addEventListener('keydown', makeHandler(handleKeyDown), { capture: true });
@@ -149,11 +111,57 @@ document.addEventListener('keyup', makeHandler(handleKeyUp), { capture: true });
 document.addEventListener('keypress', makeHandler(handleKeyPress), { capture: true });
 document.addEventListener('click', makeHandler(handleClick), { capture: true });
 document.addEventListener('dblclick', makeHandler(handleDoubleClick), { capture: true });
-window.addEventListener('message', event => {
-    if (isRequestFullscreenMessage(event.data)) {
-        queueAsyncHandler(() => handleRequestFullscreen(event));
+
+addMessageHandler('is-fullscreen', async ({ reply }) => {
+    if (isTopFrame()) {
+        reply(document.fullscreenElement !== null, { targetOrigin: '*' });
     }
-    if (isExitFullscreenMessage(event.data)) {
-        queueAsyncHandler(() => handleExitFullscreen(event));
+    else {
+        const isFullscreen = await sendMessage(window.parent, 'is-fullscreen', void 0, {
+            targetOrigin: '*',
+        });
+        reply(isFullscreen, { targetOrigin: '*' });
+    }
+});
+
+addMessageHandler('request-fullscreen', async ({ event, reply, reject }) => {
+    try {
+        if (isTopFrame()) {
+            if (document.fullscreenElement) {
+                return;
+            }
+            if (!event.source) {
+                return;
+            }
+
+            for (const iframe of document.querySelectorAll('iframe')) {
+                if (iframe.contentWindow === event.source) {
+                    await iframe.requestFullscreen();
+                    break;
+                }
+            }
+        }
+        else {
+            await sendMessage(window.parent, 'request-fullscreen', void 0);
+        }
+        reply(void 0, { targetOrigin: '*' });
+    }
+    catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)), { targetOrigin: '*' });
+    }
+});
+
+addMessageHandler('exit-fullscreen', async ({ reply, reject }) => {
+    try {
+        if (isTopFrame()) {
+            await document.exitFullscreen();
+        }
+        else {
+            await sendMessage(window.parent, 'exit-fullscreen', void 0);
+        }
+        reply(void 0, { targetOrigin: '*' });
+    }
+    catch (error) {
+        reject(error instanceof Error ? error : new Error(String(error)), { targetOrigin: '*' });
     }
 });

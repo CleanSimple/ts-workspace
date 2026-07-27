@@ -51,24 +51,107 @@
      * checks if a window is the top window (not an iframe)
      */
     function isTopFrame(win = window) {
-        return win === win.parent;
+        return win === win.top;
     }
 
-    const _handlers = [];
-    let _flushQueued = false;
-    async function flushHandlers() {
-        while (_handlers.length > 0) {
-            const handler = _handlers.shift();
-            await handler();
-        }
-        _flushQueued = false;
+    const isDedicatedWorker = typeof DedicatedWorkerGlobalScope !== 'undefined'
+        && globalThis instanceof DedicatedWorkerGlobalScope;
+    function isResponseEnvelope(data) {
+        return typeof data === 'object' && data !== null
+            && 'id' in data && typeof data.id === 'number'
+            && 'kind' in data && data.kind === 'response'
+            && 'type' in data && typeof data.type === 'string';
     }
-    function queueAsyncHandler(handler) {
-        _handlers.push(handler);
-        if (!_flushQueued) {
-            _flushQueued = true;
-            queueMicrotask(() => void flushHandlers());
+    function serializeError(error) {
+        if (error instanceof Error) {
+            return {
+                name: error.name,
+                message: error.message,
+                stack: error.stack,
+                cause: error.cause,
+            };
         }
+        return {
+            name: 'UnknownError',
+            message: String(error),
+        };
+    }
+    function deserializeError(data) {
+        const error = new Error(data.message);
+        error.name = data.name;
+        if (data.stack) {
+            error.stack = data.stack;
+        }
+        error.cause = data.cause;
+        return error;
+    }
+    let lastId = 0;
+    function sendMessage(target, type, payload, options = {}) {
+        return new Promise((resolve, reject) => {
+            const messageId = ++lastId;
+            const handler = (result) => {
+                if (!isResponseEnvelope(result.data)) {
+                    return;
+                }
+                if (result.data.id !== messageId) {
+                    return;
+                }
+                listenerTarget.removeEventListener('message', handler);
+                if (result.data.type === 'error') {
+                    reject(deserializeError(result.data.data));
+                }
+                else {
+                    resolve(result.data.data);
+                }
+            };
+            const listenerTarget = (typeof ServiceWorker !== 'undefined' && target instanceof ServiceWorker)
+                || (typeof Worker !== 'undefined' && target instanceof Worker)
+                ? target
+                : globalThis;
+            listenerTarget.addEventListener('message', handler);
+            target.postMessage({
+                id: messageId,
+                kind: 'request',
+                type: type,
+                data: payload,
+            }, options);
+        });
+    }
+    function replyToMessage(event, payload, options = {}) {
+        const source = event.source ?? (isDedicatedWorker ? self : null);
+        if (!source)
+            return;
+        source.postMessage({
+            id: event.data.id,
+            kind: 'response',
+            type: event.data.type,
+            data: payload,
+        }, options);
+    }
+    function rejectMessage(event, error, options = {}) {
+        const source = event.source ?? (isDedicatedWorker ? self : null);
+        if (!source)
+            return;
+        source.postMessage({
+            id: event.data.id,
+            kind: 'response',
+            type: 'error',
+            data: serializeError(error),
+        }, options);
+    }
+    function addMessageHandler(type, handler) {
+        const onMessage = (event) => {
+            if (event.data.kind === 'request' && event.data.type === type) {
+                void handler({
+                    message: event.data,
+                    event,
+                    reply: (payload, options) => replyToMessage(event, payload, options),
+                    reject: (error, options) => rejectMessage(event, error, options),
+                });
+            }
+        };
+        globalThis.addEventListener('message', onMessage);
+        return () => globalThis.removeEventListener('message', onMessage);
     }
 
     const Hotkeys = [
@@ -404,20 +487,6 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
             case 'skipping':
                 return context.playerWrapper.status === 'skipping';
         }
-    }
-    function isRequestFullscreenMessage(value) {
-        return (value != null && typeof value === 'object' && 'type' in value
-            && value.type === 'request-fullscreen');
-    }
-    function requestFullscreenMessage() {
-        return { type: 'request-fullscreen' };
-    }
-    function isExitFullscreenMessage(value) {
-        return (value != null && typeof value === 'object' && 'type' in value
-            && value.type === 'exit-fullscreen');
-    }
-    function exitFullscreenMessage() {
-        return { type: 'exit-fullscreen' };
     }
 
     function jsx(type, props) {
@@ -1666,72 +1735,85 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
     function handleClick(e, context) {
         context.playerWrapper.focus();
     }
-    let inMemoryFullscreenState = false;
     async function handleDoubleClick(e, context) {
         if (!context.playerWrapper.isEventSource(e, 'video')) {
             return;
         }
         e.preventDefault();
         e.stopImmediatePropagation();
-        context.playerWrapper.focus();
-        inMemoryFullscreenState = !inMemoryFullscreenState;
+        const isFullscreen = isTopFrame()
+            ? document.fullscreenElement !== null
+            : await sendMessage(window.parent, 'is-fullscreen', void 0, {
+                targetOrigin: '*',
+            });
         try {
-            if (inMemoryFullscreenState) {
-                await context.playerWrapper.requestFullscreen();
+            if (isFullscreen) {
+                await document.exitFullscreen();
             }
             else {
-                await document.exitFullscreen();
+                await context.playerWrapper.requestFullscreen();
             }
         }
         catch {
             if (!isTopFrame()) {
-                if (inMemoryFullscreenState) {
-                    window.parent.postMessage(requestFullscreenMessage(), '*');
-                }
-                else {
-                    window.parent.postMessage(exitFullscreenMessage(), '*');
-                }
+                await sendMessage(window.parent, isFullscreen ? 'exit-fullscreen' : 'request-fullscreen', void 0, { targetOrigin: '*' });
             }
         }
-    }
-    async function handleRequestFullscreen(e) {
-        if (!isTopFrame()) {
-            // bubble up
-            window.parent.postMessage(e.data, '*');
-            return;
-        }
-        if (document.fullscreenElement) {
-            return;
-        }
-        for (const iframe of document.querySelectorAll('iframe')) {
-            if (iframe.contentWindow === e.source) {
-                await iframe.requestFullscreen();
-                break;
-            }
-        }
-    }
-    async function handleExitFullscreen(e) {
-        if (!isTopFrame()) {
-            // bubble up
-            window.parent.postMessage(e.data, '*');
-            return;
-        }
-        if (!document.fullscreenElement) {
-            return;
-        }
-        await document.exitFullscreen();
+        context.playerWrapper.focus();
     }
     document.addEventListener('keydown', makeHandler(handleKeyDown), { capture: true });
     document.addEventListener('keyup', makeHandler(handleKeyUp), { capture: true });
     document.addEventListener('keypress', makeHandler(handleKeyPress), { capture: true });
     document.addEventListener('click', makeHandler(handleClick), { capture: true });
     document.addEventListener('dblclick', makeHandler(handleDoubleClick), { capture: true });
-    window.addEventListener('message', event => {
-        if (isRequestFullscreenMessage(event.data)) {
-            queueAsyncHandler(() => handleRequestFullscreen(event));
+    addMessageHandler('is-fullscreen', async ({ reply }) => {
+        if (isTopFrame()) {
+            reply(document.fullscreenElement !== null, { targetOrigin: '*' });
         }
-        if (isExitFullscreenMessage(event.data)) {
-            queueAsyncHandler(() => handleExitFullscreen(event));
+        else {
+            const isFullscreen = await sendMessage(window.parent, 'is-fullscreen', void 0, {
+                targetOrigin: '*',
+            });
+            reply(isFullscreen, { targetOrigin: '*' });
+        }
+    });
+    addMessageHandler('request-fullscreen', async ({ event, reply, reject }) => {
+        try {
+            if (isTopFrame()) {
+                if (document.fullscreenElement) {
+                    return;
+                }
+                if (!event.source) {
+                    return;
+                }
+                for (const iframe of document.querySelectorAll('iframe')) {
+                    if (iframe.contentWindow === event.source) {
+                        await iframe.requestFullscreen();
+                        break;
+                    }
+                }
+            }
+            else {
+                await sendMessage(window.parent, 'request-fullscreen', void 0);
+            }
+            reply(void 0, { targetOrigin: '*' });
+        }
+        catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)), { targetOrigin: '*' });
+        }
+    });
+    addMessageHandler('exit-fullscreen', async ({ reply, reject }) => {
+        try {
+            if (isTopFrame()) {
+                await document.exitFullscreen();
+            }
+            else {
+                await sendMessage(window.parent, 'exit-fullscreen', void 0);
+            }
+            reply(void 0, { targetOrigin: '*' });
+        }
+        catch (error) {
+            reject(error instanceof Error ? error : new Error(String(error)), { targetOrigin: '*' });
         }
     });
 

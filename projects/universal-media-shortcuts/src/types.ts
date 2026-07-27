@@ -18,10 +18,19 @@ export interface Hotkey {
     noOtherHandlers: boolean;
 }
 
-export interface RequestFullscreenMessage {
-    type: 'request-fullscreen';
-}
-
-export interface ExitFullscreenMessage {
-    type: 'exit-fullscreen';
+declare module '@cleansimple/utils-js' {
+    interface Messages {
+        'is-fullscreen': {
+            payload: void;
+            response: boolean;
+        };
+        'request-fullscreen': {
+            payload: void;
+            response: void;
+        };
+        'exit-fullscreen': {
+            payload: void;
+            response: void;
+        };
+    }
 }

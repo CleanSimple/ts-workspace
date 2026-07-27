@@ -1,9 +1,4 @@
-import type {
-    ExitFullscreenMessage,
-    Hotkey,
-    RequestFullscreenMessage,
-    VideoContext,
-} from './types';
+import type { Hotkey, VideoContext } from './types';
 
 export function matchKey(evt: KeyboardEvent, hotkey: Hotkey) {
     const { key, code, ctrlKey = false, altKey = false, shiftKey = false } = hotkey;
@@ -35,22 +30,4 @@ export function matchState(evt: KeyboardEvent, hotkey: Hotkey, context: VideoCon
         case 'skipping':
             return context.playerWrapper.status === 'skipping';
     }
-}
-
-export function isRequestFullscreenMessage(value: unknown): value is RequestFullscreenMessage {
-    return (value != null && typeof value === 'object' && 'type' in value
-        && value.type === 'request-fullscreen');
-}
-
-export function requestFullscreenMessage(): RequestFullscreenMessage {
-    return { type: 'request-fullscreen' };
-}
-
-export function isExitFullscreenMessage(value: unknown): value is ExitFullscreenMessage {
-    return (value != null && typeof value === 'object' && 'type' in value
-        && value.type === 'exit-fullscreen');
-}
-
-export function exitFullscreenMessage(): ExitFullscreenMessage {
-    return { type: 'exit-fullscreen' };
 }
