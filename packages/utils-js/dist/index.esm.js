@@ -171,7 +171,7 @@ function deduplicate(data, key) {
  * checks if a window is the top window (not an iframe)
  */
 function isTopFrame(win = window) {
-    return win === win.parent;
+    return win === win.top;
 }
 function isElementVisible(elem) {
     if (elem.offsetParent === null || elem.ariaHidden === 'true') {
@@ -253,6 +253,106 @@ async function convertImageToJpg(blob) {
         };
         img.src = imageUrl;
     });
+}
+
+const isDedicatedWorker = typeof DedicatedWorkerGlobalScope !== 'undefined'
+    && globalThis instanceof DedicatedWorkerGlobalScope;
+function isResponseEnvelope(data) {
+    return typeof data === 'object' && data !== null
+        && 'id' in data && typeof data.id === 'number'
+        && 'kind' in data && data.kind === 'response'
+        && 'type' in data && typeof data.type === 'string';
+}
+function serializeError(error) {
+    if (error instanceof Error) {
+        return {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            cause: error.cause,
+        };
+    }
+    return {
+        name: 'UnknownError',
+        message: String(error),
+    };
+}
+function deserializeError(data) {
+    const error = new Error(data.message);
+    error.name = data.name;
+    if (data.stack) {
+        error.stack = data.stack;
+    }
+    error.cause = data.cause;
+    return error;
+}
+let lastId = 0;
+function sendMessage(target, type, payload, options = {}) {
+    return new Promise((resolve, reject) => {
+        const messageId = ++lastId;
+        const handler = (result) => {
+            if (!isResponseEnvelope(result.data)) {
+                return;
+            }
+            if (result.data.id !== messageId) {
+                return;
+            }
+            listenerTarget.removeEventListener('message', handler);
+            if (result.data.type === 'error') {
+                reject(deserializeError(result.data.data));
+            }
+            else {
+                resolve(result.data.data);
+            }
+        };
+        const listenerTarget = (typeof ServiceWorker !== 'undefined' && target instanceof ServiceWorker)
+            || (typeof Worker !== 'undefined' && target instanceof Worker)
+            ? target
+            : globalThis;
+        listenerTarget.addEventListener('message', handler);
+        target.postMessage({
+            id: messageId,
+            kind: 'request',
+            type: type,
+            data: payload,
+        }, options);
+    });
+}
+function replyToMessage(event, payload, options = {}) {
+    const source = event.source ?? (isDedicatedWorker ? self : null);
+    if (!source)
+        return;
+    source.postMessage({
+        id: event.data.id,
+        kind: 'response',
+        type: event.data.type,
+        data: payload,
+    }, options);
+}
+function rejectMessage(event, error, options = {}) {
+    const source = event.source ?? (isDedicatedWorker ? self : null);
+    if (!source)
+        return;
+    source.postMessage({
+        id: event.data.id,
+        kind: 'response',
+        type: 'error',
+        data: serializeError(error),
+    }, options);
+}
+function addMessageHandler(type, handler) {
+    const onMessage = (event) => {
+        if (event.data.kind === 'request' && event.data.type === type) {
+            void handler({
+                message: event.data,
+                event,
+                reply: (payload, options) => replyToMessage(event, payload, options),
+                reject: (error, options) => rejectMessage(event, error, options),
+            });
+        }
+    };
+    globalThis.addEventListener('message', onMessage);
+    return () => globalThis.removeEventListener('message', onMessage);
 }
 
 /**
@@ -379,4 +479,4 @@ var reactAutomation = {
     setInputValue,
 };
 
-export { reactAutomation as ReactAutomation, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, deduplicate, download, extendPrototype, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, queryTextNodes, remapData, rndInt, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };
+export { reactAutomation as ReactAutomation, addMessageHandler, base64Encode, convertImageToJpg, createDocumentFromHTML, createElementFromHTML, csvEscape, csvFromArray, csvToArray, dateAddDays, dateAddMinutes, dateSubDays, dateSubMinutes, dateToDateString, dateToString, dateToTimeString, dateToWeekDay, debounce, deduplicate, download, extendPrototype, fail, fileSelect, getCurrentQueryParams, getElementOwnText, getQueryParam, getTimezoneOffset, getToday, hasKey, isElementVisible, isObject, isPrimitive, isTopFrame, mapData, poll, queryStringFromObject, queryTextNodes, remapData, rndInt, sendMessage, setQueryParam, setQueryParams, simulateMouseEvent, sleep, unmapData, waitUntil };

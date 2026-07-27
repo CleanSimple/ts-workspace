@@ -4,6 +4,7 @@ export * from './csv';
 export * from './data';
 export * from './dom';
 export * from './image';
+export * from './messaging';
 export * from './time';
 export * from './url';
 export * from './util';

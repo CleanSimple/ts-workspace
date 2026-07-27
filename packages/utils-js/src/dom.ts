@@ -2,7 +2,7 @@
  * checks if a window is the top window (not an iframe)
  */
 export function isTopFrame(win: Window = window): boolean {
-    return win === win.parent;
+    return win === win.top;
 }
 
 export function isElementVisible(elem: HTMLElement): boolean {

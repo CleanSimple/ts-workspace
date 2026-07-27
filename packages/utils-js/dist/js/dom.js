@@ -4,7 +4,7 @@
  * @returns {boolean}
  */
 export function isTopFrame(win = window) {
-    return win === win.parent;
+    return win === win.top;
 }
 /**
  * @param {HTMLElement} elem
