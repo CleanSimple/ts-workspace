@@ -1,42 +1,28 @@
-import type { FunctionalComponent, PropsOf, Signal } from '@cleansimple/plain-jsx';
+import type { FunctionalComponent, PropsOf, Val } from '@cleansimple/plain-jsx';
 
-import { ref } from '@cleansimple/plain-jsx';
+import { val } from '@cleansimple/plain-jsx';
 
 interface UpDownProps extends PropsOf<HTMLDivElement> {
-    value?: Signal<number> | number;
+    value?: Val<number> | number;
     minValue?: number;
     maxValue?: number;
 }
 
 export const UpDown: FunctionalComponent<UpDownProps> = (
-    { value = 1, minValue = 0, maxValue = 99, ...props }: UpDownProps,
+    { value: initialValue = 1, minValue = 0, maxValue = 99, ...props }: UpDownProps,
 ) => {
-    const inputRef = ref<HTMLInputElement>();
+    const value = typeof initialValue === 'number' ? val(initialValue) : initialValue;
 
     function increment() {
-        const { current: input } = inputRef;
-        if (!input) throw new Error();
-
-        const value = Math.min(maxValue, input.valueAsNumber + 1);
-        if (value != input.valueAsNumber) {
-            input.valueAsNumber = value;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        value.value = Math.min(maxValue, value.value + 1);
     }
     function decrement() {
-        const { current: input } = inputRef;
-        if (!input) throw new Error();
-
-        const value = Math.max(minValue, input.valueAsNumber - 1);
-        if (value != input.valueAsNumber) {
-            input.valueAsNumber = value;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        value.value = Math.max(minValue, value.value - 1);
     }
 
     return (
         <div class='up-down-control' {...props}>
-            <input ref={inputRef} type='number' disabled valueAsNumber={value} />
+            <input type='number' disabled valueAsNumber={value} />
             <div
                 style={{
                     display: 'flex',
