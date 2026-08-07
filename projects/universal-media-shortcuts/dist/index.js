@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Universal Media Shortcuts
 // @description        Adds custom shortcuts to all video players
-// @version            0.29.3
+// @version            0.29.4
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*
@@ -1505,29 +1505,15 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
         'app-watch', // KissKH player
     ].join(',');
 
-    const UpDown = ({ value = 1, minValue = 0, maxValue = 99, ...props }) => {
-        const inputRef = ref();
+    const UpDown = ({ value: initialValue = 1, minValue = 0, maxValue = 99, ...props }) => {
+        const value = typeof initialValue === 'number' ? val(initialValue) : initialValue;
         function increment() {
-            const { current: input } = inputRef;
-            if (!input)
-                throw new Error();
-            const value = Math.min(maxValue, input.valueAsNumber + 1);
-            if (value != input.valueAsNumber) {
-                input.valueAsNumber = value;
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
+            value.value = Math.min(maxValue, value.value + 1);
         }
         function decrement() {
-            const { current: input } = inputRef;
-            if (!input)
-                throw new Error();
-            const value = Math.max(minValue, input.valueAsNumber - 1);
-            if (value != input.valueAsNumber) {
-                input.valueAsNumber = value;
-                input.dispatchEvent(new Event('change', { bubbles: true }));
-            }
+            value.value = Math.max(minValue, value.value - 1);
         }
-        return (jsx("div", { class: 'up-down-control', ...props, children: [jsx("input", { ref: inputRef, type: 'number', disabled: true, valueAsNumber: value }), jsx("div", { style: {
+        return (jsx("div", { class: 'up-down-control', ...props, children: [jsx("input", { type: 'number', disabled: true, valueAsNumber: value }), jsx("div", { style: {
                         display: 'flex',
                         flexDirection: 'column',
                         borderLeft: '1px solid #404040',
