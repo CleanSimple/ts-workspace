@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name               Universal Media Shortcuts
 // @description        Adds custom shortcuts to all video players
-// @version            0.29.4
+// @version            0.29.5
 // @author             Nour Nasser <nours02345@gmail.com>
 // @namespace          https://github.com/CleanSimple
 // @match              *://*/*
@@ -381,7 +381,8 @@
 .ums-ui-hidden[class*="Container-module"][class*="player"]
     > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
 .ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)),
-app-watch.ums-ui-hidden .videoplayer > :not(video) {
+app-watch.ums-ui-hidden .videoplayer > :not(video),
+.ums-ui-hidden#art-player > .art-video-player > :not(.art-video, .art-subtitle) {
     display: none !important;
 }
 
@@ -393,7 +394,8 @@ app-watch.ums-ui-hidden .videoplayer > :not(video) {
 .ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
 .ums-cc-hidden[class*="Container-module"][class*="player"]
     > [class*="VideoLayout-module"][class*="captions"],
-.ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
+.ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span),
+.ums-ui-hidden#art-player > .art-video-player > .art-subtitle {
     display: none !important;
 }
 
@@ -1503,6 +1505,7 @@ app-watch.ums-cc-hidden .videoplayer > video::cue {
         '[class*="Container-module"][class*="player"]',
         '#videasy-player-wrapper', // Videasy player
         'app-watch', // KissKH player
+        '#art-player',
     ].join(',');
 
     const UpDown = ({ value: initialValue = 1, minValue = 0, maxValue = 99, ...props }) => {
