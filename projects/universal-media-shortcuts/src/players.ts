@@ -7,4 +7,5 @@ export const PlayersSelector = [
     '[class*="Container-module"][class*="player"]',
     '#videasy-player-wrapper', // Videasy player
     'app-watch', // KissKH player
+    '#art-player',
 ].join(',');

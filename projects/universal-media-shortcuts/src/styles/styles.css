@@ -13,7 +13,8 @@
 .ums-ui-hidden[class*="Container-module"][class*="player"]
     > :not(:has(> video), [class*="VideoLayout-module"][class*="captions"]),
 .ums-ui-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > :not(div:has(> span)),
-app-watch.ums-ui-hidden .videoplayer > :not(video) {
+app-watch.ums-ui-hidden .videoplayer > :not(video),
+.ums-ui-hidden#art-player > .art-video-player > :not(.art-video, .art-subtitle) {
     display: none !important;
 }
 
@@ -25,7 +26,8 @@ app-watch.ums-ui-hidden .videoplayer > :not(video) {
 .ums-cc-hidden.pjscssed > #pjs_player_parent_subtitle,
 .ums-cc-hidden[class*="Container-module"][class*="player"]
     > [class*="VideoLayout-module"][class*="captions"],
-.ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span) {
+.ums-cc-hidden#videasy-player-wrapper .videasy-container > :nth-child(2) > div:has(> span),
+.ums-ui-hidden#art-player > .art-video-player > .art-subtitle {
     display: none !important;
 }
 
