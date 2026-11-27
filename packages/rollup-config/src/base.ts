@@ -18,6 +18,7 @@ export default (options: ConfigOptions = {}) => ({
         commonjs(),
         typescript({
             tsconfig: options.tsconfig ?? './tsconfig.json',
+            include: '**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,json}',
             noEmitOnError: !isWatch,
         }),
         importAsString({
