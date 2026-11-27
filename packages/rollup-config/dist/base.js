@@ -1,4 +1,5 @@
 import commonjs from '@rollup/plugin-commonjs';
+import json from '@rollup/plugin-json';
 import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 import {} from 'rollup';
@@ -12,8 +13,10 @@ export default (options = {}) => ({
         commonjs(),
         typescript({
             tsconfig: options.tsconfig ?? './tsconfig.json',
+            include: '**/*.{js,cjs,mjs,jsx,ts,cts,mts,tsx,json}',
             noEmitOnError: !isWatch,
         }),
+        json({ indent: '  ' }),
         importAsString({
             include: [
                 '**/*.txt',
